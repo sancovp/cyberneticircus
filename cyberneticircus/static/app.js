@@ -459,6 +459,8 @@ document.addEventListener("DOMContentLoaded", () => {
             .force("center", d3.forceCenter(drawWidth / 2, height / 2))
             .force("collision", d3.forceCollide().radius(25));
             
+        window.simulation = simulation;
+            
         // Bind D3 drag behavior to canvas
         d3.select(canvas)
             .call(d3.drag()
@@ -471,9 +473,10 @@ document.addEventListener("DOMContentLoaded", () => {
         // Bind mouse movements for hover detection
         canvas.addEventListener("mousemove", (e) => {
             const r = canvas.getBoundingClientRect();
-            // Scale mouse coordinates to match canvas coordinate system
-            mouseX = (e.clientX - r.left) * (drawWidth / r.width);
-            mouseY = (e.clientY - r.top) * (height / r.height);
+            const dpr = window.devicePixelRatio || 1;
+            // Scale mouse coordinates to match canvas coordinate system dynamically
+            mouseX = (e.clientX - r.left) * ((canvas.width / dpr) / r.width);
+            mouseY = (e.clientY - r.top) * ((canvas.height / dpr) / r.height);
             
             // Hover detection
             hoveredNode = null;
@@ -830,6 +833,9 @@ document.addEventListener("DOMContentLoaded", () => {
             simulation.nodes(nodes);
             simulation.force("link").links(links);
             simulation.alpha(0.3).restart();
+            
+            window.graphNodes = nodes;
+            window.graphLinks = links;
 
         } catch (e) {
             console.error("D3 Draw Error:", e);
