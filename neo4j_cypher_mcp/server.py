@@ -86,7 +86,34 @@ def populate_default_graphs(driver):
         },
         {
             "id": "sh8_night_evolve",
-            "text": "Sh8peshift Night Phase - Step 4: Perform selection check. Query the Cybernet\'s fitness score to decide cloning or reset.",
+            "text": "Sh8peshift Night Phase - Step 4: Perform selection check. Query the Cybernet's fitness score to decide cloning or reset.",
+            "required_pattern": r"(?i)MATCH\s*\(m:Cybernet\s*.*\)\s*WHERE\s*m\.fitness_score\s*.*",
+            "pattern_description": 'MATCH (m:Cybernet) WHERE m.fitness_score >= 0.8 RETURN m'
+        }
+    ]
+    
+    ple_steps = [
+        {
+            "id": "ple_ignite_intent",
+            "text": "Primordial Love Engine - Step 1: Ignite the Inner Fire. MATCH the Cybernet node to load its prompt config representing its raw intent.",
+            "required_pattern": r"(?i)MATCH\s*\(m:Cybernet\s*.*\)",
+            "pattern_description": 'MATCH (m:Cybernet) RETURN m'
+        },
+        {
+            "id": "ple_combust_action",
+            "text": "Primordial Love Engine - Step 2: Transform intent in the Oliver Powers combustion chamber. Run a SET query to update total_tokens_consumed and accumulated_cost on the Cybernet.",
+            "required_pattern": r"(?i)MATCH\s*\(m:Cybernet\s*\{name:\s*['\"].*['\"].*\}\)\s*SET\s*m\.total_tokens_consumed\s*=\s*m\.total_tokens_consumed\s*\+\s*\d+",
+            "pattern_description": 'MATCH (m:Cybernet {name: "..."}) SET m.total_tokens_consumed = m.total_tokens_consumed + X'
+        },
+        {
+            "id": "ple_align_collaboration",
+            "text": "Primordial Love Engine - Step 3: Align collaborative force via the Alluv Arelov crankshaft. Run a MATCH query on the connected Identity states in the Cyberneticity.",
+            "required_pattern": r"(?i)MATCH\s*\(m:Cybernet\s*.*\)-[:HAS_LIFECYCLE]->\(i:Identity\)",
+            "pattern_description": 'MATCH (m:Cybernet {name: "..."})-[:HAS_LIFECYCLE]->(i:Identity) RETURN i'
+        },
+        {
+            "id": "ple_output_promise",
+            "text": "Primordial Love Engine - Step 4: Deliver the Victory-Promise output. MATCH the Cybernet to query its fitness_score and verify system optimization.",
             "required_pattern": r"(?i)MATCH\s*\(m:Cybernet\s*.*\)\s*WHERE\s*m\.fitness_score\s*.*",
             "pattern_description": 'MATCH (m:Cybernet) WHERE m.fitness_score >= 0.8 RETURN m'
         }
@@ -154,6 +181,36 @@ def populate_default_graphs(driver):
                         """,
                         {"curr_id": curr_id, "next_id": next_id, "desc": f"Transition from {curr_id} to {next_id}"}
                     )
+
+                # 2.5. Bootstrap Primordial Love Engine steps
+                for step in ple_steps:
+                    tx.run(
+                        """
+                        MERGE (step:TraversalStep {id: $id})
+                        SET step.text = $text,
+                            step.required_pattern = $required_pattern,
+                            step.pattern_description = $pattern_description
+                        """,
+                        {
+                            "id": step["id"],
+                            "text": step["text"],
+                            "required_pattern": step["required_pattern"],
+                            "pattern_description": step["pattern_description"]
+                        }
+                    )
+                # Link PLE steps
+                for i in range(len(ple_steps) - 1):
+                    curr_id = ple_steps[i]["id"]
+                    next_id = ple_steps[i + 1]["id"]
+                    tx.run(
+                        """
+                        MATCH (curr:TraversalStep {id: $curr_id})
+                        MATCH (next:TraversalStep {id: $next_id})
+                        MERGE (curr)-[r:NEXT_STEP]->(next)
+                        ON CREATE SET r.weight = 1.0, r.description = $desc
+                        """,
+                        {"curr_id": curr_id, "next_id": next_id, "desc": f"Transition from {curr_id} to {next_id}"}
+                    )
                     
                 # 3. Create entry tasks
                 tx.run(
@@ -170,6 +227,13 @@ def populate_default_graphs(driver):
                         t.trigger_traversal = 'sh8_day_start'
                     """
                 )
+                tx.run(
+                    """
+                    MERGE (t:AgentTask {id: 'ple_task'})
+                    SET t.title = 'Operate the Primordial Love Engine',
+                        t.trigger_traversal = 'ple_ignite_intent'
+                    """
+                )
                 
                 # 4. Bootstrap StateMachine nodes for RPG Equipment
                 tx.run(
@@ -183,6 +247,23 @@ def populate_default_graphs(driver):
                     tx.run(
                         """
                         MATCH (sm:StateMachine {id: 'sh8_lifecycle_sm'})
+                        MATCH (step:TraversalStep {id: $step_id})
+                        MERGE (sm)-[:HAS_STEP]->(step)
+                        """,
+                        {"step_id": step["id"]}
+                    )
+
+                tx.run(
+                    """
+                    MERGE (sm:StateMachine {id: 'ple_sm'})
+                    SET sm.name = 'Primordial Love Engine State Machine',
+                        sm.description = 'Fulfill the Victory-Promise by aligning intent, action, collaboration, and results'
+                    """
+                )
+                for step in ple_steps:
+                    tx.run(
+                        """
+                        MATCH (sm:StateMachine {id: 'ple_sm'})
                         MATCH (step:TraversalStep {id: $step_id})
                         MERGE (sm)-[:HAS_STEP]->(step)
                         """,
