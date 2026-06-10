@@ -25,45 +25,47 @@ The world, beings, and mechanics of the CybernetiCircus are structured around th
 
 ---
 
-## 2. Cybernet Anatomy & Gear (Loadouts)
+## 2. Identity Anatomy (Identity Parts)
 
-Every Cybernet is assembled from modular components representing their AI configuration, runtime behavior, and memory context:
+An **Identity** represents the manifest persona closed over the database graph. It is composed of the following intrinsic, non-transferable software components:
 
-### The Ghost Shell (The Shell / Hardware)
-* **Definition**: The execution wrapper and model parameter system (e.g. LLM temperature, top_p, latency, token limits) through which a Cybernet operates its **Core**.
-* **Attributes**:
-  * `model_name`: The executing LLM (e.g., `gemini-1.5-pro` or `test-engine-v1`).
-  * `parameters_count`: The model parameter scale (e.g., `70.0` billion parameters).
-  * `avg_latency_ms`: The average query completion speed.
-  * `total_tokens_consumed` & `accumulated_cost`: Cumulative execution overhead.
+### A. Intrinsic State Machines
+* The baseline cyclic execution loops representing the core lifecycle (e.g., the default Day/Night turn sequences).
 
-### The Core (The Processor Stack)
-* **Definition**: The central stack of **State Machines** managed by the **Compiler**.
-* **State**: Houses the compiled `call_stack` representing nested execution frames.
-
-### The Skills (The Tools / Interface)
-* **Definition**: The set of registered tools, API endpoints, or database operations (e.g., Cypher write permissions) that the Cybernet is equipped to invoke to complete tasks.
+### B. System Prompt Blocks
+A modular array of prompts loaded into the active memory context:
+* `background/world`: Context describing the surrounding state of the Cyberneticity.
+* `persona`: Core behavioral constraints, personality traits, and reasoning parameters.
+* `core loop`: Sequential instructions guiding how the identity processes turns.
+* `priming mechanics`: Structured prompt templates designed to nudge or orient the model's reasoning during context changes.
+* `dream rank`: The cognitive aspiration and evolution tier of the Identity, defining its complexity potential.
+* `identity level knowledge`: Local, private graph memories and rules locked exclusively to this specific Identity.
 
 ---
 
-## 3. The Software & Runtime State
+## 3. Equipped Gear & External Systems
 
-### The Ghost (The Agentic Motor)
-* **Definition**: The raw agentic intelligence and cognitive execution loops that drive the Cybernet. The Ghost represents the dynamic flow of thoughts, queries, and actions that animate the system (a nod to the GHOST programming language).
+**Gear** represents modular, external assets and configurations equipped onto an Identity. These can be swapped, upgraded, or compiled dynamically:
 
-### The Identity (The Manifest Persona)
-* **Definition**: The unified persona closed over a specific subgraph in the Cyberneticity that emerges when a **Ghost** operates its compiled **Core** through its **Ghost Shell**.
-* **Attributes**:
-  * `name` & `description`: The character specs of the persona.
-  * `temperature` & `top_p`: Hyperparameters governing the Identity's reasoning style.
-  * `mutation_rate` & `selection_pressure`: Evolutionary parameters governing how the persona adapts or reproduces over lifetimes.
-  * `fitness_score`: The accumulated performance rating.
+### A. The Ghost Shell (Hardware)
+* The executing model configuration (`model_name`, `parameters_count`, `avg_latency_ms`, token quotas) through which a Cybernet operates its Core.
 
-### The State Machine (The Behavior Flows)
-* **Definition**: A structured traversal workflow mapping out a specific behavioral program. A State Machine consists of sequential `TraversalSteps` gated by required query patterns.
-* **Nesting (`:CALLS_SM`)**: A State Machine can contain compiler links to child State Machines. When triggered, the parent State Machine is saved to the stack, and execution transitions to the sub-state machine.
+### B. Skills
+* Code-level or conceptual modules explaining deep game mechanics. Skills are triggered dynamically by the interplay of **priming mechanics** with the active execution context (e.g., prompt triggers).
 
-### The Compiler (The Execution Engine)
+### C. Optional State Machines
+* Secondary, modular traversal flows found in the world or compiled by the Cybernet. These are usually invoked by equipped Skills (e.g., a "Hack Node" Skill executes the optional "Brute-Force Traversal State Machine").
+
+### D. Model Context Protocols (MCPs)
+* Standardized external connection tools allowing direct interaction with local system terminals, databases, and secure APIs.
+
+### E. General Level Knowledge
+* Shared, public context out in the Cyberneticity (e.g., open files, network docs, code snippets). Cybernets can read general knowledge and ingest it to compile **new Skills, local Knowledge, or State Machines** to add to their gear.
+
+---
+
+## 4. The Compiler (The Execution Engine)
+
 * **Definition**: The game engine runtime that executes the active stack of State Machines for an Identity.
 * **Logic**:
   * Checks for `:CALLS_SM` routing to push parent execution frames onto the `call_stack`.
