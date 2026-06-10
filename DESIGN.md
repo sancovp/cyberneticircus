@@ -48,8 +48,11 @@ Every Cybernet is assembled from modular components representing their AI config
 
 ## 3. The Software & Runtime State
 
-### The Identity (The Persona)
-* **Definition**: The compiled behavioral persona (personality prompts, instructions, and descriptions) closed over a specific subgraph in the Cyberneticity.
+### The Ghost (The Agentic Motor)
+* **Definition**: The raw agentic intelligence and cognitive execution loops that drive the Cybernet. The Ghost represents the dynamic flow of thoughts, queries, and actions that animate the system (a nod to the GHOST programming language).
+
+### The Identity (The Persona Bridge)
+* **Definition**: The structural bridge that binds a **Ghost** (the agentic motor) to a **Shell** (the LLM hardware constraints) closed over a specific subgraph in the Cyberneticity.
 * **Attributes**:
   * `name` & `description`: The character specs of the persona.
   * `temperature` & `top_p`: Hyperparameters governing the Identity's reasoning style.
