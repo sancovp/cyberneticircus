@@ -256,20 +256,20 @@ A modular array of prompts loaded into the active memory context:
 
 ## 8. ASPIRATIONAL: Database Schema Alignment
 
-Currently, the Neo4j database representation uses legacy node labels and relationship types (e.g., `:MetaShifter`, `:IdentityState`, `:StateMachine`, `:TraversalStep`, `:TraversalState`). 
+Currently, the Neo4j database representation uses legacy node labels and relationship types (e.g., `:MetaShifter` and `:IdentityState`). 
 
-To align fully with the CybernetiCircus conceptual ontology, we aim to transition the graph schema to the following target structure:
+To align fully with the CybernetiCircus conceptual ontology while keeping standard, developer-friendly terminology (`StateMachine` and `TraversalStep`) for the database nodes, we aim to transition the graph schema to the following target structure:
 
 ### Target Nodes
 * `:Cybernet` (formerly `:MetaShifter`): Represents a graph-being node in the Cyberneticity. Contains intrinsic stats (mutation rate, selection pressure, dream rank) and points to its prompt configurations.
 * `:Identity` (formerly `:IdentityState`): Represents the active execution state of a Cybernet's manifest persona.
-* `:Act` (formerly `:StateMachine`): Represents a sequential state machine execution loadout.
-* `:Step` (formerly `:TraversalStep`): Represents a single execution checkpoint in an Act.
-* `:CompilerState` (formerly `:TraversalState`): Tracks active execution locks.
+* `:StateMachine`: Kept as-is (referred to as an "Act" in Myth/Lore).
+* `:TraversalStep`: Kept as-is (referred to as a "Step" in Myth/Lore).
+* `:TraversalState`: Kept as-is (tracks active execution locks).
 
 ### Target Relationships
 * `(c:Cybernet)-[:MANIFESTS]->(i:Identity)` (formerly `-[:HAS_LIFECYCLE]->`)
-* `(c:Cybernet)-[:EQUIPS]->(a:Act)` (formerly `-[:EQUIPS]->`)
-* `(a:Act)-[:HAS_STEP]->(s:Step)` (formerly `-[:HAS_STEP]->`)
-* `(s1:Step)-[:NEXT_STEP]->(s2:Step)` (formerly `-[:NEXT_STEP]->`)
-* `(s:Step)-[:CALLS_ACT]->(child:Act)` (formerly `-[:CALLS_SM]->`)
+* `(c:Cybernet)-[:EQUIPS]->(sm:StateMachine)` (formerly `-[:EQUIPS]->`)
+* `(sm:StateMachine)-[:HAS_STEP]->(s:TraversalStep)` (formerly `-[:HAS_STEP]->`)
+* `(s1:TraversalStep)-[:NEXT_STEP]->(s2:TraversalStep)` (formerly `-[:NEXT_STEP]->`)
+* `(s:TraversalStep)-[:CALLS_SM]->(child:StateMachine)` (formerly `-[:CALLS_SM]->`)
