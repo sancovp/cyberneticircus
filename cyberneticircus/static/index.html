@@ -188,33 +188,29 @@
             </section>
         </main>
 
-        <!-- EQUIPPED GEAR SHELF -->
-        <footer class="gear-footer">
-            <div class="gear-header-small">
-                <h3>ACTIVE ACCESSORY LOADOUT</h3>
+        <!-- SIMULATION RUN HISTORY -->
+        <footer class="simulation-history-footer">
+            <div class="simulation-header-small">
+                <h3>SIMULATION RUN HISTORY</h3>
                 <span class="line"></span>
             </div>
-            <div class="gear-grid" id="gear-grid-shelf">
-                <div class="gear-item locked-gear" id="gear-shell">
-                    <span class="gear-icon">🛡️</span>
-                    <div class="gear-details">
-                        <h4>Ghost Shell</h4>
-                        <p id="gear-shell-desc">Not Equipped</p>
-                    </div>
+            <div class="simulation-history-container" id="simulation-history-panel">
+                <div id="no-simulation-placeholder" class="simulation-placeholder">
+                    Select a Cybernet core to view simulation logs
                 </div>
-                <div class="gear-item locked-gear" id="gear-skills">
-                    <span class="gear-icon">🧩</span>
-                    <div class="gear-details">
-                        <h4>Active Skills</h4>
-                        <p id="gear-skills-desc">Not Equipped</p>
-                    </div>
-                </div>
-                <div class="gear-item locked-gear" id="gear-mcps">
-                    <span class="gear-icon">🛠️</span>
-                    <div class="gear-details">
-                        <h4>MCP Protocols</h4>
-                        <p id="gear-mcps-desc">Not Equipped</p>
-                    </div>
+                <div class="simulation-table-wrapper hidden" id="simulation-table-wrapper">
+                    <table class="simulation-table">
+                        <thead>
+                            <tr>
+                                <th>RUN ID</th>
+                                <th>ACCURACY</th>
+                                <th>CREATED AT</th>
+                            </tr>
+                        </thead>
+                        <tbody id="simulation-history-list">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </footer>

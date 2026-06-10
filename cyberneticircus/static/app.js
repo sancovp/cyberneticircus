@@ -34,13 +34,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const phaseBadge = document.getElementById("phase-badge");
     const tickBtn = document.getElementById("tick-compiler-btn");
     
-    // Gear elements
-    const gearShell = document.getElementById("gear-shell");
-    const gearShellDesc = document.getElementById("gear-shell-desc");
-    const gearSkills = document.getElementById("gear-skills");
-    const gearSkillsDesc = document.getElementById("gear-skills-desc");
-    const gearMcps = document.getElementById("gear-mcps");
-    const gearMcpsDesc = document.getElementById("gear-mcps-desc");
+    // Simulation history elements
+    const simulationPlaceholder = document.getElementById("no-simulation-placeholder");
+    const simulationTableWrapper = document.getElementById("simulation-table-wrapper");
+    const simulationHistoryList = document.getElementById("simulation-history-list");
 
     // Modal drawer elements
     const openCreateBtn = document.getElementById("open-create-btn");
@@ -132,13 +129,11 @@ document.addEventListener("DOMContentLoaded", () => {
         arenaContent.classList.add("hidden");
         activeStats.classList.add("hidden");
         
-        // Reset gear shelf
-        gearShell.classList.add("locked-gear");
-        gearShellDesc.innerText = "Not Equipped";
-        gearSkills.classList.add("locked-gear");
-        gearSkillsDesc.innerText = "Not Equipped";
-        gearMcps.classList.add("locked-gear");
-        gearMcpsDesc.innerText = "Not Equipped";
+        // Reset simulation history
+        simulationPlaceholder.innerText = "Select a Cybernet core to view simulation logs";
+        simulationPlaceholder.classList.remove("hidden");
+        simulationTableWrapper.classList.add("hidden");
+        simulationHistoryList.innerHTML = "";
     }
 
     // API: Fetch and display identity status sheet
@@ -235,20 +230,75 @@ document.addEventListener("DOMContentLoaded", () => {
                 callStackContainer.classList.add("hidden");
             }
 
-            // Render Gear Accessories
-            gearShell.classList.remove("locked-gear");
-            gearShellDesc.innerText = `${data.model_name}`;
-            
-            gearSkills.classList.remove("locked-gear");
-            gearSkillsDesc.innerText = data.equipped_sm_id ? "Active Gating Logic" : "Not Loaded";
-            
-            gearMcps.classList.remove("locked-gear");
-            gearMcpsDesc.innerText = "neo4j-cypher-mcp";
-
             activeStats.classList.remove("hidden");
+            
+            // Render Simulation History
+            await updateSimulationHistory(name);
 
         } catch (e) {
             logToConsole("error", `Failed to fetch status for '${name}': ${e}`);
+        }
+    }
+
+    // API: Fetch and display simulation runs for an identity
+    async function updateSimulationHistory(name) {
+        if (!name) {
+            simulationPlaceholder.classList.remove("hidden");
+            simulationTableWrapper.classList.add("hidden");
+            simulationHistoryList.innerHTML = "";
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/simulations/${name}`);
+            const data = await res.json();
+            const sims = data.simulations || [];
+
+            if (sims.length === 0) {
+                simulationPlaceholder.innerText = "No simulation logs found for this identity core.";
+                simulationPlaceholder.classList.remove("hidden");
+                simulationTableWrapper.classList.add("hidden");
+                simulationHistoryList.innerHTML = "";
+            } else {
+                simulationPlaceholder.classList.add("hidden");
+                simulationTableWrapper.classList.remove("hidden");
+                simulationHistoryList.innerHTML = "";
+
+                sims.forEach(sim => {
+                    const row = document.createElement("tr");
+                    
+                    // Format accuracy
+                    const accVal = parseFloat(sim.accuracy);
+                    let accClass = "accuracy-mid";
+                    if (accVal >= 0.8) {
+                        accClass = "accuracy-high";
+                    } else if (accVal < 0.4) {
+                        accClass = "accuracy-low";
+                    }
+
+                    // Format date
+                    let dateStr = sim.created_at;
+                    if (dateStr) {
+                        try {
+                            const d = new Date(dateStr);
+                            dateStr = d.toLocaleString();
+                        } catch (e) {
+                            // Keep raw
+                        }
+                    } else {
+                        dateStr = "N/A";
+                    }
+
+                    row.innerHTML = `
+                        <td class="run-id-cell">${sim.run_id}</td>
+                        <td><span class="accuracy-badge ${accClass}">${accVal.toFixed(4)}</span></td>
+                        <td class="date-cell">${dateStr}</td>
+                    `;
+                    simulationHistoryList.appendChild(row);
+                });
+            }
+        } catch (e) {
+            logToConsole("error", `Failed to fetch simulation history: ${e}`);
         }
     }
 

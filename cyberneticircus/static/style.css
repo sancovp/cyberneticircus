@@ -774,8 +774,8 @@ body {
     border-color: var(--neon-green);
 }
 
-/* Gear Footer Shelf */
-.gear-footer {
+/* Simulation History Footer Shelf */
+.simulation-history-footer {
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -783,13 +783,13 @@ body {
     padding-top: 20px;
 }
 
-.gear-header-small {
+.simulation-header-small {
     display: flex;
     align-items: center;
     gap: 12px;
 }
 
-.gear-header-small h3 {
+.simulation-header-small h3 {
     font-size: 11px;
     font-weight: 700;
     color: var(--text-muted);
@@ -797,55 +797,100 @@ body {
     white-space: nowrap;
 }
 
-.gear-header-small .line {
+.simulation-header-small .line {
     height: 1px;
     flex-grow: 1;
     background: var(--card-border);
 }
 
-.gear-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-}
-
-.gear-item {
+.simulation-history-container {
     background: var(--card-bg);
     border: 1px solid var(--card-border);
     border-radius: 10px;
-    padding: 12px 16px;
+    padding: 16px 20px;
+    backdrop-filter: blur(8px);
+    min-height: 80px;
     display: flex;
     align-items: center;
-    gap: 14px;
-    backdrop-filter: blur(8px);
-    transition: all 0.2s ease;
+    justify-content: center;
 }
 
-.gear-item:hover:not(.locked-gear) {
-    border-color: var(--neon-purple-glow);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+.simulation-placeholder {
+    color: var(--text-muted);
+    font-size: 13px;
+    font-style: italic;
 }
 
-.gear-icon {
-    font-size: 20px;
+.simulation-table-wrapper {
+    width: 100%;
 }
 
-.gear-details h4 {
+.simulation-table {
+    width: 100%;
+    border-collapse: collapse;
     font-size: 12px;
+    text-align: left;
+}
+
+.simulation-table th {
+    font-size: 10px;
     font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.simulation-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
     color: var(--text-primary);
 }
 
-.gear-details p {
-    font-size: 10px;
-    color: var(--text-secondary);
-    margin-top: 2px;
+.simulation-table tr:last-child td {
+    border-bottom: none;
 }
 
-.locked-gear {
-    opacity: 0.55;
-    background: hsla(240, 10%, 6%, 0.3);
+.simulation-table tr:hover td {
+    background: hsla(240, 15%, 8%, 0.4);
 }
+
+.accuracy-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 11px;
+}
+
+.accuracy-high {
+    background: var(--neon-green-glow);
+    border: 1px solid var(--neon-green);
+    color: var(--neon-green);
+}
+
+.accuracy-low {
+    background: var(--neon-pink-glow);
+    border: 1px solid var(--neon-pink);
+    color: var(--neon-pink);
+}
+
+.accuracy-mid {
+    background: var(--neon-cyan-glow);
+    border: 1px solid var(--neon-cyan);
+    color: var(--neon-cyan);
+}
+
+.run-id-cell {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-secondary);
+}
+
+.date-cell {
+    color: var(--text-muted);
+}
+
 
 /* Spawn Modal Drawer */
 .modal-overlay {

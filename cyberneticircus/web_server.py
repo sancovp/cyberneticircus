@@ -90,6 +90,32 @@ async def get_status(name: str):
     finally:
         compiler.close()
 
+@app.get("/api/simulations/{name}")
+async def get_simulations(name: str):
+    compiler = CybernetiCircusCompiler()
+    try:
+        with compiler.driver.session() as session:
+            res = session.run(
+                """
+                MATCH (m:MetaShifter {name: $name})-[:HAS_SIMULATION]->(sim:SimulationRun)
+                RETURN sim.run_id as run_id, sim.accuracy as accuracy, sim.created_at as created_at
+                ORDER BY sim.created_at DESC LIMIT 5
+                """,
+                {"name": name}
+            )
+            sims = []
+            for r in res:
+                sims.append({
+                    "run_id": r["run_id"],
+                    "accuracy": r["accuracy"],
+                    "created_at": r["created_at"]
+                })
+        return {"simulations": sims}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        compiler.close()
+
 @app.post("/api/create")
 async def create_cybernet(req: CreateCybernetRequest):
     compiler = CybernetiCircusCompiler()
