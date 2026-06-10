@@ -669,6 +669,88 @@ document.addEventListener("DOMContentLoaded", () => {
         // Draw grid background
         drawGrid(ctx, drawWidth, height);
         
+        // Draw isometric tech grid cards (holographic background chips from circuit_microparticles_v5.html)
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        const A_iso = Math.PI / 6;
+        for (let i = 0; i < 4; i++) {
+            const px = [drawWidth * 0.15, drawWidth * 0.75, drawWidth * 0.45, drawWidth * 0.62][i];
+            const py = [height * 0.22, height * 0.18, height * 0.78, height * 0.65][i];
+            const pw = [130, 150, 110, 120][i];
+            const ph = [60, 50, 75, 45][i];
+            
+            ctx.save();
+            ctx.translate(px, py);
+            ctx.rotate(A_iso);
+            
+            const ga = 0.012 + 0.006 * Math.sin(time * 0.5 + px * 0.01);
+            ctx.fillStyle = `rgba(0, 160, 255, ${ga})`;
+            ctx.fillRect(-pw / 2, -ph / 2, pw, ph);
+            ctx.strokeStyle = `rgba(0, 210, 255, ${ga * 2.8})`;
+            ctx.lineWidth = 0.45;
+            ctx.strokeRect(-pw / 2, -ph / 2, pw, ph);
+            
+            ctx.restore();
+        }
+
+        // Initialize background microparticles dynamically if not present
+        if (!window.bgParticles) {
+            window.bgParticles = [];
+            const particleCount = 50;
+            const G_chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン01';
+            for (let i = 0; i < particleCount; i++) {
+                window.bgParticles.push({
+                    x: Math.random() * drawWidth,
+                    y: Math.random() * height,
+                    vx: (Math.random() - 0.5) * 15,
+                    vy: (Math.random() - 0.5) * 15,
+                    char: G_chars[Math.floor(Math.random() * G_chars.length)],
+                    size: 4.5 + Math.random() * 4.5,
+                    alpha: 0.03 + Math.random() * 0.11,
+                    speed: 20 + Math.random() * 40,
+                    cycle: 0,
+                    cycleRate: 0.1 + Math.random() * 0.3
+                });
+            }
+        }
+
+        // Update and draw background microparticles
+        const G_chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン01';
+        const mRep = 110; // mouse repulsion radius
+        window.bgParticles.forEach(p => {
+            p.cycle += 0.016; // approximate dt
+            if (p.cycle > p.cycleRate) {
+                p.char = G_chars[Math.floor(Math.random() * G_chars.length)];
+                p.cycle = 0;
+            }
+            
+            // Mouse deflection / repulsion force
+            const dx = p.x - mouseX;
+            const dy = p.y - mouseY;
+            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+            if (dist < mRep) {
+                const force = (1 - dist / mRep) * 55;
+                p.vx += (dx / dist) * force * 0.016;
+                p.vy += (dy / dist) * force * 0.016;
+            }
+            
+            // Apply drift & drag
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vx *= 0.95;
+            p.vy *= 0.95;
+            
+            // Boundary wrap
+            if (p.x < -20) p.x = drawWidth + 20;
+            if (p.x > drawWidth + 20) p.x = -20;
+            if (p.y < -20) p.y = height + 20;
+            if (p.y > height + 20) p.y = -20;
+            
+            // Render microparticle
+            ctx.fillStyle = `rgba(0, 210, 255, ${p.alpha})`;
+            ctx.font = `${Math.round(p.size)}px monospace`;
+            ctx.fillText(p.char, p.x, p.y);
+        });
+        
         // Draw links
         links.forEach(link => {
             const source = link.source;
@@ -688,15 +770,35 @@ document.addEventListener("DOMContentLoaded", () => {
                 ctx.lineTo(target.x, target.y);
                 ctx.stroke();
                 
-                // Animated data flow packet
-                const p = (time * 0.35 + (parseInt(source.id) * 0.05 || 0)) % 1.0;
-                const px = source.x + (target.x - source.x) * p;
-                const py = source.y + (target.y - source.y) * p;
-                
-                ctx.fillStyle = `rgba(${colorEnd}, 0.55)`;
-                ctx.beginPath();
-                ctx.arc(px, py, 1.2, 0, Math.PI * 2);
-                ctx.fill();
+                // Draw multiple digital characters flowing along the link
+                const packetCount = 3;
+                for (let j = 0; j < packetCount; j++) {
+                    const offset = j / packetCount;
+                    const p = (time * 0.22 + (parseInt(source.id) * 0.08 || 0) + offset) % 1.0;
+                    const px = source.x + (target.x - source.x) * p;
+                    const py = source.y + (target.y - source.y) * p;
+                    
+                    // Draw cycling digital character
+                    const G_flow = '01アイウエオ';
+                    const charIdx = Math.floor((time * 6 + j) % G_flow.length);
+                    const flowChar = G_flow[charIdx];
+                    
+                    // Flow trail: draw 3 trailing dots
+                    ctx.fillStyle = `rgba(${colorEnd}, 0.16)`;
+                    for (let k = 1; k <= 3; k++) {
+                        const tp = Math.max(0, p - k * 0.02);
+                        const tpx = source.x + (target.x - source.x) * tp;
+                        const tpy = source.y + (target.y - source.y) * tp;
+                        ctx.beginPath();
+                        ctx.arc(tpx, tpy, 1.2 - k * 0.25, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    
+                    // Draw main glowing character
+                    ctx.fillStyle = `rgba(${colorEnd}, 0.72)`;
+                    ctx.font = '7px monospace';
+                    ctx.fillText(flowChar, px - 2, py + 2);
+                }
             }
         });
         
