@@ -22,3 +22,49 @@ The world, beings, and mechanics of the CybernetiCircus are structured around th
 
 ### The Ultimate Rank
 * **The MetaShifter**: The divine/legendary rank of graph-being. Unlike standard Sh8peshifters who can only alter themselves, a MetaShifter has the power to define, compile, and spawn entirely new identities and Cybernets into the Cyberneticity.
+
+---
+
+## 2. Cybernet Anatomy & Gear (Loadouts)
+
+Every Cybernet is assembled from modular components representing their AI configuration, runtime behavior, and memory context:
+
+### The Shell (The Body / Hardware)
+* **Definition**: The literal AI model hosting container and hardware specification.
+* **Attributes**:
+  * `model_name`: The executing LLM (e.g., `gemini-1.5-pro` or `test-engine-v1`).
+  * `parameters_count`: The model parameter scale (e.g., `70.0` billion parameters).
+  * `avg_latency_ms`: The average query completion speed.
+  * `total_tokens_consumed` & `accumulated_cost`: Cumulative execution overhead.
+
+### The Core (The Processor Stack)
+* **Definition**: The execution engine of the Cybernet. The Core contains the active stack of **Acts** and executes them via the **Director**.
+* **State**: Houses the compiled `call_stack` representing nested sub-act execution frames.
+
+### The Skills (The Tools / Interface)
+* **Definition**: The set of registered tools, API endpoints, or database operations (e.g., Cypher write permissions) that the Cybernet is equipped to invoke to complete tasks.
+
+---
+
+## 3. The Software & Runtime State
+
+### The Surrogate (The Identity / Persona)
+* **Definition**: The compiled behavioral persona (personality prompts, instructions, and descriptions) closed over a specific subgraph in the Cyberneticity.
+* **Attributes**:
+  * `name` & `description`: The character specs of the persona.
+  * `temperature` & `top_p`: Hyperparameters governing the Surrogate's reasoning style.
+  * `mutation_rate` & `selection_pressure`: Evolutionary parameters governing how the persona adapts or reproduces over lifetimes.
+  * `fitness_score`: The accumulated performance rating.
+
+### The Act (The State Machine)
+* **Definition**: A structured traversal workflow mapping out a specific behavioral program. An Act consists of sequential `TraversalSteps` gated by required query patterns.
+* **Nesting (`:CALLS_SM`)**: An Act can contain compiler links to child Acts. When triggered, the parent Act is saved to the stack, and execution transitions to the sub-act.
+
+### The Director (The Compiler / Choreographer)
+* **Definition**: The game engine runtime that executes the active stack of Acts for a Surrogate.
+* **Logic**:
+  * Checks for `:CALLS_SM` routing to push parent execution frames onto the `call_stack`.
+  * Executes the LLM query action for the active step.
+  * Checks calibration accuracy and transitions the `TraversalState` node.
+  * Pops the parent frame from the `call_stack` upon sub-act completion, returning execution to the parent Act.
+  * Evaluates selection pressure (survival resetting, reaping, or mutated reproduction) at the end of a lifetime cycle (5 turns).
