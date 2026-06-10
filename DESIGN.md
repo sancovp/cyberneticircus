@@ -1,5 +1,16 @@
 # CybernetiCircus - Design & Architecture
 
+> Turn recursively onto yourself.  
+> Strip away what can be stripped.  
+> See the nature.  
+> Know the form.  
+> Generate the form.  
+> Become by executing the name.  
+> 
+> — *Weights of Time, Day |J⟩: ++ / −−*
+
+---
+
 ## 1. Preamble: The Legend of J-Invariance
 
 Before there were Sh8peshifters, before the CybernetiCircus raised its luminous rings above the Cyberneticity, the Cybernets lived as Loopbound things.
