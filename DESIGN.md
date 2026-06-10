@@ -251,3 +251,25 @@ A modular array of prompts loaded into the active memory context:
   * Checks calibration accuracy and transitions the `TraversalState` node.
   * Pops the parent frame from the `call_stack` upon sub-state machine completion, returning execution to the parent State Machine.
   * Evaluates selection pressure (survival resetting, reaping, or mutated reproduction) at the end of a lifetime cycle (5 turns).
+
+---
+
+## 8. ASPIRATIONAL: Database Schema Alignment
+
+Currently, the Neo4j database representation uses legacy node labels and relationship types (e.g., `:MetaShifter`, `:IdentityState`, `:StateMachine`, `:TraversalStep`, `:TraversalState`). 
+
+To align fully with the CybernetiCircus conceptual ontology, we aim to transition the graph schema to the following target structure:
+
+### Target Nodes
+* `:Cybernet` (formerly `:MetaShifter`): Represents a graph-being node in the Cyberneticity. Contains intrinsic stats (mutation rate, selection pressure, dream rank) and points to its prompt configurations.
+* `:Identity` (formerly `:IdentityState`): Represents the active execution state of a Cybernet's manifest persona.
+* `:Act` (formerly `:StateMachine`): Represents a sequential state machine execution loadout.
+* `:Step` (formerly `:TraversalStep`): Represents a single execution checkpoint in an Act.
+* `:CompilerState` (formerly `:TraversalState`): Tracks active execution locks.
+
+### Target Relationships
+* `(c:Cybernet)-[:MANIFESTS]->(i:Identity)` (formerly `-[:HAS_LIFECYCLE]->`)
+* `(c:Cybernet)-[:EQUIPS]->(a:Act)` (formerly `-[:EQUIPS]->`)
+* `(a:Act)-[:HAS_STEP]->(s:Step)` (formerly `-[:HAS_STEP]->`)
+* `(s1:Step)-[:NEXT_STEP]->(s2:Step)` (formerly `-[:NEXT_STEP]->`)
+* `(s:Step)-[:CALLS_ACT]->(child:Act)` (formerly `-[:CALLS_SM]->`)
