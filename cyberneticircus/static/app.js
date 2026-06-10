@@ -558,10 +558,10 @@ document.addEventListener("DOMContentLoaded", () => {
         if (node.active_tag === "step") return [0, 210, 255]; // neon cyan
         if (node.active_tag === "state_machine") return [160, 100, 255]; // neon purple
         
-        if (node.label === "MetaShifter") return [46, 213, 115]; // neon green
+        if (node.label === "Cybernet") return [46, 213, 115]; // neon green
         if (node.label === "StateMachine") return [160, 100, 255]; // neon purple
         if (node.label === "TraversalStep") return [0, 210, 255]; // neon cyan
-        if (node.label === "IdentityState") return [80, 120, 220]; // slate blue
+        if (node.label === "Identity") return [80, 120, 220]; // slate blue
         if (node.label === "SimulationRun") return [255, 80, 140]; // neon pink
         return [120, 120, 120];
     }
@@ -597,7 +597,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const radius = r * pulse;
         
         // Draw orbital halos for shifters or state machines
-        if (label === "MetaShifter") {
+        if (label === "Cybernet") {
             ctx.strokeStyle = `rgba(${c[0]}, ${c[1]}, ${c[2]}, 0.45)`;
             ctx.lineWidth = 0.7;
             ctx.beginPath(); ctx.arc(x, y, radius + 4, 0, Math.PI * 2); ctx.stroke();
@@ -869,7 +869,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     ctx.fillStyle = "rgba(180, 210, 230, 0.85)";
                     ctx.font = "8px 'Outfit', sans-serif";
                     ctx.fillText(node.name.length > 21 ? node.name.substring(0, 18) + "..." : node.name, lx + 4, ly - 4);
-                } else if (node.active_tag === "step" || node.label === "MetaShifter") {
+                } else if (node.active_tag === "step" || node.label === "Cybernet") {
                     // Constant label on primary nodes
                     ctx.fillStyle = "rgba(180, 210, 230, 0.7)";
                     ctx.font = "8px 'Outfit', sans-serif";
@@ -897,10 +897,10 @@ document.addEventListener("DOMContentLoaded", () => {
             // Map nodes to visual orb sizes and assign seeds for animations
             rawNodes.forEach(node => {
                 node.seed = Math.random() * 1000;
-                if (node.label === "MetaShifter") node.r = 13;
+                if (node.label === "Cybernet") node.r = 13;
                 else if (node.label === "StateMachine") node.r = 10;
                 else if (node.label === "TraversalStep") node.r = 8;
-                else if (node.label === "IdentityState") node.r = 7;
+                else if (node.label === "Identity") node.r = 7;
                 else if (node.label === "SimulationRun") node.r = 6;
                 else node.r = 5;
             });

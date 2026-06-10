@@ -56,7 +56,7 @@ def list_cybernets():
     compiler = CybernetiCircusCompiler()
     try:
         with compiler.driver.session() as session:
-            res = session.run("MATCH (m:MetaShifter) RETURN m.name as name ORDER BY name")
+            res = session.run("MATCH (m:Cybernet) RETURN m.name as name ORDER BY name")
             names = [r["name"] for r in res]
         return {"cybernets": names}
     except Exception as e:
@@ -97,7 +97,7 @@ def get_simulations(name: str):
         with compiler.driver.session() as session:
             res = session.run(
                 """
-                MATCH (m:MetaShifter {name: $name})-[:HAS_SIMULATION]->(sim:SimulationRun)
+                MATCH (m:Cybernet {name: $name})-[:HAS_SIMULATION]->(sim:SimulationRun)
                 RETURN sim.run_id as run_id, sim.accuracy as accuracy, sim.created_at as created_at
                 ORDER BY sim.created_at DESC LIMIT 5
                 """,
@@ -142,15 +142,15 @@ def get_graph(name: Optional[str] = None):
         
         # Get active step ID and state machine ID for highlighting
         current_step_node_id = None
-        active_shifter_node_id = None
+        active_cybernet_node_id = None
         equipped_sm_node_id = None
         
         if name:
             with compiler.driver.session() as session:
                 res = session.run(
                     """
-                    MATCH (m:MetaShifter {name: $name})
-                    OPTIONAL MATCH (m)-[:HAS_LIFECYCLE]->(s:IdentityState)
+                    MATCH (m:Cybernet {name: $name})
+                    OPTIONAL MATCH (m)-[:HAS_LIFECYCLE]->(s:Identity)
                     OPTIONAL MATCH (s)-[:CURRENT_STEP]->(curr:TraversalStep)
                     OPTIONAL MATCH (m)-[:EQUIPS]->(sm:StateMachine)
                     RETURN id(m) as m_id, id(curr) as curr_id, id(sm) as sm_id
@@ -159,7 +159,7 @@ def get_graph(name: Optional[str] = None):
                 )
                 rec = res.single()
                 if rec:
-                    active_shifter_node_id = str(rec["m_id"]) if rec["m_id"] is not None else None
+                    active_cybernet_node_id = str(rec["m_id"]) if rec["m_id"] is not None else None
                     current_step_node_id = str(rec["curr_id"]) if rec["curr_id"] is not None else None
                     equipped_sm_node_id = str(rec["sm_id"]) if rec["sm_id"] is not None else None
         
@@ -181,8 +181,8 @@ def get_graph(name: Optional[str] = None):
                 display_name = node.get("name") or node.get("id") or node.get("run_id") or label
                 
                 is_active = False
-                if nid == active_shifter_node_id:
-                    is_active = "shifter"
+                if nid == active_cybernet_node_id:
+                    is_active = "cybernet"
                 elif nid == current_step_node_id:
                     is_active = "step"
                 elif nid == equipped_sm_node_id:
@@ -202,8 +202,8 @@ def get_graph(name: Optional[str] = None):
                 # Query the active character's specific subgraph (instant, limited to active machine)
                 res = session.run(
                     """
-                    MATCH (m:MetaShifter {name: $name})
-                    OPTIONAL MATCH (m)-[r1:HAS_LIFECYCLE]->(s:IdentityState)
+                    MATCH (m:Cybernet {name: $name})
+                    OPTIONAL MATCH (m)-[r1:HAS_LIFECYCLE]->(s:Identity)
                     OPTIONAL MATCH (s)-[r2:CURRENT_STEP]->(curr:TraversalStep)
                     OPTIONAL MATCH (m)-[r3:EQUIPS]->(sm:StateMachine)
                     OPTIONAL MATCH (sm)-[r4:HAS_STEP]->(step:TraversalStep)
@@ -235,11 +235,11 @@ def get_graph(name: Optional[str] = None):
                     if step_id and child_id:
                         links.append({"source": step_id, "target": child_id, "type": "CALLS_SM"})
             else:
-                # Query all MetaShifters and their high-level active states (keeps it extremely small)
+                # Query all Cybernets and their high-level active states (keeps it extremely small)
                 res = session.run(
                     """
-                    MATCH (m:MetaShifter)
-                    OPTIONAL MATCH (m)-[r1:HAS_LIFECYCLE]->(s:IdentityState)
+                    MATCH (m:Cybernet)
+                    OPTIONAL MATCH (m)-[r1:HAS_LIFECYCLE]->(s:Identity)
                     OPTIONAL MATCH (s)-[r2:CURRENT_STEP]->(curr:TraversalStep)
                     OPTIONAL MATCH (m)-[r3:EQUIPS]->(sm:StateMachine)
                     RETURN m, s, sm, curr, r1, r2, r3
@@ -269,7 +269,7 @@ def get_graph(name: Optional[str] = None):
 def create_cybernet(req: CreateCybernetRequest):
     compiler = CybernetiCircusCompiler()
     try:
-        msg = compiler.create_metashifter(
+        msg = compiler.create_cybernet(
             name=req.name,
             description=req.description,
             model_name=req.model_name,

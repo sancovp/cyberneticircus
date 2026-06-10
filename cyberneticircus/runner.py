@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Sh8peshift RPG Terminal Runner
-Interactive CLI to manage MetaShifters, equip State Machines, and tick execution/calibration cycles.
+Interactive CLI to manage Cybernets, equip State Machines, and tick execution/calibration cycles.
 """
 import sys
 import os
@@ -75,7 +75,7 @@ def main():
                 print(" 5. Fast-Forward Lifetime (Run through 5 turns to Evolve / Reap)")
             print(" 6. Deselect Character")
         else:
-            print(" 1. Create a new MetaShifter / Cybernet Identity")
+            print(" 1. Create a new Cybernet / Cybernet Identity")
             print(" 2. Select an existing Cybernet Identity")
             
         print(" 9. Exit Game")
@@ -101,7 +101,7 @@ def main():
                     temp, top_p, mutation = 0.7, 0.9, 0.1
                     
                 try:
-                    msg = engine.create_metashifter(
+                    msg = engine.create_cybernet(
                         name=name,
                         description=desc,
                         model_name=model,
@@ -117,12 +117,12 @@ def main():
                     equip_msg = engine.equip_state_machine(name, "sh8_lifecycle_sm")
                     print(f"[SUCCESS] {equip_msg}")
                 except Exception as e:
-                    print(f"\n[ERROR] Failed to create MetaShifter: {e}")
+                    print(f"\n[ERROR] Failed to create Cybernet: {e}")
                     
             elif choice == "2":
                 print("\n--- SELECT CYBERNET IDENTITY ---")
                 with engine.driver.session() as s:
-                    res = s.run("MATCH (m:MetaShifter) RETURN m.name as name")
+                    res = s.run("MATCH (m:Cybernet) RETURN m.name as name")
                     names = [r["name"] for r in res]
                 if not names:
                     print("No characters found in database. Create one first!")

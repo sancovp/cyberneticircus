@@ -26,7 +26,7 @@ logging.basicConfig(
 logger = logging.getLogger("neo4j_cypher_mcp")
 
 # Initialize FastMCP Server
-mcp = FastMCP("neo4j-cypher")
+mcp = FastMCP("cyberneticircus")
 
 # Shared Neo4j Driver Instance
 _driver: Optional[GraphDatabase] = None
@@ -68,15 +68,15 @@ def populate_default_graphs(driver):
     sh8peshift_lifecycle_steps = [
         {
             "id": "sh8_day_start",
-            "text": "Sh8peshift Day Phase - Step 1: Query the MetaShifter node to load its current config and stats.",
-            "required_pattern": r"(?i)MATCH\s*\(m:MetaShifter\s*.*\)",
-            "pattern_description": 'MATCH (m:MetaShifter) RETURN m'
+            "text": "Sh8peshift Day Phase - Step 1: Query the Cybernet node to load its current config and stats.",
+            "required_pattern": r"(?i)MATCH\s*\(m:Cybernet\s*.*\)",
+            "pattern_description": 'MATCH (m:Cybernet) RETURN m'
         },
         {
             "id": "sh8_day_action",
-            "text": "Sh8peshift Day Phase - Step 2: Record daily execution tokens and cost on the MetaShifter.",
-            "required_pattern": r"(?i)MATCH\s*\(m:MetaShifter\s*\{name:\s*['\"].*['\"].*\}\)\s*SET\s*m\.total_tokens_consumed\s*=\s*m\.total_tokens_consumed\s*\+\s*\d+",
-            "pattern_description": 'MATCH (m:MetaShifter {name: "..."}) SET m.total_tokens_consumed = m.total_tokens_consumed + X'
+            "text": "Sh8peshift Day Phase - Step 2: Record daily execution tokens and cost on the Cybernet.",
+            "required_pattern": r"(?i)MATCH\s*\(m:Cybernet\s*\{name:\s*['\"].*['\"].*\}\)\s*SET\s*m\.total_tokens_consumed\s*=\s*m\.total_tokens_consumed\s*\+\s*\d+",
+            "pattern_description": 'MATCH (m:Cybernet {name: "..."}) SET m.total_tokens_consumed = m.total_tokens_consumed + X'
         },
         {
             "id": "sh8_night_calibrate",
@@ -86,9 +86,9 @@ def populate_default_graphs(driver):
         },
         {
             "id": "sh8_night_evolve",
-            "text": "Sh8peshift Night Phase - Step 4: Perform selection check. Query the MetaShifter\'s fitness score to decide cloning or reset.",
-            "required_pattern": r"(?i)MATCH\s*\(m:MetaShifter\s*.*\)\s*WHERE\s*m\.fitness_score\s*.*",
-            "pattern_description": 'MATCH (m:MetaShifter) WHERE m.fitness_score >= 0.8 RETURN m'
+            "text": "Sh8peshift Night Phase - Step 4: Perform selection check. Query the Cybernet\'s fitness score to decide cloning or reset.",
+            "required_pattern": r"(?i)MATCH\s*\(m:Cybernet\s*.*\)\s*WHERE\s*m\.fitness_score\s*.*",
+            "pattern_description": 'MATCH (m:Cybernet) WHERE m.fitness_score >= 0.8 RETURN m'
         }
     ]
     
@@ -1277,7 +1277,7 @@ def commands() -> List[Dict[str, Any]]:
         raise RuntimeError(f"Failed to fetch commands: {e}")
 
 @mcp.tool()
-def create_metashifter_identity(
+def create_cybernet_identity(
     name: str,
     description: str,
     model_name: str = "gemini-1.5-pro",
@@ -1289,7 +1289,7 @@ def create_metashifter_identity(
     selection_pressure: float = 1.0
 ) -> str:
     """
-    Create a new MetaShifter (Identity) node in the graph namespace with literal AI configurations.
+    Create a new Cybernet (Identity) node in the graph namespace with literal AI configurations.
     """
     import sys
     import os
@@ -1301,7 +1301,7 @@ def create_metashifter_identity(
     
     engine = CybernetiCircusCompiler()
     try:
-        res = engine.create_metashifter(
+        res = engine.create_cybernet(
             name=name,
             description=description,
             model_name=model_name,
@@ -1318,11 +1318,11 @@ def create_metashifter_identity(
 
 @mcp.tool()
 def equip_state_machine_loadout(
-    metashifter_name: str,
+    cybernet_name: str,
     state_machine_id: str
 ) -> str:
     """
-    Equip a State Machine (loadout) onto a MetaShifter identity, initializing its active execution stack.
+    Equip a State Machine (loadout) onto a Cybernet identity, initializing its active execution stack.
     """
     import sys
     import os
@@ -1334,20 +1334,20 @@ def equip_state_machine_loadout(
     
     engine = CybernetiCircusCompiler()
     try:
-        res = engine.equip_state_machine(metashifter_name, state_machine_id)
+        res = engine.equip_state_machine(cybernet_name, state_machine_id)
         return res
     finally:
         engine.close()
 
 @mcp.tool()
-def tick_shifter_turn(
-    metashifter_name: str,
+def tick_cybernet_turn(
+    cybernet_name: str,
     model_name: Optional[str] = None,
     temperature: Optional[float] = None,
     top_p: Optional[float] = None
 ) -> Dict[str, Any]:
     """
-    Tick one step/phase of a MetaShifter's day/night cycle.
+    Tick one step/phase of a Cybernet's day/night cycle.
     Automatically executes the active state machine flow, runs queries, and calibrates.
     """
     import sys
@@ -1360,9 +1360,9 @@ def tick_shifter_turn(
     
     engine = CybernetiCircusCompiler()
     try:
-        status = engine.get_character_status(metashifter_name)
+        status = engine.get_character_status(cybernet_name)
         if not status:
-            raise ValueError(f"Character '{metashifter_name}' not found.")
+            raise ValueError(f"Character '{cybernet_name}' not found.")
         
         # Determine AI parameters to use
         run_model = model_name or status["model_name"]
@@ -1376,7 +1376,7 @@ def tick_shifter_turn(
             max_tokens=2048
         )
         
-        res = engine.tick_turn(metashifter_name, runner)
+        res = engine.tick_turn(cybernet_name, runner)
         return res
     finally:
         engine.close()
@@ -1434,7 +1434,129 @@ def crud_state_machine_calls(
                 raise ValueError(f"Unknown action: '{action}'. Must be 'create' or 'delete'.")
     except Exception as e:
         logger.error(f"Failed to process sub-state machine call link: {e}")
-        raise RuntimeError(f"Failed to process sub-state machine call link: {e}")
+        raise RuntimeError(f"Failed to process sub-state machine call link: {e}")@mcp.tool()
+def configure_ghost_shell(
+    cybernet_name: str,
+    model_name: Optional[str] = None,
+    parameters_count: Optional[float] = None,
+    temperature: Optional[float] = None,
+    top_p: Optional[float] = None,
+    max_tokens: Optional[int] = None
+) -> str:
+    """
+    Configure or hot-swap the executing model (the Ghost Shell) of a Cybernet.
+    Updates properties like model_name, parameters_count, temperature, top_p, and max_tokens on the identity.
+    """
+    logger.info(f"Configuring Ghost Shell for Cybernet '{cybernet_name}'...")
+    driver = get_driver()
+    try:
+        with driver.session() as session:
+            # Verify the character exists
+            res = session.run("MATCH (m:Cybernet {name: $name}) RETURN m", {"name": cybernet_name})
+            if not res.peek():
+                raise ValueError(f"Cybernet '{cybernet_name}' not found.")
+            
+            # Update non-null fields
+            updates = []
+            params = {"name": cybernet_name}
+            
+            if model_name is not None:
+                updates.append("m.model_name = $model_name")
+                params["model_name"] = model_name
+            if parameters_count is not None:
+                updates.append("m.parameters_count = $parameters_count")
+                params["parameters_count"] = parameters_count
+            if temperature is not None:
+                updates.append("m.temperature = $temperature")
+                params["temperature"] = temperature
+            if top_p is not None:
+                updates.append("m.top_p = $top_p")
+                params["top_p"] = top_p
+            if max_tokens is not None:
+                updates.append("m.max_tokens = $max_tokens")
+                params["max_tokens"] = max_tokens
+                
+            if not updates:
+                return "No updates specified for the Ghost Shell config."
+                
+            query = f"MATCH (m:Cybernet {{name: $name}}) SET {', '.join(updates)} RETURN m"
+            session.run(query, params)
+            
+            logger.info(f"Successfully configured Ghost Shell for '{cybernet_name}'.")
+            return f"Successfully updated Ghost Shell config for Cybernet '{cybernet_name}'."
+    except Exception as e:
+        logger.error(f"Failed to configure Ghost Shell: {e}")
+        raise RuntimeError(f"Failed to configure Ghost Shell: {e}")
+
+@mcp.tool()
+def get_ghost_shell_status(cybernet_name: str) -> Dict[str, Any]:
+    """
+    Retrieve the active model configuration parameters (Ghost Shell) of a Cybernet.
+    Returns model_name, parameters_count, temperature, top_p, max_tokens, and accumulative token stats.
+    """
+    logger.info(f"Retrieving Ghost Shell status for '{cybernet_name}'...")
+    driver = get_driver()
+    try:
+        with driver.session() as session:
+            res = session.run(
+                """
+                MATCH (m:Cybernet {name: $name})
+                RETURN m.model_name as model_name,
+                       m.parameters_count as parameters_count,
+                       m.temperature as temperature,
+                       m.top_p as top_p,
+                       m.max_tokens as max_tokens,
+                       m.total_tokens_consumed as total_tokens_consumed,
+                       m.accumulated_cost as accumulated_cost
+                """,
+                {"name": cybernet_name}
+            )
+            rec = res.single()
+            if not rec:
+                raise ValueError(f"Cybernet '{cybernet_name}' not found.")
+            return {
+                "model_name": rec["model_name"],
+                "parameters_count": rec["parameters_count"],
+                "temperature": rec["temperature"],
+                "top_p": rec["top_p"],
+                "max_tokens": rec["max_tokens"],
+                "total_tokens_consumed": rec["total_tokens_consumed"],
+                "accumulated_cost": rec["accumulated_cost"]
+            }
+    except Exception as e:
+        logger.error(f"Failed to retrieve Ghost Shell status: {e}")
+        raise RuntimeError(f"Failed to retrieve Ghost Shell status: {e}")
+
+@mcp.tool()
+def execute_host_command(command: str) -> str:
+    """
+    Execute a shell command inside the CybernetiCircus workspace directory on the host machine.
+    Provides real-time console stdout/stderr back.
+    """
+    import subprocess
+    logger.info(f"Executing shell command in project directory: {command}")
+    try:
+        # Execute command in the cyberneticircus scratch workspace
+        project_dir = "/Users/isaacwr/.gemini/antigravity/scratch/cyberneticircus"
+        res = subprocess.run(
+            command,
+            shell=True,
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        output = []
+        if res.stdout:
+            output.append(res.stdout)
+        if res.stderr:
+            output.append(f"STDERR:\n{res.stderr}")
+        if not output:
+            return f"Command finished with exit code {res.returncode} (no output)."
+        return "\n".join(output)
+    except Exception as e:
+        logger.error(f"Shell command execution failed: {e}")
+        return f"Shell command execution failed: {e}"
 
 if __name__ == "__main__":
     mcp.run()

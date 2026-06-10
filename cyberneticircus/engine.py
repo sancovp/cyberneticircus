@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 CybernetiCircus RPG Game Compiler
-Handles MetaShifter creation, equipping State Machines, Day/Night turn loops, calibration, and evolutionary steps.
+Handles Cybernet creation, equipping State Machines, Day/Night turn loops, calibration, and evolutionary steps.
 """
 import os
 import re
@@ -19,7 +19,7 @@ logger = logging.getLogger("cyberneticircus_compiler")
 
 class AgentLLMRunner:
     """
-    Modular LLM call hook representing the model configuration of a MetaShifter.
+    Modular LLM call hook representing the model configuration of a Cybernet.
     This class is passed to the engine and simulates query output matching the step prompts.
     """
     def __init__(self, model_name: str, temperature: float, top_p: float, max_tokens: int):
@@ -37,14 +37,14 @@ class AgentLLMRunner:
         
         # Generates exact queries to successfully progress the Traversal State Machine
         if step_id == "sh8_day_start":
-            return f"MATCH (m:MetaShifter) RETURN m"
+            return f"MATCH (m:Cybernet) RETURN m"
         elif step_id == "sh8_day_action":
             tokens_generated = random.randint(100, 300)
-            return f"MATCH (m:MetaShifter {{name: '{character_name}'}}) SET m.total_tokens_consumed = m.total_tokens_consumed + {tokens_generated}"
+            return f"MATCH (m:Cybernet {{name: '{character_name}'}}) SET m.total_tokens_consumed = m.total_tokens_consumed + {tokens_generated}"
         elif step_id == "sh8_night_calibrate":
             return "MATCH (sim:SimulationRun) RETURN sim"
         elif step_id == "sh8_night_evolve":
-            return "MATCH (m:MetaShifter) WHERE m.fitness_score >= 0.8 RETURN m"
+            return "MATCH (m:Cybernet) WHERE m.fitness_score >= 0.8 RETURN m"
         elif step_id == "sub_step_1":
             return "MATCH (s:SubNode) RETURN s"
         elif step_id == "sub_step_2":
@@ -68,7 +68,7 @@ class CybernetiCircusCompiler:
     def close(self):
         self.driver.close()
 
-    def create_metashifter(
+    def create_cybernet(
         self,
         name: str,
         description: str,
@@ -81,18 +81,18 @@ class CybernetiCircusCompiler:
         selection_pressure: float = 1.0
     ) -> str:
         """
-        Create a new MetaShifter (Identity) node in the graph.
+        Create a new Cybernet (Identity) node in the graph.
         """
         with self.driver.session() as session:
-            # Check if MetaShifter already exists
-            check_res = session.run("MATCH (m:MetaShifter {name: $name}) RETURN count(m) as count", {"name": name})
+            # Check if Cybernet already exists
+            check_res = session.run("MATCH (m:Cybernet {name: $name}) RETURN count(m) as count", {"name": name})
             if check_res.single()["count"] > 0:
-                raise ValueError(f"MetaShifter character '{name}' already exists.")
+                raise ValueError(f"Cybernet character '{name}' already exists.")
                 
             # Create the character graph identity
             session.run(
                 """
-                CREATE (m:MetaShifter {
+                CREATE (m:Cybernet {
                     name: $name,
                     description: $description,
                     model_name: $model_name,
@@ -122,17 +122,17 @@ class CybernetiCircusCompiler:
                     "selection_pressure": float(selection_pressure)
                 }
             )
-            return f"Successfully created MetaShifter '{name}' identity graph."
+            return f"Successfully created Cybernet '{name}' identity graph."
 
-    def equip_state_machine(self, metashifter_name: str, state_machine_id: str) -> str:
+    def equip_state_machine(self, cybernet_name: str, state_machine_id: str) -> str:
         """
-        Equip a State Machine onto a MetaShifter (creates :EQUIPS relationship and starts :HAS_LIFECYCLE execution state).
+        Equip a State Machine onto a Cybernet (creates :EQUIPS relationship and starts :HAS_LIFECYCLE execution state).
         """
         with self.driver.session() as session:
-            # Check if MetaShifter exists
-            ms_check = session.run("MATCH (m:MetaShifter {name: $name}) RETURN m", {"name": metashifter_name})
+            # Check if Cybernet exists
+            ms_check = session.run("MATCH (m:Cybernet {name: $name}) RETURN m", {"name": cybernet_name})
             if not ms_check.peek():
-                raise ValueError(f"MetaShifter '{metashifter_name}' does not exist.")
+                raise ValueError(f"Cybernet '{cybernet_name}' does not exist.")
                 
             # Check if State Machine exists
             sm_check = session.run("MATCH (sm:StateMachine {id: $sm_id}) RETURN sm", {"sm_id": state_machine_id})
@@ -143,19 +143,19 @@ class CybernetiCircusCompiler:
             # Entry step has no incoming NEXT_STEP relationship
             session.run(
                 """
-                MATCH (m:MetaShifter {name: $name})
+                MATCH (m:Cybernet {name: $name})
                 MATCH (sm:StateMachine {id: $sm_id})
                 MERGE (m)-[:EQUIPS]->(sm)
                 
                 // Clear any existing lifecycle state for this state machine
                 WITH m, sm
-                OPTIONAL MATCH (m)-[r:HAS_LIFECYCLE]->(s:IdentityState {equipped_sm_id: $sm_id})
+                OPTIONAL MATCH (m)-[r:HAS_LIFECYCLE]->(s:Identity {equipped_sm_id: $sm_id})
                 DETACH DELETE s
                 DELETE r
                 
                 // Create new lifecycle state
                 WITH m, sm
-                CREATE (s:IdentityState {
+                CREATE (s:Identity {
                     status: 'locked',
                     turn_number: 1,
                     phase: 'day',
@@ -173,20 +173,20 @@ class CybernetiCircusCompiler:
                 WHERE NOT ()-[:NEXT_STEP]->(entry)
                 CREATE (s)-[:CURRENT_STEP]->(entry)
                 """,
-                {"name": metashifter_name, "sm_id": state_machine_id}
+                {"name": cybernet_name, "sm_id": state_machine_id}
             )
-            return f"Successfully equipped StateMachine '{state_machine_id}' onto '{metashifter_name}'."
+            return f"Successfully equipped StateMachine '{state_machine_id}' onto '{cybernet_name}'."
 
     def get_character_status(self, name: str) -> Optional[Dict[str, Any]]:
         """
-        Fetch status and metrics of a MetaShifter and its equipped state machine lifecycle.
+        Fetch status and metrics of a Cybernet and its equipped state machine lifecycle.
         """
         with self.driver.session() as session:
             res = session.run(
                 """
-                MATCH (m:MetaShifter {name: $name})
+                MATCH (m:Cybernet {name: $name})
                 OPTIONAL MATCH (m)-[:EQUIPS]->(sm:StateMachine)
-                OPTIONAL MATCH (m)-[:HAS_LIFECYCLE]->(s:IdentityState)
+                OPTIONAL MATCH (m)-[:HAS_LIFECYCLE]->(s:Identity)
                 OPTIONAL MATCH (s)-[:CURRENT_STEP]->(curr:TraversalStep)
                 RETURN m, sm.id as equipped_sm_id, sm.name as equipped_sm_name, s, 
                        curr.id as current_step_id, curr.text as current_step_text,
@@ -240,7 +240,7 @@ class CybernetiCircusCompiler:
             raise ValueError(f"Character '{name}' not found.")
             
         if not status["equipped_sm_id"]:
-            raise ValueError(f"MetaShifter '{name}' does not have any State Machine equipped.")
+            raise ValueError(f"Cybernet '{name}' does not have any State Machine equipped.")
             
         phase = status["phase"]
         step_id = status["current_step_id"]
@@ -295,10 +295,10 @@ class CybernetiCircusCompiler:
                     raise ValueError(f"StateMachine '{child_sm_id}' does not have a valid entry step.")
                 child_entry_id = entry_rec["entry_id"]
                 
-                # Update IdentityState in database
+                # Update Identity in database
                 session.run(
                     """
-                    MATCH (m:MetaShifter {name: $name})-[:HAS_LIFECYCLE]->(s:IdentityState)
+                    MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:Identity)
                     MATCH (entry:TraversalStep {id: $entry_id})
                     MATCH (s)-[r:CURRENT_STEP]->()
                     DELETE r
@@ -319,13 +319,13 @@ class CybernetiCircusCompiler:
         
         # 1. Run step-specific side effects before executing the query
         if step_id == "sh8_night_calibrate":
-            # Save simulation result linked to MetaShifter in Neo4j
+            # Save simulation result linked to Cybernet in Neo4j
             accuracy = round(random.uniform(0.5, 1.0), 2)
             run_id = str(uuid.uuid4())
             with self.driver.session() as session:
                 session.run(
                     """
-                    MATCH (m:MetaShifter {name: $name})
+                    MATCH (m:Cybernet {name: $name})
                     CREATE (sim:SimulationRun {
                         run_id: $run_id,
                         created_at: timestamp(),
@@ -344,14 +344,14 @@ class CybernetiCircusCompiler:
             with self.driver.session() as session:
                 fit_res = session.run(
                     """
-                    MATCH (m:MetaShifter {name: $name})-[:HAS_SIMULATION]->(sim:SimulationRun)
+                    MATCH (m:Cybernet {name: $name})-[:HAS_SIMULATION]->(sim:SimulationRun)
                     RETURN avg(sim.accuracy) as avg_fitness
                     """,
                     {"name": name}
                 )
                 avg_fit = fit_res.single()["avg_fitness"] or 1.0
                 session.run(
-                    "MATCH (m:MetaShifter {name: $name}) SET m.fitness_score = $avg_fitness",
+                    "MATCH (m:Cybernet {name: $name}) SET m.fitness_score = $avg_fitness",
                     {"name": name, "avg_fitness": avg_fit}
                 )
             
@@ -369,7 +369,7 @@ class CybernetiCircusCompiler:
                     {"step_id": step_id}
                 )
         else:
-            # Force-align TraversalState's CURRENT_STEP with IdentityState's CURRENT_STEP
+            # Force-align TraversalState's CURRENT_STEP with Identity's CURRENT_STEP
             with self.driver.session() as session:
                 session.run(
                     """
@@ -384,7 +384,7 @@ class CybernetiCircusCompiler:
         
         # 3. Call the LLM runner to fetch the query/action
         system_prompt = (
-            f"You are the MetaShifter persona '{name}' with behavior guidelines: {status['description']}. "
+            f"You are the Cybernet persona '{name}' with behavior guidelines: {status['description']}. "
             f"Your active model configuration has temperature={runner.temperature}, top_p={runner.top_p}."
         )
         user_prompt = f"Active step prompt: {status['current_step_text']}"
@@ -416,7 +416,7 @@ class CybernetiCircusCompiler:
             with self.driver.session() as session:
                 session.run(
                     """
-                    MATCH (m:MetaShifter {name: $name})-[:HAS_LIFECYCLE]->(s:IdentityState {equipped_sm_id: $sm_id})
+                    MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:Identity {equipped_sm_id: $sm_id})
                     SET s.tokens_consumed_this_turn = s.tokens_consumed_this_turn + $tokens,
                         s.cost_this_turn = s.cost_this_turn + $cost,
                         m.total_tokens_consumed = m.total_tokens_consumed + $tokens,
@@ -425,7 +425,7 @@ class CybernetiCircusCompiler:
                     {"name": name, "sm_id": sm_id, "tokens": tokens_used, "cost": cost_increase}
                 )
                 
-            # Now we must update the IdentityState's CURRENT_STEP to match the TraversalState's new step.
+            # Now we must update the Identity's CURRENT_STEP to match the TraversalState's new step.
             with self.driver.session() as session:
                 step_res = session.run(
                     """
@@ -436,10 +436,10 @@ class CybernetiCircusCompiler:
                 rec = step_res.single()
                 if rec:
                     new_step_id = rec["current_step_id"]
-                    # Update IdentityState to point to new_step_id
+                    # Update Identity to point to new_step_id
                     session.run(
                         """
-                        MATCH (m:MetaShifter {name: $name})-[:HAS_LIFECYCLE]->(s:IdentityState {equipped_sm_id: $sm_id})
+                        MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:Identity {equipped_sm_id: $sm_id})
                         MATCH (next:TraversalStep {id: $new_step_id})
                         MATCH (s)-[r:CURRENT_STEP]->()
                         DELETE r
@@ -452,7 +452,7 @@ class CybernetiCircusCompiler:
                     if "night" in new_step_id.lower():
                         session.run(
                             """
-                            MATCH (m:MetaShifter {name: $name})-[:HAS_LIFECYCLE]->(s:IdentityState {equipped_sm_id: $sm_id})
+                            MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:Identity {equipped_sm_id: $sm_id})
                             SET s.phase = 'night'
                             """,
                             {"name": name, "sm_id": sm_id}
@@ -484,7 +484,7 @@ class CybernetiCircusCompiler:
                             with self.driver.session() as session:
                                 session.run(
                                     """
-                                    MATCH (m:MetaShifter {name: $name})-[:HAS_LIFECYCLE]->(s:IdentityState)
+                                    MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:Identity)
                                     MATCH (next:TraversalStep {id: $next_step_id})
                                     MATCH (s)-[r:CURRENT_STEP]->()
                                     DELETE r
@@ -502,12 +502,12 @@ class CybernetiCircusCompiler:
                                 # Align phase
                                 if "night" in next_step_id.lower():
                                     session.run(
-                                        "MATCH (m:MetaShifter {name: $name})-[:HAS_LIFECYCLE]->(s:IdentityState) SET s.phase = 'night'",
+                                        "MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:Identity) SET s.phase = 'night'",
                                         {"name": name}
                                     )
                                 else:
                                     session.run(
-                                        "MATCH (m:MetaShifter {name: $name})-[:HAS_LIFECYCLE]->(s:IdentityState) SET s.phase = 'day'",
+                                        "MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:Identity) SET s.phase = 'day'",
                                         {"name": name}
                                     )
                             output_data["event_message"] += f" Sub-state machine completed. Popped call stack. Returned to parent step '{next_step_id}'."
@@ -533,7 +533,7 @@ class CybernetiCircusCompiler:
             with self.driver.session() as session:
                 session.run(
                     """
-                    MATCH (m:MetaShifter {name: $name})-[:HAS_LIFECYCLE]->(s:IdentityState {equipped_sm_id: $sm_id})
+                    MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:Identity {equipped_sm_id: $sm_id})
                     MATCH (sm:StateMachine {id: $sm_id})-[:HAS_STEP]->(entry:TraversalStep)
                     WHERE NOT ()-[:NEXT_STEP]->(entry)
                     MATCH (s)-[r:CURRENT_STEP]->()
@@ -551,7 +551,7 @@ class CybernetiCircusCompiler:
 
     def evaluate_evolution(self, name: str) -> str:
         """
-        Evaluate selection pressure at the end of a MetaShifter's lifetime.
+        Evaluate selection pressure at the end of a Cybernet's lifetime.
         """
         status = self.get_character_status(name)
         if not status:
@@ -567,8 +567,8 @@ class CybernetiCircusCompiler:
                 # 1. REAPING (Pruning)
                 session.run(
                     """
-                    MATCH (m:MetaShifter {name: $name})
-                    OPTIONAL MATCH (m)-[:HAS_LIFECYCLE]->(s:IdentityState)
+                    MATCH (m:Cybernet {name: $name})
+                    OPTIONAL MATCH (m)-[:HAS_LIFECYCLE]->(s:Identity)
                     OPTIONAL MATCH (m)-[:HAS_SIMULATION]->(sim:SimulationRun)
                     DETACH DELETE m, s, sim
                     """,
@@ -587,10 +587,10 @@ class CybernetiCircusCompiler:
                 mutated_mutation_rate = max(0.01, min(1.0, round(mutation_rate + random.uniform(-0.02, 0.02), 2)))
                 mutated_selection_pressure = max(0.1, round(selection_pressure + random.uniform(-0.1, 0.1), 2))
                 
-                # Create clone MetaShifter (clones all equipped StateMachines)
+                # Create clone Cybernet (clones all equipped StateMachines)
                 session.run(
                     """
-                    CREATE (m:MetaShifter {
+                    CREATE (m:Cybernet {
                         name: $child_name,
                         description: $description,
                         model_name: $model_name,
@@ -624,12 +624,12 @@ class CybernetiCircusCompiler:
                 # Clone equipped state machines and recreate lifecycles
                 session.run(
                     """
-                    MATCH (parent:MetaShifter {name: $name})-[:EQUIPS]->(sm:StateMachine)
-                    MATCH (child:MetaShifter {name: $child_name})
+                    MATCH (parent:Cybernet {name: $name})-[:EQUIPS]->(sm:StateMachine)
+                    MATCH (child:Cybernet {name: $child_name})
                     CREATE (child)-[:EQUIPS]->(sm)
                     
                     WITH child, sm
-                    CREATE (s:IdentityState {
+                    CREATE (s:Identity {
                         status: 'locked',
                         turn_number: 1,
                         phase: 'day',
@@ -652,7 +652,7 @@ class CybernetiCircusCompiler:
                 # Reset parent turn/lifetime stats to start a new cycle
                 session.run(
                     """
-                    MATCH (m:MetaShifter {name: $name})-[:HAS_LIFECYCLE]->(s:IdentityState {equipped_sm_id: $sm_id})
+                    MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:Identity {equipped_sm_id: $sm_id})
                     MATCH (sm:StateMachine {id: $sm_id})-[:HAS_STEP]->(entry:TraversalStep)
                     WHERE NOT ()-[:NEXT_STEP]->(entry)
                     MATCH (s)-[r:CURRENT_STEP]->()
@@ -677,7 +677,7 @@ class CybernetiCircusCompiler:
                 # 3. SURVIVAL (Reset turn stats to start next lifetime cycle)
                 session.run(
                     """
-                    MATCH (m:MetaShifter {name: $name})-[:HAS_LIFECYCLE]->(s:IdentityState {equipped_sm_id: $sm_id})
+                    MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:Identity {equipped_sm_id: $sm_id})
                     MATCH (sm:StateMachine {id: $sm_id})-[:HAS_STEP]->(entry:TraversalStep)
                     WHERE NOT ()-[:NEXT_STEP]->(entry)
                     MATCH (s)-[r:CURRENT_STEP]->()

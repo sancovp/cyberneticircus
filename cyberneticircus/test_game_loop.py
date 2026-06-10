@@ -27,20 +27,20 @@ def run_tests():
     
     # 2. Cleanup existing test nodes
     print("2. Cleaning up any leftover test data...")
-    test_name = "test_shifter"
+    test_name = "test_cybernet"
     with engine.driver.session() as session:
-        session.run("MATCH (m:MetaShifter) WHERE m.name STARTS WITH $name DETACH DELETE m", {"name": test_name})
-        session.run("MATCH (s:IdentityState) WHERE NOT ()-[:HAS_LIFECYCLE]->(s) DETACH DELETE s")
+        session.run("MATCH (m:Cybernet) WHERE m.name STARTS WITH $name DETACH DELETE m", {"name": test_name})
+        session.run("MATCH (s:Identity) WHERE NOT ()-[:HAS_LIFECYCLE]->(s) DETACH DELETE s")
         session.run("MATCH (s:TraversalState) DETACH DELETE s")
         session.run("MATCH (sm:StateMachine {id: 'sub_lifecycle_sm'})-[r:HAS_STEP]->(step) DETACH DELETE sm, step")
         session.run("MATCH (sm:StateMachine {id: 'sub_lifecycle_sm'}) DETACH DELETE sm")
         session.run("MATCH (step:TraversalStep {id: 'sh8_day_start'})-[r:CALLS_SM]->() DELETE r")
     print("   [PASS] Wiped previous test data.")
     
-    # 3. Create MetaShifter
-    print("3. Creating MetaShifter 'test_shifter'...")
+    # 3. Create Cybernet
+    print("3. Creating Cybernet 'test_cybernet'...")
     try:
-        msg = engine.create_metashifter(
+        msg = engine.create_cybernet(
             name=test_name,
             description="A test persona designed for validation checks.",
             model_name="test-engine-v1",
@@ -65,7 +65,7 @@ def run_tests():
         print(f"3. [FAIL] Character base stats mismatched: {status}")
         engine.close()
         return False
-    print("   [PASS] MetaShifter created and verified in database.")
+    print("   [PASS] Cybernet created and verified in database.")
     
     # 3.5 Bootstrap sub-state machine
     print("3.5 Bootstrapping test sub-state machine 'sub_lifecycle_sm'...")
@@ -178,7 +178,7 @@ def run_tests():
     with engine.driver.session() as session:
         session.run(
             """
-            MATCH (m:MetaShifter {name: $name})-[:HAS_LIFECYCLE]->(s:IdentityState)
+            MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:Identity)
             MATCH (step:TraversalStep {id: 'sh8_night_evolve'})
             MATCH (s)-[r:CURRENT_STEP]->()
             DELETE r
@@ -188,11 +188,11 @@ def run_tests():
             {"name": test_name}
         )
         # Wipe past simulations and create 10 poor accuracy runs to force average fitness below 0.4
-        session.run("MATCH (m:MetaShifter {name: $name})-[r:HAS_SIMULATION]->(sim) DETACH DELETE sim", {"name": test_name})
+        session.run("MATCH (m:Cybernet {name: $name})-[r:HAS_SIMULATION]->(sim) DETACH DELETE sim", {"name": test_name})
         for i in range(10):
             session.run(
                 """
-                MATCH (m:MetaShifter {name: $name})
+                MATCH (m:Cybernet {name: $name})
                 CREATE (sim:SimulationRun {
                     run_id: $run_id,
                     created_at: timestamp(),
@@ -213,17 +213,17 @@ def run_tests():
         engine.close()
         return False
         
-    # Verify MetaShifter is reaped (deleted)
+    # Verify Cybernet is reaped (deleted)
     status = engine.get_character_status(test_name)
     if status is not None:
         print("7. [FAIL] Low fitness character was not reaped from database.")
         engine.close()
         return False
-    print("   [PASS] Reaping selection pressure validated (deleted poor fitness shifter).")
+    print("   [PASS] Reaping selection pressure validated (deleted poor fitness cybernet).")
     
     # 8. Test Lifetime Selection and Evolution (Reproduction / Cloning)
-    print("8. Re-creating shifter to test Reproduction...")
-    engine.create_metashifter(
+    print("8. Re-creating cybernet to test Reproduction...")
+    engine.create_cybernet(
         name=test_name,
         description="Reproduction test model.",
         model_name="test-engine-v1",
@@ -237,7 +237,7 @@ def run_tests():
     with engine.driver.session() as session:
         session.run(
             """
-            MATCH (m:MetaShifter {name: $name})-[:HAS_LIFECYCLE]->(s:IdentityState)
+            MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:Identity)
             MATCH (step:TraversalStep {id: 'sh8_night_evolve'})
             MATCH (s)-[r:CURRENT_STEP]->()
             DELETE r
@@ -250,7 +250,7 @@ def run_tests():
         for i in range(10):
             session.run(
                 """
-                MATCH (m:MetaShifter {name: $name})
+                MATCH (m:Cybernet {name: $name})
                 CREATE (sim:SimulationRun {
                     run_id: $run_id,
                     created_at: timestamp(),
@@ -273,7 +273,7 @@ def run_tests():
         
     # Check if a clone was created
     with engine.driver.session() as session:
-        res = session.run("MATCH (m:MetaShifter) WHERE m.name STARTS WITH 'test_shifter_V' RETURN m.name as name, m.temperature as temp")
+        res = session.run("MATCH (m:Cybernet) WHERE m.name STARTS WITH 'test_cybernet_V' RETURN m.name as name, m.temperature as temp")
         clones = [{"name": r["name"], "temp": r["temp"]} for r in res]
         
     if not clones:
@@ -286,8 +286,8 @@ def run_tests():
     # 9. Clean up test nodes
     print("9. Cleaning up test nodes...")
     with engine.driver.session() as session:
-        session.run("MATCH (m:MetaShifter) WHERE m.name STARTS WITH $name DETACH DELETE m", {"name": test_name})
-        session.run("MATCH (s:IdentityState) WHERE NOT ()-[:HAS_LIFECYCLE]->(s) DETACH DELETE s")
+        session.run("MATCH (m:Cybernet) WHERE m.name STARTS WITH $name DETACH DELETE m", {"name": test_name})
+        session.run("MATCH (s:Identity) WHERE NOT ()-[:HAS_LIFECYCLE]->(s) DETACH DELETE s")
         session.run("MATCH (s:TraversalState) DETACH DELETE s")
         session.run("MATCH (sm:StateMachine {id: 'sub_lifecycle_sm'})-[r:HAS_STEP]->(step) DETACH DELETE sm, step")
         session.run("MATCH (sm:StateMachine {id: 'sub_lifecycle_sm'}) DETACH DELETE sm")
