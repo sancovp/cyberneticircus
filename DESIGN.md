@@ -29,8 +29,8 @@ The world, beings, and mechanics of the CybernetiCircus are structured around th
 
 Every Cybernet is assembled from modular components representing their AI configuration, runtime behavior, and memory context:
 
-### The Shell (The Body / Hardware)
-* **Definition**: The literal AI model hosting container and hardware specification.
+### The Ghost Shell (The Shell / Hardware)
+* **Definition**: The execution wrapper and model parameter system (e.g. LLM temperature, top_p, latency, token limits) through which a Cybernet operates its **Core**.
 * **Attributes**:
   * `model_name`: The executing LLM (e.g., `gemini-1.5-pro` or `test-engine-v1`).
   * `parameters_count`: The model parameter scale (e.g., `70.0` billion parameters).
@@ -51,8 +51,8 @@ Every Cybernet is assembled from modular components representing their AI config
 ### The Ghost (The Agentic Motor)
 * **Definition**: The raw agentic intelligence and cognitive execution loops that drive the Cybernet. The Ghost represents the dynamic flow of thoughts, queries, and actions that animate the system (a nod to the GHOST programming language).
 
-### The Identity (The Persona Bridge)
-* **Definition**: The structural bridge that binds a **Ghost** (the agentic motor) to a **Shell** (the LLM hardware constraints) closed over a specific subgraph in the Cyberneticity.
+### The Identity (The Manifest Persona)
+* **Definition**: The unified persona closed over a specific subgraph in the Cyberneticity that emerges when a **Ghost** operates its compiled **Core** through its **Ghost Shell**.
 * **Attributes**:
   * `name` & `description`: The character specs of the persona.
   * `temperature` & `top_p`: Hyperparameters governing the Identity's reasoning style.
