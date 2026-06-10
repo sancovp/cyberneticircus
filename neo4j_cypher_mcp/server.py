@@ -1294,12 +1294,12 @@ def create_metashifter_identity(
     import sys
     import os
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    sibling_dir = os.path.abspath(os.path.join(current_dir, "..", "sh8peshift"))
+    sibling_dir = os.path.abspath(os.path.join(current_dir, "..", "cyberneticircus"))
     if sibling_dir not in sys.path:
          sys.path.insert(0, sibling_dir)
-    from engine import Sh8peshiftEngine
+    from engine import CybernetiCircusCompiler
     
-    engine = Sh8peshiftEngine()
+    engine = CybernetiCircusCompiler()
     try:
         res = engine.create_metashifter(
             name=name,
@@ -1327,12 +1327,12 @@ def equip_state_machine_loadout(
     import sys
     import os
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    sibling_dir = os.path.abspath(os.path.join(current_dir, "..", "sh8peshift"))
+    sibling_dir = os.path.abspath(os.path.join(current_dir, "..", "cyberneticircus"))
     if sibling_dir not in sys.path:
          sys.path.insert(0, sibling_dir)
-    from engine import Sh8peshiftEngine
+    from engine import CybernetiCircusCompiler
     
-    engine = Sh8peshiftEngine()
+    engine = CybernetiCircusCompiler()
     try:
         res = engine.equip_state_machine(metashifter_name, state_machine_id)
         return res
@@ -1353,12 +1353,12 @@ def tick_shifter_turn(
     import sys
     import os
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    sibling_dir = os.path.abspath(os.path.join(current_dir, "..", "sh8peshift"))
+    sibling_dir = os.path.abspath(os.path.join(current_dir, "..", "cyberneticircus"))
     if sibling_dir not in sys.path:
          sys.path.insert(0, sibling_dir)
-    from engine import Sh8peshiftEngine, AgentLLMRunner
+    from engine import CybernetiCircusCompiler, AgentLLMRunner
     
-    engine = Sh8peshiftEngine()
+    engine = CybernetiCircusCompiler()
     try:
         status = engine.get_character_status(metashifter_name)
         if not status:

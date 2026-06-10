@@ -6,7 +6,7 @@ Interactive CLI to manage MetaShifters, equip State Machines, and tick execution
 import sys
 import os
 import time
-from engine import Sh8peshiftEngine, AgentLLMRunner
+from engine import CybernetiCircusCompiler, AgentLLMRunner
 
 def print_banner():
     banner = """
@@ -24,7 +24,7 @@ def print_banner():
 
 def print_character_sheet(status: dict):
     print("\n" + "-"*50)
-    print(f" METASHIFTER CHARACTER SHEET (IDENTITY): {status['name']}")
+    print(f" CYBERNET CHARACTER SHEET (IDENTITY): {status['name']}")
     print("-"*50)
     print(f" Prompt / Behavior    : {status['description']}")
     print(f" Equipped StateMachine: {status['equipped_sm_name'] or 'NONE (Unequipped)'} [{status['equipped_sm_id'] or ''}]")
@@ -48,7 +48,7 @@ def main():
     print_banner()
     
     try:
-        engine = Sh8peshiftEngine()
+        engine = CybernetiCircusCompiler()
     except Exception as e:
         print(f"Error connecting to Neo4j. Is the server running? Details: {e}")
         sys.exit(1)
@@ -75,20 +75,20 @@ def main():
                 print(" 5. Fast-Forward Lifetime (Run through 5 turns to Evolve / Reap)")
             print(" 6. Deselect Character")
         else:
-            print(" 1. Create a new MetaShifter Persona")
-            print(" 2. Select an existing MetaShifter Persona")
+            print(" 1. Create a new MetaShifter / Cybernet Identity")
+            print(" 2. Select an existing Cybernet Identity")
             
         print(" 9. Exit Game")
         choice = input("\nSelect an option: ").strip()
         
         if choice == "9":
-            print("\nExiting Sh8peshift. Stay agentic!")
+            print("\nExiting CybernetiCircus. Stay agentic!")
             engine.close()
             break
             
         if not active_char:
             if choice == "1":
-                print("\n--- CREATE METASHIFTER ---")
+                print("\n--- CREATE CYBERNET IDENTITY ---")
                 name = input("Enter character name (no spaces): ").strip()
                 desc = input("Enter behavior/prompt description: ").strip()
                 model = input("Enter AI model engine [default: gemini-1.5-pro]: ").strip() or "gemini-1.5-pro"
@@ -113,14 +113,14 @@ def main():
                     active_char = name
                     
                     # Proactively equip default State Machine
-                    print("\nEquipping default Sh8peshift Lifecycle State Machine...")
+                    print("\nEquipping default CybernetiCircus Lifecycle State Machine...")
                     equip_msg = engine.equip_state_machine(name, "sh8_lifecycle_sm")
                     print(f"[SUCCESS] {equip_msg}")
                 except Exception as e:
                     print(f"\n[ERROR] Failed to create MetaShifter: {e}")
                     
             elif choice == "2":
-                print("\n--- SELECT METASHIFTER ---")
+                print("\n--- SELECT CYBERNET IDENTITY ---")
                 with engine.driver.session() as s:
                     res = s.run("MATCH (m:MetaShifter) RETURN m.name as name")
                     names = [r["name"] for r in res]

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Sh8peshift RPG Game Engine
+CybernetiCircus RPG Game Compiler
 Handles MetaShifter creation, equipping State Machines, Day/Night turn loops, calibration, and evolutionary steps.
 """
 import os
@@ -15,7 +15,7 @@ from neo4j import GraphDatabase
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger("sh8peshift_engine")
+logger = logging.getLogger("cyberneticircus_compiler")
 
 class AgentLLMRunner:
     """
@@ -52,9 +52,9 @@ class AgentLLMRunner:
         
         return "MATCH (n) RETURN n"
 
-class Sh8peshiftEngine:
+class CybernetiCircusCompiler:
     """
-    The Sh8peshift RPG engine managing MetaShifters (Identities), StateMachines (Equipment),
+    The CybernetiCircus compiler managing Cybernet Identities, State Machines (Equipment),
     turn loops, and evolutionary cycles.
     """
     def __init__(self, uri: str = "bolt://localhost:7687", user: str = "neo4j", password: str = "password"):
@@ -63,7 +63,7 @@ class Sh8peshiftEngine:
         self.password = password
         self.driver = GraphDatabase.driver(uri, auth=(user, password))
         self.driver.verify_connectivity()
-        logger.info("Successfully connected Sh8peshift Engine to Neo4j.")
+        logger.info("Successfully connected Compiler to the Cyberneticity (Neo4j).")
 
     def close(self):
         self.driver.close()
@@ -694,10 +694,13 @@ class Sh8peshiftEngine:
                 session.run("MATCH (s:TraversalState) DETACH DELETE s")
                 return f"Identity '{name}' fitness ({fitness}) met survival standards. Lifetime reset for another cycle."
 
+# Alias for backward compatibility
+Sh8peshiftEngine = CybernetiCircusCompiler
+
 if __name__ == "__main__":
     try:
-        engine = Sh8peshiftEngine()
-        print("Engine connected successfully.")
+        engine = CybernetiCircusCompiler()
+        print("Compiler connected successfully to Cyberneticity.")
         engine.close()
     except Exception as e:
-        print(f"Engine connection failed: {e}")
+        print(f"Compiler connection failed: {e}")

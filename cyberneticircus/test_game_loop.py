@@ -10,16 +10,16 @@ import random
 # Ensure python can import from the sh8peshift folder
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from engine import Sh8peshiftEngine, AgentLLMRunner
+from engine import CybernetiCircusCompiler, AgentLLMRunner
 
 def run_tests():
-    print("Starting Sh8peshift integration tests...")
+    print("Starting CybernetiCircus integration tests...")
     print("=" * 60)
     
     # 1. Initialize Engine
-    print("1. Connecting to Sh8peshift Engine...")
+    print("1. Connecting to CybernetiCircus Compiler...")
     try:
-        engine = Sh8peshiftEngine()
+        engine = CybernetiCircusCompiler()
     except Exception as e:
         print(f"1. [FAIL] Connection failed: {e}")
         return False
@@ -295,7 +295,7 @@ def run_tests():
     print("   [PASS] Database cleaned.")
     
     print("=" * 60)
-    print("All Sh8peshift RPG integration tests passed successfully! 🎉")
+    print("All CybernetiCircus RPG integration tests passed successfully! 🎉")
     engine.close()
     return True
 
