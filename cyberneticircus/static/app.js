@@ -2,6 +2,11 @@
 // Interacts with /api/ endpoints to run the game loop and render status.
 
 document.addEventListener("DOMContentLoaded", () => {
+    // D3 Graph Visualizer variables
+    let svg, simulation, linkGroup, nodeGroup, labelGroup;
+    const width = 600;
+    const height = 300;
+
     // DOM Elements
     const dbStatus = document.getElementById("db-status-indicator");
     const selectCybernet = document.getElementById("cybernet-select");
@@ -46,6 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Load initial data
     loadCybernets();
     loadStateMachines();
+    drawGraph(null);
 
     // Helper: Add styled lines to the console
     function logToConsole(type, text) {
@@ -126,6 +132,9 @@ document.addEventListener("DOMContentLoaded", () => {
         simulationPlaceholder.classList.remove("hidden");
         simulationTableWrapper.classList.add("hidden");
         simulationHistoryList.innerHTML = "";
+
+        // Render generic database graph when no identity is selected
+        drawGraph(null);
     }
 
     // API: Fetch and display identity status sheet
@@ -204,6 +213,9 @@ document.addEventListener("DOMContentLoaded", () => {
             
             // Render Simulation History
             await updateSimulationHistory(name);
+
+            // Draw active state machine graph
+            await drawGraph(name);
 
         } catch (e) {
             logToConsole("error", `Failed to fetch status for '${name}': ${e}`);
@@ -411,5 +423,233 @@ document.addEventListener("DOMContentLoaded", () => {
     // Clear trace logs
     clearTraceBtn.addEventListener("click", () => {
         terminalOutput.innerHTML = '<div class="terminal-line system-line">[SYSTEM] Terminal logs cleared.</div>';
+    });
+
+    // D3 Graph Visualizer logic
+
+    function initGraphVisualizer() {
+        const container = document.getElementById("graph-visualizer");
+        if (!container) return;
+        
+        container.innerHTML = "";
+        
+        svg = d3.select("#graph-visualizer")
+            .append("svg")
+            .attr("width", "100%")
+            .attr("height", height)
+            .attr("viewBox", `0 0 ${width} ${height}`)
+            .style("overflow", "visible");
+
+        // Add glow filters for active nodes
+        const defs = svg.append("defs");
+        
+        // Active step glow
+        const stepGlow = defs.append("filter")
+            .attr("id", "step-glow")
+            .attr("x", "-50%")
+            .attr("y", "-50%")
+            .attr("width", "200%")
+            .attr("height", "200%");
+        stepGlow.append("feGaussianBlur")
+            .attr("stdDeviation", "4")
+            .attr("result", "blur");
+        stepGlow.append("feMerge")
+            .selectAll("feMergeNode")
+            .data(["blur", "SourceGraphic"])
+            .enter().append("feMergeNode")
+            .attr("in", d => d);
+
+        // Define arrowhead marker
+        defs.append("marker")
+            .attr("id", "arrowhead")
+            .attr("viewBox", "0 -5 10 10")
+            .attr("refX", 18)
+            .attr("refY", 0)
+            .attr("markerWidth", 6)
+            .attr("markerHeight", 6)
+            .attr("orient", "auto")
+            .append("path")
+            .attr("d", "M0,-4L8,0L0,4")
+            .attr("fill", "hsla(0, 0%, 100%, 0.15)");
+
+        linkGroup = svg.append("g").attr("class", "links");
+        nodeGroup = svg.append("g").attr("class", "nodes");
+        labelGroup = svg.append("g").attr("class", "labels");
+
+        simulation = d3.forceSimulation()
+            .force("link", d3.forceLink().id(d => d.id).distance(80))
+            .force("charge", d3.forceManyBody().strength(-180))
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .force("collision", d3.forceCollide().radius(22));
+    }
+
+    async function drawGraph(name) {
+        if (!svg) initGraphVisualizer();
+        if (!svg) return; // Escape if DOM not loaded yet
+        
+        try {
+            const url = name ? `/api/graph?name=${name}` : "/api/graph";
+            const res = await fetch(url);
+            const graph = await res.json();
+            
+            const nodes = graph.nodes;
+            const links = graph.links;
+
+            // Preserve positions of existing nodes in the simulation
+            const existingNodes = new Map();
+            if (simulation) {
+                simulation.nodes().forEach(node => {
+                    existingNodes.set(node.id, node);
+                });
+            }
+
+            const mergedNodes = nodes.map(node => {
+                const existing = existingNodes.get(node.id);
+                if (existing) {
+                    node.x = existing.x;
+                    node.y = existing.y;
+                    node.vx = existing.vx;
+                    node.vy = existing.vy;
+                    node.fx = existing.fx;
+                    node.fy = existing.fy;
+                }
+                return node;
+            });
+
+            // Update links
+            const link = linkGroup.selectAll("line")
+                .data(links, d => `${d.source}-${d.target}-${d.type}`);
+
+            link.exit().remove();
+
+            const linkEnter = link.enter().append("line")
+                .attr("stroke", "hsla(0, 0%, 100%, 0.15)")
+                .attr("stroke-width", 1.5)
+                .attr("marker-end", "url(#arrowhead)");
+
+            const updatedLink = linkEnter.merge(link);
+
+            // Update nodes
+            const node = nodeGroup.selectAll("circle")
+                .data(mergedNodes, d => d.id);
+
+            node.exit().remove();
+
+            const nodeEnter = node.enter().append("circle")
+                .attr("r", d => {
+                    if (d.label === "MetaShifter") return 11;
+                    if (d.label === "StateMachine") return 9;
+                    if (d.label === "TraversalStep") return 7;
+                    return 6;
+                })
+                .attr("fill", d => {
+                    if (d.active_tag === "shifter") return "var(--neon-green)";
+                    if (d.active_tag === "step") return "var(--neon-cyan)";
+                    if (d.active_tag === "state_machine") return "var(--neon-purple)";
+                    
+                    if (d.label === "MetaShifter") return "hsl(145, 60%, 40%)";
+                    if (d.label === "StateMachine") return "hsl(270, 60%, 50%)";
+                    if (d.label === "TraversalStep") return "hsl(190, 60%, 40%)";
+                    if (d.label === "IdentityState") return "hsl(220, 60%, 45%)";
+                    if (d.label === "SimulationRun") return "hsl(340, 60%, 45%)";
+                    return "hsl(0, 0%, 50%)";
+                })
+                .attr("stroke", d => {
+                    if (d.active_tag) return "#fff";
+                    return "hsla(0, 0%, 100%, 0.2)";
+                })
+                .attr("stroke-width", d => d.active_tag ? 2 : 1)
+                .style("filter", d => d.active_tag === "step" ? "url(#step-glow)" : "none")
+                .call(d3.drag()
+                    .on("start", dragstarted)
+                    .on("drag", dragged)
+                    .on("end", dragended));
+
+            // Append tooltip element for entered nodes
+            nodeEnter.append("title");
+
+            // Pulse animation classes
+            nodeGroup.selectAll("circle")
+                .classed("pulsing-node", d => d.active_tag === "step");
+
+            const updatedNode = nodeEnter.merge(node);
+
+            // Hover tooltips (always update with the latest properties)
+            updatedNode.select("title")
+                .text(d => `${d.label}: ${d.name}\n${JSON.stringify(d.properties, null, 2)}`);
+
+            // Update labels
+            const label = labelGroup.selectAll("text")
+                .data(mergedNodes, d => d.id);
+
+            label.exit().remove();
+
+            const labelEnter = label.enter().append("text")
+                .attr("dy", 18)
+                .attr("text-anchor", "middle")
+                .attr("fill", "var(--text-secondary)")
+                .style("font-size", "9px")
+                .style("font-family", "Outfit, sans-serif")
+                .style("pointer-events", "none")
+                .text(d => d.name);
+
+            const updatedLabel = labelEnter.merge(label);
+
+            simulation.nodes(mergedNodes).on("tick", () => {
+                updatedLink
+                    .attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+
+                updatedNode
+                    .attr("cx", d => d.x)
+                    .attr("cy", d => d.y);
+
+                updatedLabel
+                    .attr("x", d => d.x)
+                    .attr("y", d => d.y);
+            });
+
+            simulation.force("link").links(links);
+            simulation.alpha(0.3).restart();
+
+        } catch (e) {
+            console.error("D3 Draw Error:", e);
+        }
+    }
+
+    function dragstarted(event, d) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+    }
+
+    function dragged(event, d) {
+        d.fx = event.x;
+        d.fy = event.y;
+    }
+
+    function dragended(event, d) {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+    }
+
+    // Real-time dashboard auto-refresh polling loop
+    async function tickDashboard() {
+        if (activeIdentity) {
+            await updateIdentitySheet(activeIdentity);
+        } else {
+            await drawGraph(null);
+        }
+    }
+
+    // Run polling every 1000ms
+    const pollInterval = setInterval(tickDashboard, 1000);
+
+    // Cleanup interval on window unload
+    window.addEventListener("beforeunload", () => {
+        clearInterval(pollInterval);
     });
 });

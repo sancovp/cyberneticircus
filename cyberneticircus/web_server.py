@@ -44,7 +44,7 @@ class TickRequest(BaseModel):
     top_p: Optional[float] = None
 
 @app.get("/", response_class=HTMLResponse)
-async def get_index():
+def get_index():
     index_path = os.path.join(current_dir, "static", "index.html")
     if os.path.exists(index_path):
         with open(index_path, "r", encoding="utf-8") as f:
@@ -52,7 +52,7 @@ async def get_index():
     return HTMLResponse("index.html not found. Ensure static files are generated in /static/.", status_code=404)
 
 @app.get("/api/list")
-async def list_cybernets():
+def list_cybernets():
     compiler = CybernetiCircusCompiler()
     try:
         with compiler.driver.session() as session:
@@ -65,7 +65,7 @@ async def list_cybernets():
         compiler.close()
 
 @app.get("/api/state_machines")
-async def list_state_machines():
+def list_state_machines():
     compiler = CybernetiCircusCompiler()
     try:
         with compiler.driver.session() as session:
@@ -78,7 +78,7 @@ async def list_state_machines():
         compiler.close()
 
 @app.get("/api/status/{name}")
-async def get_status(name: str):
+def get_status(name: str):
     compiler = CybernetiCircusCompiler()
     try:
         status = compiler.get_character_status(name)
@@ -91,7 +91,7 @@ async def get_status(name: str):
         compiler.close()
 
 @app.get("/api/simulations/{name}")
-async def get_simulations(name: str):
+def get_simulations(name: str):
     compiler = CybernetiCircusCompiler()
     try:
         with compiler.driver.session() as session:
@@ -116,8 +116,157 @@ async def get_simulations(name: str):
     finally:
         compiler.close()
 
+def serialize_properties(properties: Dict[str, Any]) -> Dict[str, Any]:
+    serialized = {}
+    for k, v in properties.items():
+        if hasattr(v, "isoformat"):
+            serialized[k] = v.isoformat()
+        elif hasattr(v, "year") and hasattr(v, "month") and hasattr(v, "day"):
+            serialized[k] = str(v)
+        else:
+            try:
+                import json
+                json.dumps(v)
+                serialized[k] = v
+            except TypeError:
+                serialized[k] = str(v)
+    return serialized
+
+@app.get("/api/graph")
+def get_graph(name: Optional[str] = None):
+    compiler = CybernetiCircusCompiler()
+    try:
+        nodes = []
+        links = []
+        node_ids = set()
+        
+        # Get active step ID and state machine ID for highlighting
+        current_step_node_id = None
+        active_shifter_node_id = None
+        equipped_sm_node_id = None
+        
+        if name:
+            with compiler.driver.session() as session:
+                res = session.run(
+                    """
+                    MATCH (m:MetaShifter {name: $name})
+                    OPTIONAL MATCH (m)-[:HAS_LIFECYCLE]->(s:IdentityState)
+                    OPTIONAL MATCH (s)-[:CURRENT_STEP]->(curr:TraversalStep)
+                    OPTIONAL MATCH (m)-[:EQUIPS]->(sm:StateMachine)
+                    RETURN id(m) as m_id, id(curr) as curr_id, id(sm) as sm_id
+                    """,
+                    {"name": name}
+                )
+                rec = res.single()
+                if rec:
+                    active_shifter_node_id = str(rec["m_id"]) if rec["m_id"] is not None else None
+                    current_step_node_id = str(rec["curr_id"]) if rec["curr_id"] is not None else None
+                    equipped_sm_node_id = str(rec["sm_id"]) if rec["sm_id"] is not None else None
+        
+        def get_node_id(node):
+            if hasattr(node, 'id') and node.id is not None:
+                return str(node.id)
+            if hasattr(node, 'element_id') and node.element_id is not None:
+                return str(node.element_id)
+            return str(hash(node))
+            
+        def add_node(node):
+            if not node:
+                return None
+            nid = get_node_id(node)
+            if nid not in node_ids:
+                node_ids.add(nid)
+                labels = list(node.labels)
+                label = labels[0] if labels else "Unknown"
+                display_name = node.get("name") or node.get("id") or node.get("run_id") or label
+                
+                is_active = False
+                if nid == active_shifter_node_id:
+                    is_active = "shifter"
+                elif nid == current_step_node_id:
+                    is_active = "step"
+                elif nid == equipped_sm_node_id:
+                    is_active = "state_machine"
+                    
+                nodes.append({
+                    "id": nid,
+                    "label": label,
+                    "name": display_name,
+                    "properties": serialize_properties(dict(node)),
+                    "active_tag": is_active
+                })
+            return nid
+
+        with compiler.driver.session() as session:
+            if name:
+                # Query the active character's specific subgraph (instant, limited to active machine)
+                res = session.run(
+                    """
+                    MATCH (m:MetaShifter {name: $name})
+                    OPTIONAL MATCH (m)-[r1:HAS_LIFECYCLE]->(s:IdentityState)
+                    OPTIONAL MATCH (s)-[r2:CURRENT_STEP]->(curr:TraversalStep)
+                    OPTIONAL MATCH (m)-[r3:EQUIPS]->(sm:StateMachine)
+                    OPTIONAL MATCH (sm)-[r4:HAS_STEP]->(step:TraversalStep)
+                    OPTIONAL MATCH (step)-[r5:NEXT_STEP]->(next:TraversalStep)
+                    OPTIONAL MATCH (step)-[r6:CALLS_SM]->(child:StateMachine)
+                    RETURN m, s, sm, step, next, child, curr, r1, r2, r3, r4, r5, r6
+                    """,
+                    {"name": name}
+                )
+                for record in res:
+                    m_id = add_node(record["m"])
+                    s_id = add_node(record["s"])
+                    sm_id = add_node(record["sm"])
+                    step_id = add_node(record["step"])
+                    next_id = add_node(record["next"])
+                    child_id = add_node(record["child"])
+                    curr_id = add_node(record["curr"])
+                    
+                    if m_id and s_id:
+                        links.append({"source": m_id, "target": s_id, "type": "HAS_LIFECYCLE"})
+                    if m_id and sm_id:
+                        links.append({"source": m_id, "target": sm_id, "type": "EQUIPS"})
+                    if s_id and curr_id:
+                        links.append({"source": s_id, "target": curr_id, "type": "CURRENT_STEP"})
+                    if sm_id and step_id:
+                        links.append({"source": sm_id, "target": step_id, "type": "HAS_STEP"})
+                    if step_id and next_id:
+                        links.append({"source": step_id, "target": next_id, "type": "NEXT_STEP"})
+                    if step_id and child_id:
+                        links.append({"source": step_id, "target": child_id, "type": "CALLS_SM"})
+            else:
+                # Query all MetaShifters and their high-level active states (keeps it extremely small)
+                res = session.run(
+                    """
+                    MATCH (m:MetaShifter)
+                    OPTIONAL MATCH (m)-[r1:HAS_LIFECYCLE]->(s:IdentityState)
+                    OPTIONAL MATCH (s)-[r2:CURRENT_STEP]->(curr:TraversalStep)
+                    OPTIONAL MATCH (m)-[r3:EQUIPS]->(sm:StateMachine)
+                    RETURN m, s, sm, curr, r1, r2, r3
+                    """
+                )
+                for record in res:
+                    m_id = add_node(record["m"])
+                    s_id = add_node(record["s"])
+                    sm_id = add_node(record["sm"])
+                    curr_id = add_node(record["curr"])
+                    
+                    if m_id and s_id:
+                        links.append({"source": m_id, "target": s_id, "type": "HAS_LIFECYCLE"})
+                    if m_id and sm_id:
+                        links.append({"source": m_id, "target": sm_id, "type": "EQUIPS"})
+                    if s_id and curr_id:
+                        links.append({"source": s_id, "target": curr_id, "type": "CURRENT_STEP"})
+                        
+        return {"nodes": nodes, "links": links}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        compiler.close()
+
+
 @app.post("/api/create")
-async def create_cybernet(req: CreateCybernetRequest):
+def create_cybernet(req: CreateCybernetRequest):
     compiler = CybernetiCircusCompiler()
     try:
         msg = compiler.create_metashifter(
@@ -143,7 +292,7 @@ async def create_cybernet(req: CreateCybernetRequest):
         compiler.close()
 
 @app.post("/api/equip")
-async def equip_state_machine(req: EquipRequest):
+def equip_state_machine(req: EquipRequest):
     compiler = CybernetiCircusCompiler()
     try:
         msg = compiler.equip_state_machine(req.character_name, req.state_machine_id)
@@ -154,7 +303,7 @@ async def equip_state_machine(req: EquipRequest):
         compiler.close()
 
 @app.post("/api/tick")
-async def tick_turn(req: TickRequest):
+def tick_turn(req: TickRequest):
     compiler = CybernetiCircusCompiler()
     try:
         status = compiler.get_character_status(req.character_name)

@@ -111,6 +111,12 @@
                             </div>
                         </div>
 
+                        <!-- Interactive Neo4j Graph Visualizer -->
+                        <div class="graph-card">
+                            <span class="label-tiny">LIVE COMPILER GRAPH (NEO4J)</span>
+                            <div id="graph-visualizer" class="visualizer-canvas"></div>
+                        </div>
+
                         <!-- Active Step Gating Prompt -->
                         <div class="gating-card">
                             <div class="gating-header">
@@ -212,6 +218,8 @@
         </div>
     </div>
 
+    <!-- D3.js library for graph visualization -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
     <!-- JS Logic -->
     <script src="/static/app.js"></script>
 </body>

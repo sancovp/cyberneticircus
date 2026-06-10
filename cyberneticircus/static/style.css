@@ -1078,3 +1078,41 @@ body {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+/* Graph Visualizer Panel */
+.graph-card {
+    background: hsla(240, 15%, 5%, 0.4);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.4);
+}
+
+.visualizer-canvas {
+    width: 100%;
+    height: 300px;
+    background: hsla(240, 30%, 2%, 0.35);
+    border-radius: 8px;
+    position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    cursor: grab;
+}
+
+.visualizer-canvas:active {
+    cursor: grabbing;
+}
+
+/* Pulsing Node Animation */
+.pulsing-node {
+    animation: nodePulse 2s infinite ease-in-out;
+}
+
+@keyframes nodePulse {
+    0% { r: 8; stroke-width: 2px; stroke: #fff; }
+    50% { r: 11; stroke-width: 4px; stroke: var(--neon-cyan); }
+    100% { r: 8; stroke-width: 2px; stroke: #fff; }
+}
+
