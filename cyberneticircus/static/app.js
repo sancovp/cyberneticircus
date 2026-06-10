@@ -14,14 +14,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // Stats elements
     const statModel = document.getElementById("stat-model");
     const statFitness = document.getElementById("stat-fitness");
-    const tempVal = document.getElementById("temp-val");
-    const tempProgress = document.getElementById("temp-progress");
-    const toppVal = document.getElementById("topp-val");
-    const toppProgress = document.getElementById("topp-progress");
-    const mutationVal = document.getElementById("mutation-val");
-    const mutationProgress = document.getElementById("mutation-progress");
-    const pressureVal = document.getElementById("pressure-val");
-    const pressureProgress = document.getElementById("pressure-progress");
     const statTokens = document.getElementById("stat-tokens");
     const statCost = document.getElementById("stat-cost");
     
@@ -155,33 +147,11 @@ document.addEventListener("DOMContentLoaded", () => {
             const data = await res.json();
             activeIdentity = name;
 
-            // Render Metrics
-            statModel.innerText = data.model_name;
-            statFitness.innerText = parseFloat(data.fitness_score).toFixed(2);
-            
-            // Adjust fitness color based on threshold
-            if (data.fitness_score >= 0.8) {
-                statFitness.className = "metric-value fitness-badge";
-            } else if (data.fitness_score < 0.4) {
-                statFitness.className = "metric-value error-line";
-            } else {
-                statFitness.className = "metric-value text-glow";
-            }
-
-            tempVal.innerText = data.temperature.toFixed(1);
-            tempProgress.style.width = `${Math.min(100, (data.temperature / 2.0) * 100)}%`;
-
-            toppVal.innerText = data.top_p.toFixed(2);
-            toppProgress.style.width = `${data.top_p * 100}%`;
-
-            mutationVal.innerText = data.mutation_rate.toFixed(2);
-            mutationProgress.style.width = `${data.mutation_rate * 100}%`;
-
-            pressureVal.innerText = data.selection_pressure.toFixed(1);
-            pressureProgress.style.width = `${Math.min(100, (data.selection_pressure / 2.0) * 100)}%`;
-
-            statTokens.innerText = data.total_tokens.toLocaleString();
-            statCost.innerText = `$${parseFloat(data.accumulated_cost).toFixed(6)}`;
+            // Render Metrics (LLM stats replaced with dashes)
+            statModel.innerText = "--";
+            statFitness.innerText = "--";
+            statTokens.innerText = "--";
+            statCost.innerText = "--";
 
             // Render Arena Content
             if (data.equipped_sm_id) {
@@ -389,11 +359,6 @@ document.addEventListener("DOMContentLoaded", () => {
         
         const name = document.getElementById("input-name").value.trim();
         const desc = document.getElementById("input-desc").value.trim();
-        const model = document.getElementById("input-model").value;
-        const temp = parseFloat(document.getElementById("input-temp").value);
-        const topp = parseFloat(document.getElementById("input-topp").value);
-        const mutation = parseFloat(document.getElementById("input-mutation").value);
-        const pressure = parseFloat(document.getElementById("input-pressure").value);
 
         logToConsole("system", `Compiling and spawning Cybernet Core '${name}'...`);
         try {
@@ -402,12 +367,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     name: name,
-                    description: desc,
-                    model_name: model,
-                    temperature: temp,
-                    top_p: topp,
-                    mutation_rate: mutation,
-                    selection_pressure: pressure
+                    description: desc
                 })
             });
             const data = await res.json();
