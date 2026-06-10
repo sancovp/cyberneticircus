@@ -487,6 +487,11 @@ document.addEventListener("DOMContentLoaded", () => {
                     break;
                 }
             }
+            window.debugMouse = {
+                mouseX: mouseX,
+                mouseY: mouseY,
+                hoveredNode: hoveredNode ? { name: hoveredNode.name, x: hoveredNode.x, y: hoveredNode.y, r: hoveredNode.r } : null
+            };
         });
         
         canvas.addEventListener("mouseleave", () => {
