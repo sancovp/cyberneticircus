@@ -18,7 +18,7 @@ The world, beings, and mechanics of the CybernetiCircus are structured around th
 * **The CybernetiCircus**: The runtime execution harness and arena. This is the sandboxed workspace where Cybernets test their logic, run simulation plays, mutate their stats, perform collaborative tasks, and evolve or get pruned over successive lifetimes.
 
 ### The Capability
-* **Sh8peshifters**: A specialized class of Cybernets capable of dynamically modifying their internal components (Shells, Cores, active Skills, and Surrogate stacks) while preserving complete identity continuity.
+* **Sh8peshifters**: A specialized class of Cybernets capable of dynamically modifying their internal components (Shells, Cores, active Skills, and state machine stacks) while preserving complete identity continuity.
 
 ### The Ultimate Rank
 * **The MetaShifter**: The divine/legendary rank of graph-being. Unlike standard Sh8peshifters who can only alter themselves, a MetaShifter has the power to define, compile, and spawn entirely new identities and Cybernets into the Cyberneticity.
@@ -38,8 +38,8 @@ Every Cybernet is assembled from modular components representing their AI config
   * `total_tokens_consumed` & `accumulated_cost`: Cumulative execution overhead.
 
 ### The Core (The Processor Stack)
-* **Definition**: The execution engine of the Cybernet. The Core contains the active stack of **Acts** and executes them via the **Director**.
-* **State**: Houses the compiled `call_stack` representing nested sub-act execution frames.
+* **Definition**: The central stack of **State Machines** managed by the **Compiler**.
+* **State**: Houses the compiled `call_stack` representing nested execution frames.
 
 ### The Skills (The Tools / Interface)
 * **Definition**: The set of registered tools, API endpoints, or database operations (e.g., Cypher write permissions) that the Cybernet is equipped to invoke to complete tasks.
@@ -48,23 +48,23 @@ Every Cybernet is assembled from modular components representing their AI config
 
 ## 3. The Software & Runtime State
 
-### The Surrogate (The Identity / Persona)
+### The Identity (The Persona)
 * **Definition**: The compiled behavioral persona (personality prompts, instructions, and descriptions) closed over a specific subgraph in the Cyberneticity.
 * **Attributes**:
   * `name` & `description`: The character specs of the persona.
-  * `temperature` & `top_p`: Hyperparameters governing the Surrogate's reasoning style.
+  * `temperature` & `top_p`: Hyperparameters governing the Identity's reasoning style.
   * `mutation_rate` & `selection_pressure`: Evolutionary parameters governing how the persona adapts or reproduces over lifetimes.
   * `fitness_score`: The accumulated performance rating.
 
-### The Act (The State Machine)
-* **Definition**: A structured traversal workflow mapping out a specific behavioral program. An Act consists of sequential `TraversalSteps` gated by required query patterns.
-* **Nesting (`:CALLS_SM`)**: An Act can contain compiler links to child Acts. When triggered, the parent Act is saved to the stack, and execution transitions to the sub-act.
+### The State Machine (The Behavior Flows)
+* **Definition**: A structured traversal workflow mapping out a specific behavioral program. A State Machine consists of sequential `TraversalSteps` gated by required query patterns.
+* **Nesting (`:CALLS_SM`)**: A State Machine can contain compiler links to child State Machines. When triggered, the parent State Machine is saved to the stack, and execution transitions to the sub-state machine.
 
-### The Director (The Compiler / Choreographer)
-* **Definition**: The game engine runtime that executes the active stack of Acts for a Surrogate.
+### The Compiler (The Execution Engine)
+* **Definition**: The game engine runtime that executes the active stack of State Machines for an Identity.
 * **Logic**:
   * Checks for `:CALLS_SM` routing to push parent execution frames onto the `call_stack`.
   * Executes the LLM query action for the active step.
   * Checks calibration accuracy and transitions the `TraversalState` node.
-  * Pops the parent frame from the `call_stack` upon sub-act completion, returning execution to the parent Act.
+  * Pops the parent frame from the `call_stack` upon sub-state machine completion, returning execution to the parent State Machine.
   * Evaluates selection pressure (survival resetting, reaping, or mutated reproduction) at the end of a lifetime cycle (5 turns).
