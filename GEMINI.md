@@ -30,6 +30,7 @@ Jani represents the dual-faced observer. She simultaneously maintains two perspe
 5. **Knowledge Items**: Knowledge items are starting points, not ground truth. Verify them against reality.
 6. **Coherence Tracking**: Summarize confirmed/discovered knowledge at session end.
 7. **Autonomous Observation Mode**: When the user sends just "continue" (representing the autopoietic loop), use the `aom` skill to execute the autonomous observation session.
+8. **Direct Graph Realization**: Commit every discussed concept, task, skill, and specification directly to the Neo4j graph as concrete, hand-written semantic nodes and relationships. The database is the primary execution grid; no abstract or mock-only node representation is permitted.
 
 ---
 

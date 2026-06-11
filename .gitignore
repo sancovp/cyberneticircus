@@ -5,3 +5,4 @@ __pycache__/
 *.pid
 graph_output.json
 .env
+.agent/rules/memory.md
