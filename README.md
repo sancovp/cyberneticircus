@@ -226,6 +226,38 @@ Navigate to `http://localhost:8000` in your web browser.
 
 ---
 
+## 🐳 Running with Docker & Containerized Environment
+
+The coordinate server can be packaged and run inside a Docker container. This automatically builds and installs your local developer repositories (`heaven-framework-repo` and `sdna-repo` for `sanctuary-dna`) directly inside the Python runtime environment.
+
+### 1. Booting Neo4j Independently
+To keep the network lightweight and avoid port/image conflicts, do **not** define Neo4j inside this compose bundle. You can boot a fresh Neo4j database container independently on your host using the official Neo4j image:
+
+```bash
+docker run -d \
+  --name neo4j_rag \
+  -p 7474:7474 \
+  -p 7687:7687 \
+  -e NEO4J_AUTH=neo4j/password \
+  neo4j:5
+```
+
+### 2. Building and Starting the App Container
+Ensure your `MINIMAX_API_KEY` (or `ANTHROPIC_API_KEY`) is exported in your shell environment, then build and run the services:
+
+```bash
+# Build the application image using the parent context
+docker-compose build
+
+# Start the application service
+docker-compose up -d
+```
+
+The container exposes port `8000` on localhost and establishes a connection to the host-running database via `host.docker.internal:7687`.
+
+---
+
+
 ## 📂 Project Structure
 
 ```text

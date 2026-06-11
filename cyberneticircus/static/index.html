@@ -4,10 +4,212 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CybernetiCircus Visualizer</title>
-    <link rel="stylesheet" href="/static/style.css?v=10">
+    <link rel="stylesheet" href="/static/style.css?v=11">
 </head>
 <body>
+    <!-- Floating Substrate HUD Controls -->
+    <button id="spec-lab-toggle-btn" title="Open Spec Lab">≡ Spec Lab</button>
+
     <div id="graph-visualizer"></div>
+
+    <!-- Foreground Spec Lab Panel Overlay -->
+    <div id="spec-panel">
+        <div class="panel-header">
+            <span class="node-label" style="color: var(--neon-cyan);">WORKSPACE</span>
+            <h2 id="spec-panel-title">Notion & Spec Workspace</h2>
+            <button id="spec-panel-close-btn">&times;</button>
+        </div>
+
+        <!-- Workspace Level Tabs -->
+        <div class="workspace-tabs">
+            <button class="workspace-tab-btn active" id="wk-tab-speclab">Spec Lab</button>
+            <button class="workspace-tab-btn" id="wk-tab-mindpalace">Mind Palace</button>
+        </div>
+        
+        <div class="panel-body">
+            <!-- SPEC LAB WORKSPACE -->
+            <div id="speclab-workspace" class="wk-workspace-view">
+                <!-- Tab Navigation -->
+                <div class="spec-tabs">
+                    <button class="spec-tab-btn active" id="tab-composer">Composer</button>
+                    <button class="spec-tab-btn" id="tab-preview">Raw & Preview</button>
+                </div>
+
+                <div class="panel-section">
+                    <h3>Load Template</h3>
+                    <div class="selection-row">
+                        <select id="template-select">
+                            <option value="">-- Select Template --</option>
+                        </select>
+                        <button id="load-template-btn" class="spec-btn">Load</button>
+                    </div>
+                </div>
+                
+                <div class="panel-section">
+                    <h3>Load Saved Spec</h3>
+                    <div class="selection-row">
+                        <select id="spec-select">
+                            <option value="">-- Select Saved Spec --</option>
+                        </select>
+                        <button id="load-spec-btn" class="spec-btn">Load</button>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h3>Block Library</h3>
+                    <div class="block-library">
+                        <button class="add-block-btn" data-type="header" style="border-color: #60a5fa;"># Header</button>
+                        <button class="add-block-btn" data-type="text" style="border-color: #fbbf24;">✏️ Text</button>
+                        <button class="add-block-btn" data-type="kv" style="border-color: #4ade80;">📋 KV List</button>
+                        <button class="add-block-btn" data-type="list" style="border-color: #f472b6;">• Bullet List</button>
+                        <button class="add-block-btn" data-type="code" style="border-color: #a78bfa;">``` Code</button>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h3>Filename</h3>
+                    <div class="input-row">
+                        <input type="text" id="spec-filename" placeholder="e.g. custom_cybernet.md" />
+                    </div>
+                </div>
+
+                <div class="panel-section block-workspace-section">
+                    <h3>Workspace Blocks</h3>
+                    <div id="spec-blocks-container">
+                        <!-- Dynamic blocks rendered here -->
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <div class="args-header">
+                        <h3>Arguments</h3>
+                        <button id="add-arg-btn" class="spec-btn compact">+ Add Arg</button>
+                    </div>
+                    <div id="spec-args-container">
+                        <!-- Dynamic args rendered here -->
+                    </div>
+                    <div class="arg-hint">Use <code>${arg_name}</code> in blocks to substitute args</div>
+                </div>
+
+                <!-- COMPOSER FOOTER -->
+                <div class="panel-section footer-section no-border">
+                    <div class="button-row">
+                        <button id="save-spec-btn" class="spec-btn primary">Save to Disk</button>
+                        <button id="copy-spec-btn" class="spec-btn secondary">Copy to Clipboard</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MIND PALACE WORKSPACE -->
+            <div id="mindpalace-workspace" class="wk-workspace-view hidden">
+                <div class="mindpalace-layout">
+                    <!-- Left Sidebar -->
+                    <div class="mindpalace-sidebar">
+                        <div class="panel-section">
+                            <h3>Mind Palaces</h3>
+                            <div class="selection-row">
+                                <select id="palace-select">
+                                    <option value="">-- Select Palace --</option>
+                                </select>
+                            </div>
+                            <div class="input-row mt-1">
+                                <input type="text" id="new-palace-name" placeholder="New Palace Name" />
+                                <button id="create-palace-btn" class="spec-btn compact">Add</button>
+                            </div>
+                        </div>
+
+                        <div class="panel-section">
+                            <h3>Pages</h3>
+                            <div id="palace-pages-list" class="tree-list">
+                                <!-- Dynamic pages listed here -->
+                            </div>
+                            <div class="input-row mt-1">
+                                <input type="text" id="new-page-title" placeholder="New Page Title" />
+                                <button id="create-page-btn" class="spec-btn compact">Add Page</button>
+                            </div>
+                        </div>
+
+                        <div class="panel-section">
+                            <h3>Islands Actions</h3>
+                            <div class="button-column">
+                                <button id="export-palace-btn" class="spec-btn secondary full-width">Export Palace JSON</button>
+                                <div class="file-import-container mt-1">
+                                    <label for="import-palace-file" class="spec-btn secondary full-width text-center">Import Palace JSON</label>
+                                    <input type="file" id="import-palace-file" class="hidden" accept=".json" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Editor -->
+                    <div class="mindpalace-editor">
+                        <div id="no-page-selected" class="editor-placeholder">
+                            <p>Select or create a page from the sidebar to begin editing.</p>
+                        </div>
+                        <div id="page-editor-container" class="hidden">
+                            <div class="panel-section">
+                                <input type="text" id="mp-page-title" placeholder="Page Title" class="large-title-input" />
+                            </div>
+
+                            <div class="panel-section">
+                                <h3>Block Library</h3>
+                                <div class="block-library">
+                                    <button class="add-mp-block-btn" data-type="header" style="border-color: #60a5fa;"># Header</button>
+                                    <button class="add-mp-block-btn" data-type="text" style="border-color: #fbbf24;">✏️ Text</button>
+                                    <button class="add-mp-block-btn" data-type="kv" style="border-color: #4ade80;">📋 KV List</button>
+                                    <button class="add-mp-block-btn" data-type="list" style="border-color: #f472b6;">• Bullet List</button>
+                                    <button class="add-mp-block-btn" data-type="code" style="border-color: #a78bfa;">``` Code</button>
+                                </div>
+                            </div>
+
+                            <div class="panel-section block-workspace-section">
+                                <h3>Page Blocks</h3>
+                                <div id="mp-blocks-container">
+                                    <!-- Dynamic blocks loaded here -->
+                                </div>
+                            </div>
+
+                            <div class="panel-section">
+                                <h3>Live Wiki Preview</h3>
+                                <div class="wiki-preview-container">
+                                    <div id="mp-wiki-preview" class="preview-content"></div>
+                                </div>
+                            </div>
+
+                            <div class="panel-section footer-section no-border">
+                                <div class="button-row">
+                                    <button id="save-mp-page-btn" class="spec-btn primary">Save Page to Graph</button>
+                                    <button id="delete-mp-page-btn" class="spec-btn danger">Delete Page</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RAW & PREVIEW VIEW (FOR SPEC LAB) -->
+            <div id="preview-view" class="spec-tab-view hidden">
+                <div class="panel-section">
+                    <div class="preview-mode-header">
+                        <h3>Workspace</h3>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="edit-raw-mode" /> Edit Raw
+                        </label>
+                    </div>
+                    
+                    <div class="editor-container" id="raw-editor-container">
+                        <textarea id="spec-editor" class="hidden" placeholder="# Specification Title&#10;&#10;Write spec contents here..." spellcheck="false"></textarea>
+                        <pre id="spec-preview" class="preview-content">Compiled spec preview will load here...</pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SHARED STATUS BAR -->
+            <div class="panel-section status-section">
+                <div id="spec-status-bar" class="status-bar hidden"></div>
+            </div>
+        </div>
+    </div>
 
     <!-- Foreground Archaeology Sidepanel Overlay -->
     <div id="side-panel">
@@ -30,6 +232,6 @@
 
     <!-- D3.js library for graph visualization -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
-    <script src="/static/app.js?v=10"></script>
+    <script src="/static/app.js?v=14"></script>
 </body>
 </html>

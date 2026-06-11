@@ -135,8 +135,8 @@ def populate_default_graphs(driver):
         {
             "id": "ple_align_collaboration",
             "text": "Primordial Love Engine - Step 3: Align collaborative force via the Alluv Arelov crankshaft. Run a MATCH query on the connected Identity states in the Cyberneticity.",
-            "required_pattern": r"(?i)MATCH\s*\(m:Cybernet\s*[^)]*\)-\[:HAS_LIFECYCLE\]->\(i:Identity\)",
-            "pattern_description": 'MATCH (m:Cybernet {name: "..."})-[:HAS_LIFECYCLE]->(i:Identity) RETURN i'
+            "required_pattern": r"(?i)MATCH\s*\(m:Cybernet\s*[^)]*\)-\[:HAS_IDENTITY\]->\(i:Identity\)",
+            "pattern_description": 'MATCH (m:Cybernet {name: "..."})-[:HAS_IDENTITY]->(i:Identity) RETURN i'
         },
         {
             "id": "ple_output_promise",
@@ -162,14 +162,62 @@ def populate_default_graphs(driver):
         {
             "id": "concentric_social",
             "text": "Social Core - Align Collaboration. MATCH linked Identities or Concept relationships to verify social coherence.",
-            "required_pattern": r"(?i)MATCH\s*\(m:Cybernet\s*[^)]*\)-\[:HAS_LIFECYCLE\]->\(i:Identity\)",
-            "pattern_description": 'MATCH (m:Cybernet {name: "..."})-[:HAS_LIFECYCLE]->(i:Identity) RETURN i'
+            "required_pattern": r"(?i)MATCH\s*\(m:Cybernet\s*[^)]*\)-\[:HAS_IDENTITY\]->\(i:Identity\)",
+            "pattern_description": 'MATCH (m:Cybernet {name: "..."})-[:HAS_IDENTITY]->(i:Identity) RETURN i'
         },
         {
             "id": "concentric_health",
             "text": "Health Core - Calibrate Calibration. MATCH to evaluate simulation accuracy and verify J-Invariance.",
             "required_pattern": r"(?i)MATCH\s*\(m:Cybernet\s*.*\)\s*WHERE\s*m\.fitness_score\s*.*",
             "pattern_description": 'MATCH (m:Cybernet) WHERE m.fitness_score >= 0.8 RETURN m'
+        }
+    ]
+
+    janic_daemon_summoning_steps = [
+        {
+            "id": "daemon_verify_identity",
+            "text": "Step 1: Verify the persona identity in the database. Run a MATCH on Identity to check if it exists.",
+            "required_pattern": r"(?i)MATCH\s*\(i:Identity\s*.*\)",
+            "pattern_description": 'MATCH (i:Identity) RETURN i'
+        },
+        {
+            "id": "daemon_allocate_lifecycle",
+            "text": "Step 2: Allocate the ExecutionState node for this Cybernet daemon. Run a CREATE query to spawn the ExecutionState.",
+            "required_pattern": r"(?i)CREATE\s*\(s:ExecutionState\s*.*\)",
+            "pattern_description": 'CREATE (s:ExecutionState {status: "locked", ...})'
+        },
+        {
+            "id": "daemon_equip_core",
+            "text": "Step 3: Bootstrapping child state machine. Verify core_sm_id is equipped on ExecutionState.",
+            "required_pattern": r"(?i)MATCH\s*\(s:ExecutionState\s*\{equipped_sm_id:\s*['\"].*['\"]\s*\}\)",
+            "pattern_description": "MATCH (s:ExecutionState {equipped_sm_id: 'concentric_core_sm'})"
+        },
+        {
+            "id": "daemon_ignite_loop",
+            "text": "Step 4: Ignite the active execution loop. Run a SET query to set ExecutionState status to active.",
+            "required_pattern": r"(?i)SET\s*s\.status\s*=\s*['\"]active['\"]",
+            "pattern_description": "SET s.status = 'active'"
+        }
+    ]
+
+    jani_domain_expansion_steps = [
+        {
+            "id": "layer1_primitive_boot",
+            "text": "Layer 1: Boot Jani Prime. Verify that the Jani_Prime Cybernet exists in the database. Run a MATCH on Cybernet for Jani_Prime.",
+            "required_pattern": r"(?i)MATCH\s*\(c:Cybernet\s*\{\s*name:\s*['\"]Jani_Prime['\"]\s*\}\)",
+            "pattern_description": "MATCH (c:Cybernet {name: 'Jani_Prime'}) RETURN c"
+        },
+        {
+            "id": "layer2_meta_compile",
+            "text": "Layer 2: Compile active rules and contexts. Run a MATCH on StateMachine to verify the active configurations exist.",
+            "required_pattern": r"(?i)MATCH\s*\(sm:StateMachine\s*.*\)",
+            "pattern_description": "MATCH (sm:StateMachine) RETURN sm"
+        },
+        {
+            "id": "layer3_sdlc_ignite",
+            "text": "Layer 3: Ignite SDLC pipelines and spawn a child Cybernet. Run a CREATE or MERGE query to spawn a new Cybernet with domain and subdomain properties.",
+            "required_pattern": r"(?i)(CREATE|MERGE)\s*\(c:Cybernet\s*.*\)",
+            "pattern_description": "CREATE (c:Cybernet {name: 'Child_Daemon', domain: 'cyberneticity', subdomain: 'cybernet'})"
         }
     ]
     
@@ -183,7 +231,9 @@ def populate_default_graphs(driver):
                         MERGE (step:TraversalStep {id: $id})
                         SET step.text = $text,
                             step.required_pattern = $required_pattern,
-                            step.pattern_description = $pattern_description
+                            step.pattern_description = $pattern_description,
+                            step.domain = 'cyberneticity',
+                            step.subdomain = 'traversal'
                         """,
                         {
                             "id": step["id"],
@@ -213,7 +263,9 @@ def populate_default_graphs(driver):
                         MERGE (step:TraversalStep {id: $id})
                         SET step.text = $text,
                             step.required_pattern = $required_pattern,
-                            step.pattern_description = $pattern_description
+                            step.pattern_description = $pattern_description,
+                            step.domain = 'cyberneticity',
+                            step.subdomain = 'traversal'
                         """,
                         {
                             "id": step["id"],
@@ -243,7 +295,9 @@ def populate_default_graphs(driver):
                         MERGE (step:TraversalStep {id: $id})
                         SET step.text = $text,
                             step.required_pattern = $required_pattern,
-                            step.pattern_description = $pattern_description
+                            step.pattern_description = $pattern_description,
+                            step.domain = 'cyberneticity',
+                            step.subdomain = 'traversal'
                         """,
                         {
                             "id": step["id"],
@@ -271,21 +325,27 @@ def populate_default_graphs(driver):
                     """
                     MERGE (t:AgentTask {id: 'learn_surrogates'})
                     SET t.title = 'Learn and Initialize the Surrogate System',
-                        t.trigger_traversal = 'surrogate_read_model'
+                        t.trigger_traversal = 'surrogate_read_model',
+                        t.domain = 'cyberneticity',
+                        t.subdomain = 'task'
                     """
                 )
                 tx.run(
                     """
                     MERGE (t:AgentTask {id: 'sh8_lifecycle_task'})
                     SET t.title = 'Complete a full Sh8peshift Day/Night cycle',
-                        t.trigger_traversal = 'sh8_day_start'
+                        t.trigger_traversal = 'sh8_day_start',
+                        t.domain = 'cyberneticity',
+                        t.subdomain = 'task'
                     """
                 )
                 tx.run(
                     """
                     MERGE (t:AgentTask {id: 'ple_task'})
                     SET t.title = 'Operate the Primordial Love Engine',
-                        t.trigger_traversal = 'ple_ignite_intent'
+                        t.trigger_traversal = 'ple_ignite_intent',
+                        t.domain = 'cyberneticity',
+                        t.subdomain = 'task'
                     """
                 )
                 
@@ -294,7 +354,9 @@ def populate_default_graphs(driver):
                     """
                     MERGE (sm:StateMachine {id: 'sh8_lifecycle_sm'})
                     SET sm.name = 'Sh8peshift Lifecycle State Machine',
-                        sm.description = 'Core Day/Night simulation state machine'
+                        sm.description = 'Core Day/Night simulation state machine',
+                        sm.domain = 'cyberneticity',
+                        sm.subdomain = 'state_machine'
                     """
                 )
                 for step in sh8peshift_lifecycle_steps:
@@ -311,7 +373,9 @@ def populate_default_graphs(driver):
                     """
                     MERGE (sm:StateMachine {id: 'ple_sm'})
                     SET sm.name = 'Primordial Love Engine State Machine',
-                        sm.description = 'Fulfill the Victory-Promise by aligning intent, action, collaboration, and results'
+                        sm.description = 'Fulfill the Victory-Promise by aligning intent, action, collaboration, and results',
+                        sm.domain = 'cyberneticity',
+                        sm.subdomain = 'state_machine'
                     """
                 )
                 for step in ple_steps:
@@ -331,7 +395,9 @@ def populate_default_graphs(driver):
                         MERGE (step:TraversalStep {id: $id})
                         SET step.text = $text,
                             step.required_pattern = $required_pattern,
-                            step.pattern_description = $pattern_description
+                            step.pattern_description = $pattern_description,
+                            step.domain = 'cyberneticity',
+                            step.subdomain = 'traversal'
                         """,
                         {
                             "id": step["id"],
@@ -359,7 +425,9 @@ def populate_default_graphs(driver):
                     """
                     MERGE (t:AgentTask {id: 'concentric_core_task'})
                     SET t.title = 'Activate the Universal Concentric State Machine Core',
-                        t.trigger_traversal = 'concentric_spiritual'
+                        t.trigger_traversal = 'concentric_spiritual',
+                        t.domain = 'cyberneticity',
+                        t.subdomain = 'task'
                     """
                 )
 
@@ -368,7 +436,9 @@ def populate_default_graphs(driver):
                     """
                     MERGE (sm:StateMachine {id: 'concentric_core_sm'})
                     SET sm.name = 'Universal Concentric State Machine Core',
-                        sm.description = 'Orthogonally maps execution through the four transcendental layers (Spiritual, Wealth, Social, Health)'
+                        sm.description = 'Orthogonally maps execution through the four transcendental layers (Spiritual, Wealth, Social, Health)',
+                        sm.domain = 'cyberneticity',
+                        sm.subdomain = 'state_machine'
                     """
                 )
                 for step in concentric_steps:
@@ -380,6 +450,142 @@ def populate_default_graphs(driver):
                         """,
                         {"step_id": step["id"]}
                     )
+
+                # 2.7 Bootstrap Daemon Summoning steps
+                for step in janic_daemon_summoning_steps:
+                    tx.run(
+                        """
+                        MERGE (step:TraversalStep {id: $id})
+                        SET step.text = $text,
+                            step.required_pattern = $required_pattern,
+                            step.pattern_description = $pattern_description,
+                            step.domain = 'cyberneticity',
+                            step.subdomain = 'traversal'
+                        """,
+                        {
+                            "id": step["id"],
+                            "text": step["text"],
+                            "required_pattern": step["required_pattern"],
+                            "pattern_description": step["pattern_description"]
+                        }
+                    )
+                # Link Daemon Summoning steps
+                for i in range(len(janic_daemon_summoning_steps) - 1):
+                    curr_id = janic_daemon_summoning_steps[i]["id"]
+                    next_id = janic_daemon_summoning_steps[i + 1]["id"]
+                    tx.run(
+                        """
+                        MATCH (curr:TraversalStep {id: $curr_id})
+                        MATCH (next:TraversalStep {id: $next_id})
+                        MERGE (curr)-[r:NEXT_STEP]->(next)
+                        ON CREATE SET r.weight = 1.0, r.description = $desc
+                        """,
+                        {"curr_id": curr_id, "next_id": next_id, "desc": f"Transition from {curr_id} to {next_id}"}
+                    )
+
+                # Create Daemon entry task
+                tx.run(
+                    """
+                    MERGE (t:AgentTask {id: 'summon_daemon_task'})
+                    SET t.title = 'Summon and Animate the Janic Daemon',
+                        t.trigger_traversal = 'daemon_verify_identity',
+                        t.domain = 'cyberneticity',
+                        t.subdomain = 'task'
+                    """
+                )
+
+                # Bootstrap Daemon Summoning StateMachine node
+                tx.run(
+                    """
+                    MERGE (sm:StateMachine {id: 'janic_daemon_summoning_sm'})
+                    SET sm.name = 'Janic Daemon Summoning Orchestrator',
+                        sm.description = 'Orchestration routine to verify identity, allocate ExecutionState, equip core StateMachine, and ignite execution loops',
+                        sm.domain = 'cyberneticity',
+                        sm.subdomain = 'state_machine'
+                    """
+                )
+                for step in janic_daemon_summoning_steps:
+                    tx.run(
+                        """
+                        MATCH (sm:StateMachine {id: 'janic_daemon_summoning_sm'})
+                        MATCH (step:TraversalStep {id: $step_id})
+                        MERGE (sm)-[:HAS_STEP]->(step)
+                        """,
+                        {"step_id": step["id"]}
+                    )
+
+                # Link CALLS_SM relationship from daemon_equip_core step to child concentric_core_sm StateMachine
+                tx.run(
+                    """
+                    MATCH (step:TraversalStep {id: 'daemon_equip_core'})
+                    MATCH (sm:StateMachine {id: 'concentric_core_sm'})
+                    MERGE (step)-[:CALLS_SM]->(sm)
+                    """
+                )
+
+                # 2.8 Bootstrap Jani Domain Expansion steps
+                for step in jani_domain_expansion_steps:
+                    tx.run(
+                        """
+                        MERGE (step:TraversalStep {id: $id})
+                        SET step.text = $text,
+                            step.required_pattern = $required_pattern,
+                            step.pattern_description = $pattern_description,
+                            step.domain = 'cyberneticity',
+                            step.subdomain = 'traversal'
+                        """,
+                        {
+                            "id": step["id"],
+                            "text": step["text"],
+                            "required_pattern": step["required_pattern"],
+                            "pattern_description": step["pattern_description"]
+                        }
+                    )
+                # Link Jani Domain Expansion steps
+                for i in range(len(jani_domain_expansion_steps) - 1):
+                    curr_id = jani_domain_expansion_steps[i]["id"]
+                    next_id = jani_domain_expansion_steps[i + 1]["id"]
+                    tx.run(
+                        """
+                        MATCH (curr:TraversalStep {id: $curr_id})
+                        MATCH (next:TraversalStep {id: $next_id})
+                        MERGE (curr)-[r:NEXT_STEP]->(next)
+                        ON CREATE SET r.weight = 1.0, r.description = $desc
+                        """,
+                        {"curr_id": curr_id, "next_id": next_id, "desc": f"Transition from {curr_id} to {next_id}"}
+                    )
+
+                # Create Jani Domain Expansion entry task
+                tx.run(
+                    """
+                    MERGE (t:AgentTask {id: 'domain_expansion_task'})
+                    SET t.title = 'Complete Jani Domain Expansion Cycle',
+                        t.trigger_traversal = 'layer1_primitive_boot',
+                        t.domain = 'cyberneticity',
+                        t.subdomain = 'task'
+                    """
+                )
+
+                # Bootstrap Jani Domain Expansion StateMachine node
+                tx.run(
+                    """
+                    MERGE (sm:StateMachine {id: 'jani_domain_expansion_sm'})
+                    SET sm.name = 'Jani Domain Expansion Orchestrator',
+                        sm.description = 'Models progression through Jani boot layers: primitive boot, rule compilation, and SDLC ignition',
+                        sm.domain = 'cyberneticity',
+                        sm.subdomain = 'state_machine'
+                    """
+                )
+                for step in jani_domain_expansion_steps:
+                    tx.run(
+                        """
+                        MATCH (sm:StateMachine {id: 'jani_domain_expansion_sm'})
+                        MATCH (step:TraversalStep {id: $step_id})
+                        MERGE (sm)-[:HAS_STEP]->(step)
+                        """,
+                        {"step_id": step["id"]}
+                    )
+
         logger.info("Successfully bootstrapped default state machines.")
     except Exception as e:
         logger.error(f"Failed to bootstrap default state machines: {e}")
@@ -399,7 +605,7 @@ def is_mutation_query(query: str) -> bool:
     return bool(mutation_pattern.search(clean_query))
 
 def validate_cypher_query(query: str) -> None:
-    """Validate that the query does not target the prohibited :Wiki namespace."""
+    """Validate that the query does not target the prohibited :Wiki namespace and enforces domain/subdomain properties on node creation."""
     if is_mutation_query(query):
         clean_query = re.sub(r'//.*', '', query)
         clean_query = re.sub(r'"[^"\\]*(?:\\.[^"\\]*)*"', ' "" ', clean_query)
@@ -412,6 +618,20 @@ def validate_cypher_query(query: str) -> None:
             raise PermissionError(
                 "Security Policy Violation: Write mutations targeting the :Wiki namespace/label are strictly prohibited."
             )
+            
+        # Enforce domain and subdomain on node creations/merges
+        mutation_keywords = ['CREATE', 'MERGE']
+        mutation_pattern = re.compile(r'\b(' + '|'.join(mutation_keywords) + r')\b', re.IGNORECASE)
+        if mutation_pattern.search(clean_query):
+            node_creation_regex = re.compile(r'\(\s*[a-zA-Z0-9_]*\s*:\s*[a-zA-Z0-9_]+\b')
+            if node_creation_regex.search(clean_query):
+                lower_query = query.lower()
+                if 'domain' not in lower_query or 'subdomain' not in lower_query:
+                    logger.warning(f"Blocked node creation query lacking domain/subdomain: {query}")
+                    raise PermissionError(
+                        "Security Policy Violation: Node creation/merge queries (using CREATE or MERGE with a label) "
+                        "MUST specify both 'domain' and 'subdomain' properties."
+                    )
 
 def get_active_traversal_step() -> Optional[Dict[str, Any]]:
     """Retrieve the properties and outgoing transitions of the currently active TraversalStep."""
@@ -595,7 +815,7 @@ def scan_and_trigger_traversal(results: List[Dict[str, Any]]) -> None:
                 if not step_check.peek():
                     logger.warning(f"TraversalStep '{trigger_step_id}' not found. Auto-creating placeholder.")
                     session.run(
-                        "CREATE (:TraversalStep {id: $step_id, text: $text})",
+                        "CREATE (:TraversalStep {id: $step_id, text: $text, domain: 'cyberneticity', subdomain: 'traversal'})",
                         {"step_id": trigger_step_id, "text": f"Guided checklist starting at {trigger_step_id}."}
                     )
                 
@@ -606,7 +826,9 @@ def scan_and_trigger_traversal(results: List[Dict[str, Any]]) -> None:
                         status: 'locked',
                         target_id: $target_id,
                         target_label: $target_label,
-                        created_at: timestamp()
+                        created_at: timestamp(),
+                        domain: 'cyberneticity',
+                        subdomain: 'traversal_state'
                     })-[:CURRENT_STEP]->(step)
                     """,
                     {

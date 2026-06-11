@@ -41,7 +41,8 @@ from db_logic import (
     progress_traversal,
     adjust_transition_weight_internal,
     serialize_value,
-    validate_cypher_query
+    validate_cypher_query,
+    get_active_traversal_step
 )
 
 app = FastAPI(title="CybernetiCircus Compiler API")
@@ -127,9 +128,14 @@ def log_agent_action(log_type: str, text: str, focus_nodes: Optional[List[str]] 
     if len(agent_trace_logs) > 100:
         agent_trace_logs.pop(0)
         
+    fn = list(focus_nodes) if focus_nodes is not None else []
+    fl = list(focus_labels) if focus_labels is not None else []
+        
     agent_trace_logs.append({
         "type": log_type,
-        "text": text
+        "text": text,
+        "focus_nodes": fn,
+        "focus_labels": fl
     })
     
     # Update active focus targets
@@ -171,6 +177,10 @@ def extract_nodes_from_results(results: Any):
         elif isinstance(val, list):
             for item in val:
                 scan(item)
+        elif isinstance(val, (str, int, float)):
+            sval = str(val).strip()
+            if sval and len(sval) < 100:
+                nodes_found.add(sval)
                 
     try:
         scan(results)
@@ -285,7 +295,7 @@ def get_graph(name: Optional[str] = None):
                 res = session.run(
                     """
                     MATCH (m:Cybernet {name: $name})
-                    OPTIONAL MATCH (m)-[:HAS_LIFECYCLE]->(s:Identity)
+                    OPTIONAL MATCH (m)-[:HAS_LIFECYCLE]->(s:ExecutionState)
                     OPTIONAL MATCH (s)-[:CURRENT_STEP]->(curr:TraversalStep)
                     OPTIONAL MATCH (m)-[:EQUIPS]->(sm:StateMachine)
                     RETURN id(m) as m_id, id(curr) as curr_id, id(sm) as sm_id
@@ -346,27 +356,43 @@ def get_graph(name: Optional[str] = None):
                 res = session.run(
                     """
                     MATCH (c:Cybernet {name: $name})
-                    WITH c
-                    OPTIONAL MATCH (c)-[:HAS_LIFECYCLE]->(i:Identity)
-                    WITH c, i
-                    OPTIONAL MATCH (i)-[:CURRENT_STEP]->(curr:TraversalStep)
-                    WITH c, i, curr
+                    OPTIONAL MATCH (c)-[:HAS_LIFECYCLE]->(es:ExecutionState)
+                    OPTIONAL MATCH (es)-[:CURRENT_STEP]->(curr:TraversalStep)
                     OPTIONAL MATCH (c)-[:EQUIPS]->(sm:StateMachine)
-                    WITH c, i, curr, sm
-                    OPTIONAL MATCH (sm)-[:INITIAL_STATE|TRANSITION_TO|ON_STATE*0..5]->(sms)
-                    WITH c, i, curr, sm, collect(DISTINCT sms) as sms_list
-                    OPTIONAL MATCH (c)-[:HAS_MIND_PALACE]->(root_c:Concept)
-                    WITH c, i, curr, sm, sms_list, root_c
-                    OPTIONAL MATCH (root_c)-[:SUB_CONCEPT*0..5]->(con:Concept)
-                    WITH c, i, curr, sm, sms_list, collect(DISTINCT con) as con_list
-                    OPTIONAL MATCH (c)-[:EQUIPS_SKILL]->(sk:Skill)
-                    WITH c, i, curr, sm, sms_list, con_list, collect(DISTINCT sk) as sk_list
-                    OPTIONAL MATCH (c)-[:HAS_SIMULATION]->(sim:SimulationRun)
-                    WITH c, i, curr, sm, sms_list, con_list, sk_list, collect(DISTINCT sim) as sim_list
-                    OPTIONAL MATCH (i)-[:HAS_TRACE_HISTORY]->(t1:ExecutionTrace)-[:NEXT_TRACE*0..1000]->(tr:ExecutionTrace)
-                    WITH c, i, curr, sm, sms_list, con_list, sk_list, sim_list, collect(DISTINCT tr) as tr_list
-                    
-                    WITH [c] + [i] + [curr] + [sm] + sms_list + con_list + sk_list + sim_list + tr_list as all_nodes_raw
+                    OPTIONAL MATCH (c)-[:HAS_IDENTITY]->(i:Identity)
+ 
+                    CALL {
+                        WITH sm
+                        OPTIONAL MATCH (sm)-[:INITIAL_STATE|TRANSITION_TO|ON_STATE*0..5]->(sms)
+                        RETURN collect(DISTINCT sms) as sms_list
+                    }
+ 
+                    CALL {
+                        WITH c
+                        OPTIONAL MATCH (c)-[:HAS_MIND_PALACE]->(root_c:Concept)
+                        OPTIONAL MATCH (root_c)-[:SUB_CONCEPT*0..1]->(con:Concept)
+                        RETURN collect(DISTINCT con)[0..30] as con_list
+                    }
+ 
+                    CALL {
+                        WITH c
+                        OPTIONAL MATCH (c)-[:EQUIPS_SKILL]->(sk:Skill)
+                        RETURN collect(DISTINCT sk)[0..30] as sk_list
+                    }
+ 
+                    CALL {
+                        WITH c
+                        OPTIONAL MATCH (c)-[:HAS_SIMULATION]->(sim:SimulationRun)
+                        RETURN collect(DISTINCT sim)[0..30] as sim_list
+                    }
+ 
+                    CALL {
+                        WITH es
+                        OPTIONAL MATCH (es)-[:HAS_TRACE_HISTORY]->(t1:ExecutionTrace)-[:NEXT_TRACE*0..30]->(tr:ExecutionTrace)
+                        RETURN collect(DISTINCT tr)[0..30] as tr_list
+                    }
+                     
+                    WITH [c] + [es] + [i] + [curr] + [sm] + sms_list + con_list + sk_list + sim_list + tr_list as all_nodes_raw
                     UNWIND all_nodes_raw as n
                     WITH n WHERE n IS NOT NULL
                     WITH collect(DISTINCT n) as all_nodes
@@ -382,7 +408,7 @@ def get_graph(name: Optional[str] = None):
                 res = session.run(
                     """
                     MATCH (n)
-                    WHERE n:Cybernet OR n:Identity OR n:StateMachine OR n:TraversalStep OR n:TraversalState OR n:SimulationRun
+                    WHERE n:Cybernet OR n:Identity OR n:ExecutionState OR n:StateMachine OR n:TraversalStep OR n:TraversalState OR n:SimulationRun OR n:MindPalace OR n:Page
                     WITH collect(DISTINCT n) as all_nodes
                     UNWIND all_nodes as n
                     WITH DISTINCT n, all_nodes
@@ -410,6 +436,462 @@ def get_graph(name: Optional[str] = None):
     finally:
         compiler.close()
 
+@app.get("/api/node/subgraph")
+def get_node_subgraph(node_id: str):
+    compiler = CybernetiCircusCompiler()
+    try:
+        try:
+            node_id_int = int(node_id)
+        except ValueError:
+            node_id_int = -1
+            
+        nodes = []
+        links = []
+        node_ids = set()
+        
+        def get_node_id(node):
+            if hasattr(node, 'id') and node.id is not None:
+                return str(node.id)
+            if hasattr(node, 'element_id') and node.element_id is not None:
+                return str(node.element_id)
+            return str(hash(node))
+            
+        def add_node(node):
+            if not node:
+                return None
+            nid = get_node_id(node)
+            if nid not in node_ids:
+                node_ids.add(nid)
+                labels = list(node.labels)
+                label = labels[0] if labels else "Unknown"
+                display_name = node.get("name") or node.get("id") or node.get("run_id") or label
+                nodes.append({
+                    "id": nid,
+                    "label": label,
+                    "name": display_name,
+                    "properties": serialize_properties(dict(node)),
+                    "active_tag": None,
+                    "highlighted": False
+                })
+            return nid
+            
+        with compiler.driver.session() as session:
+            # Query outgoing paths up to length 2 starting from the node
+            res = session.run(
+                """
+                MATCH (n) WHERE elementId(n) = $node_id OR id(n) = $node_id_int
+                OPTIONAL MATCH path = (n)-[*0..2]->(m)
+                WITH path LIMIT 200
+                WITH collect(path) as paths
+                UNWIND paths as p
+                UNWIND nodes(p) as nd
+                WITH DISTINCT nd, paths
+                OPTIONAL MATCH (nd)-[r]->(md)
+                WHERE any(p in paths WHERE md IN nodes(p))
+                RETURN nd, r, md
+                """,
+                {"node_id": node_id, "node_id_int": node_id_int}
+            )
+            for record in res:
+                nd = record["nd"]
+                md = record["md"]
+                rel = record["r"]
+                
+                nd_id = add_node(nd)
+                md_id = add_node(md)
+                
+                if rel is not None and nd_id and md_id:
+                    link_item = {"source": nd_id, "target": md_id, "type": rel.type}
+                    if link_item not in links:
+                        links.append(link_item)
+                        
+        return {"nodes": nodes, "links": links}
+    except Exception as e:
+        logger.error(f"Error fetching node subgraph: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        compiler.close()
+
+# --- MIND PALACE & ISLANDS PLUGIN SYSTEM ---
+
+class MindPalaceCreate(BaseModel):
+    name: str
+    description: Optional[str] = ""
+
+class PageCreate(BaseModel):
+    title: str
+
+class BlockItem(BaseModel):
+    type: str  # 'header', 'text', 'list', 'code'
+    content: str
+    level: Optional[int] = 1
+    language: Optional[str] = "text"
+
+class BlocksPayload(BaseModel):
+    blocks: List[BlockItem]
+
+@app.get("/api/mindpalaces")
+def list_mind_palaces():
+    compiler = CybernetiCircusCompiler()
+    try:
+        with compiler.driver.session() as session:
+            res = session.run(
+                """
+                MATCH (mp:MindPalace)
+                RETURN elementId(mp) as id, mp.name as name, mp.domain as domain, mp.subdomain as subdomain, mp.description as description
+                ORDER BY mp.name
+                """
+            )
+            return {"mindpalaces": [dict(r) for r in res]}
+    except Exception as e:
+        logger.error(f"Error listing mind palaces: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        compiler.close()
+
+@app.post("/api/mindpalace")
+def create_mind_palace(payload: MindPalaceCreate):
+    compiler = CybernetiCircusCompiler()
+    try:
+        mp_id = f"mp_{uuid.uuid4().hex}"
+        with compiler.driver.session() as session:
+            res = session.run(
+                """
+                MERGE (mp:MindPalace {name: $name})
+                ON CREATE SET mp.id = $id, mp.description = $description, mp.domain = 'cyberneticity', mp.subdomain = 'mindpalace'
+                ON MATCH SET mp.description = $description
+                RETURN elementId(mp) as elem_id, mp.id as id, mp.name as name, mp.description as description
+                """,
+                {"name": payload.name, "description": payload.description, "id": mp_id}
+            )
+            record = res.single()
+            if not record:
+                raise HTTPException(status_code=400, detail="Failed to create Mind Palace.")
+            return dict(record)
+    except Exception as e:
+        logger.error(f"Error creating mind palace: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        compiler.close()
+
+@app.get("/api/mindpalace/{mp_id}/pages")
+def list_mind_palace_pages(mp_id: str):
+    compiler = CybernetiCircusCompiler()
+    try:
+        try:
+            mp_id_int = int(mp_id)
+        except ValueError:
+            mp_id_int = -1
+            
+        with compiler.driver.session() as session:
+            res = session.run(
+                """
+                MATCH (mp:MindPalace) WHERE elementId(mp) = $mp_id OR id(mp) = $mp_id_int OR mp.id = $mp_id
+                MATCH (mp)-[:HAS_PAGE]->(p:Page)
+                RETURN elementId(p) as id, p.id as page_id, p.title as title, p.domain as domain, p.subdomain as subdomain
+                ORDER BY p.title
+                """,
+                {"mp_id": mp_id, "mp_id_int": mp_id_int}
+            )
+            return {"pages": [dict(r) for r in res]}
+    except Exception as e:
+        logger.error(f"Error listing page nodes: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        compiler.close()
+
+@app.post("/api/mindpalace/{mp_id}/page")
+def create_mind_palace_page(mp_id: str, payload: PageCreate):
+    compiler = CybernetiCircusCompiler()
+    try:
+        try:
+            mp_id_int = int(mp_id)
+        except ValueError:
+            mp_id_int = -1
+            
+        page_id = f"page_{uuid.uuid4().hex}"
+        with compiler.driver.session() as session:
+            res = session.run(
+                """
+                MATCH (mp:MindPalace) WHERE elementId(mp) = $mp_id OR id(mp) = $mp_id_int OR mp.id = $mp_id
+                CREATE (p:Page {id: $page_id, title: $title, domain: 'cyberneticity', subdomain: 'page'})
+                CREATE (mp)-[:HAS_PAGE]->(p)
+                RETURN elementId(p) as id, p.id as page_id, p.title as title
+                """,
+                {"mp_id": mp_id, "mp_id_int": mp_id_int, "page_id": page_id, "title": payload.title}
+            )
+            record = res.single()
+            if not record:
+                raise HTTPException(status_code=400, detail="Failed to create Page under specified Mind Palace.")
+            return dict(record)
+    except Exception as e:
+        logger.error(f"Error creating mind palace page: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        compiler.close()
+
+@app.get("/api/mindpalace/page/{page_id}")
+def get_mind_palace_page(page_id: str):
+    compiler = CybernetiCircusCompiler()
+    try:
+        try:
+            page_id_int = int(page_id)
+        except ValueError:
+            page_id_int = -1
+            
+        with compiler.driver.session() as session:
+            res = session.run(
+                """
+                MATCH (p:Page) WHERE elementId(p) = $page_id OR id(p) = $page_id_int OR p.id = $page_id
+                OPTIONAL MATCH (p)-[:HAS_BLOCK]->(b:Block)
+                RETURN elementId(p) as id, p.id as page_id, p.title as title, p.domain as domain, p.subdomain as subdomain,
+                       collect(properties(b)) as blocks
+                """,
+                {"page_id": page_id, "page_id_int": page_id_int}
+            )
+            record = res.single()
+            if not record:
+                raise HTTPException(status_code=404, detail="Page not found.")
+            
+            data = dict(record)
+            blocks = [b for b in data["blocks"] if b]
+            blocks.sort(key=lambda x: x.get("position", 0))
+            data["blocks"] = blocks
+            return data
+    except Exception as e:
+        logger.error(f"Error fetching page: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        compiler.close()
+
+@app.post("/api/mindpalace/page/{page_id}/blocks")
+def save_mind_palace_page_blocks(page_id: str, payload: BlocksPayload):
+    compiler = CybernetiCircusCompiler()
+    try:
+        try:
+            page_id_int = int(page_id)
+        except ValueError:
+            page_id_int = -1
+            
+        with compiler.driver.session() as session:
+            session.run(
+                """
+                MATCH (p:Page) WHERE elementId(p) = $page_id OR id(p) = $page_id_int OR p.id = $page_id
+                OPTIONAL MATCH (p)-[:HAS_BLOCK]->(b:Block)
+                DETACH DELETE b
+                """,
+                {"page_id": page_id, "page_id_int": page_id_int}
+            )
+            
+            for idx, block in enumerate(payload.blocks):
+                block_id = f"block_{uuid.uuid4().hex}"
+                session.run(
+                    """
+                    MATCH (p:Page) WHERE elementId(p) = $page_id OR id(p) = $page_id_int OR p.id = $page_id
+                    CREATE (b:Block {
+                        id: $block_id,
+                        type: $type,
+                        content: $content,
+                        position: $position,
+                        level: $level,
+                        language: $language,
+                        domain: 'cyberneticity',
+                        subdomain: 'block'
+                    })
+                    CREATE (p)-[:HAS_BLOCK]->(b)
+                    """,
+                    {
+                        "page_id": page_id,
+                        "page_id_int": page_id_int,
+                        "block_id": block_id,
+                        "type": block.type,
+                        "content": block.content,
+                        "position": idx,
+                        "level": block.level,
+                        "language": block.language
+                    }
+                )
+            return {"status": "success", "message": "Blocks saved successfully."}
+    except Exception as e:
+        logger.error(f"Error saving page blocks: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        compiler.close()
+
+@app.delete("/api/mindpalace/page/{page_id}")
+def delete_mind_palace_page(page_id: str):
+    compiler = CybernetiCircusCompiler()
+    try:
+        try:
+            page_id_int = int(page_id)
+        except ValueError:
+            page_id_int = -1
+            
+        with compiler.driver.session() as session:
+            session.run(
+                """
+                MATCH (p:Page) WHERE elementId(p) = $page_id OR id(p) = $page_id_int OR p.id = $page_id
+                OPTIONAL MATCH (p)-[:HAS_BLOCK]->(b:Block)
+                DETACH DELETE p, b
+                """,
+                {"page_id": page_id, "page_id_int": page_id_int}
+            )
+            return {"status": "success", "message": "Page and associated blocks deleted."}
+    except Exception as e:
+        logger.error(f"Error deleting page: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        compiler.close()
+
+@app.post("/api/mindpalace/{mp_id}/export")
+def export_mind_palace(mp_id: str):
+    compiler = CybernetiCircusCompiler()
+    try:
+        try:
+            mp_id_int = int(mp_id)
+        except ValueError:
+            mp_id_int = -1
+            
+        nodes = []
+        links = []
+        node_ids = set()
+        
+        def add_node(node):
+            if not node:
+                return None
+            nid = str(node.element_id) if hasattr(node, 'element_id') else (str(node.id) if hasattr(node, 'id') else str(hash(node)))
+            if nid not in node_ids:
+                node_ids.add(nid)
+                labels = list(node.labels)
+                label = labels[0] if labels else "Unknown"
+                display_name = node.get("name") or node.get("title") or node.get("id") or label
+                nodes.append({
+                    "id": nid,
+                    "label": label,
+                    "name": display_name,
+                    "properties": dict(node)
+                })
+            return nid
+            
+        with compiler.driver.session() as session:
+            res = session.run(
+                """
+                MATCH (mp:MindPalace) WHERE elementId(mp) = $mp_id OR id(mp) = $mp_id_int OR mp.id = $mp_id
+                OPTIONAL MATCH path = (mp)-[*1..3]->(m)
+                WITH mp, collect(path) as paths
+                RETURN mp, paths
+                """,
+                {"mp_id": mp_id, "mp_id_int": mp_id_int}
+            )
+            record = res.single()
+            if not record:
+                raise HTTPException(status_code=404, detail="Mind Palace not found.")
+                
+            mp_node = record["mp"]
+            paths = record["paths"] or []
+            
+            add_node(mp_node)
+            
+            for path in paths:
+                if not path:
+                    continue
+                path_nodes = path.nodes
+                path_rels = path.relationships
+                
+                for nd in path_nodes:
+                    add_node(nd)
+                    
+                for rel in path_rels:
+                    src_nid = str(rel.start_node.element_id) if hasattr(rel.start_node, 'element_id') else str(rel.start_node.id)
+                    tgt_nid = str(rel.end_node.element_id) if hasattr(rel.end_node, 'element_id') else str(rel.end_node.id)
+                    link_item = {"source": src_nid, "target": tgt_nid, "type": rel.type}
+                    if link_item not in links:
+                        links.append(link_item)
+                        
+        return {
+            "mindpalace_id": mp_id,
+            "export_data": {
+                "nodes": nodes,
+                "links": links
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error exporting mind palace: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        compiler.close()
+
+class ImportPayload(BaseModel):
+    export_data: Dict[str, Any]
+
+@app.post("/api/mindpalace/import")
+def import_mind_palace(payload: ImportPayload):
+    compiler = CybernetiCircusCompiler()
+    try:
+        nodes = payload.export_data.get("nodes", [])
+        links = payload.export_data.get("links", [])
+        id_map = {}
+        
+        with compiler.driver.session() as session:
+            for nd in nodes:
+                properties = nd.get("properties", {})
+                label = nd.get("label", "Unknown")
+                old_id = nd.get("id")
+                
+                if "domain" not in properties:
+                    properties["domain"] = "cyberneticity"
+                if "subdomain" not in properties:
+                    properties["subdomain"] = "imported"
+                
+                merge_key = "id" if "id" in properties else "name"
+                merge_val = properties.get(merge_key)
+                
+                if merge_val is not None:
+                    res = session.run(
+                        f"""
+                        MERGE (n:{label} {{{merge_key}: $merge_val}})
+                        SET n += $props
+                        RETURN elementId(n) as new_id
+                        """,
+                        {"merge_val": merge_val, "props": properties}
+                    )
+                else:
+                    res = session.run(
+                        f"""
+                        CREATE (n:{label})
+                        SET n = $props
+                        RETURN elementId(n) as new_id
+                        """,
+                        {"props": properties}
+                    )
+                record = res.single()
+                if record:
+                    id_map[old_id] = record["new_id"]
+                    
+            for l in links:
+                src_old = l["source"]
+                tgt_old = l["target"]
+                rel_type = l["type"]
+                
+                src_new = id_map.get(src_old)
+                tgt_new = id_map.get(tgt_old)
+                
+                if src_new and tgt_new:
+                    session.run(
+                        """
+                        MATCH (a) WHERE elementId(a) = $src
+                        MATCH (b) WHERE elementId(b) = $tgt
+                        MERGE (a)-[r:%s]->(b)
+                        """ % rel_type,
+                        {"src": src_new, "tgt": tgt_new}
+                    )
+            return {"status": "success", "message": f"Successfully imported {len(nodes)} nodes and {len(links)} links."}
+    except Exception as e:
+        logger.error(f"Error importing mind palace: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        compiler.close()
+
 @app.get("/api/agent_logs")
 def get_agent_logs():
     global active_cybernet
@@ -432,7 +914,7 @@ def get_agent_logs():
             if not current_active:
                 res = session.run(
                     """
-                    MATCH (c:Cybernet)-[:HAS_LIFECYCLE]->(i:Identity)-[:CURRENT_STEP]->(curr:TraversalStep)
+                    MATCH (c:Cybernet)-[:HAS_LIFECYCLE]->(i:ExecutionState)-[:CURRENT_STEP]->(curr:TraversalStep)
                     RETURN c.name as name
                     LIMIT 1
                     """
@@ -447,7 +929,7 @@ def get_agent_logs():
                 res_fallback = session.run(
                     """
                     MATCH (c:Cybernet) 
-                    OPTIONAL MATCH (c)-[:HAS_LIFECYCLE]->(i:Identity)-[:HAS_TRACE_HISTORY]->(t:ExecutionTrace) 
+                    OPTIONAL MATCH (c)-[:HAS_LIFECYCLE]->(i:ExecutionState)-[:HAS_TRACE_HISTORY]->(t:ExecutionTrace)
                     WITH c, count(t) as traces_count 
                     RETURN c.name as name 
                     ORDER BY traces_count DESC 
@@ -463,7 +945,7 @@ def get_agent_logs():
             if current_active:
                 res_step = session.run(
                     """
-                    MATCH (c:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(i:Identity)-[:CURRENT_STEP]->(curr:TraversalStep)
+                    MATCH (c:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(i:ExecutionState)-[:CURRENT_STEP]->(curr:TraversalStep)
                     RETURN id(curr) as curr_id
                     """,
                     {"name": current_active}
@@ -540,11 +1022,20 @@ def tick_turn(req: TickRequest):
         )
         
         res = compiler.tick_turn(req.character_name, runner)
+        
+        # Parse the executed action query text for extra highlights (node names / labels)
+        action_query = res.get("action_taken") or ""
+        query_nodes = re.findall(r"['\"]([a-zA-Z0-9_\-]+)['\"]", action_query)
+        query_labels = re.findall(r":([A-Z][a-zA-Z0-9_]*)", action_query)
+        
+        focus_nodes = list(set([req.character_name] + query_nodes))
+        focus_labels = list(set(["Cybernet"] + query_labels))
+        
         log_agent_action(
             "event",
             f"Ticked turn for '{req.character_name}'. Action: {res.get('action_taken')}. Event: {res.get('event_message')}",
-            [req.character_name],
-            ["Cybernet"]
+            focus_nodes,
+            focus_labels
         )
         return res
     except Exception as e:
@@ -562,7 +1053,15 @@ def query_database_api(req: QueryRequest):
         
         # Scan results for highlights
         focus_nodes, focus_labels = extract_nodes_from_results(res)
-        log_agent_action("action", f"Executed query: {req.query}", focus_nodes, focus_labels)
+        
+        # Parse query text for quoted strings (node names) and CamelCase labels
+        query_nodes = re.findall(r"['\"]([a-zA-Z0-9_\-]+)['\"]", req.query)
+        query_labels = re.findall(r":([A-Z][a-zA-Z0-9_]*)", req.query)
+        
+        combined_nodes = list(set(focus_nodes + query_nodes))
+        combined_labels = list(set(focus_labels + query_labels))
+        
+        log_agent_action("action", f"Executed query: {req.query}", combined_nodes, combined_labels)
         
         return res
     except PermissionError as pe:
@@ -579,8 +1078,17 @@ def query_database_api(req: QueryRequest):
 @app.post("/api/traversal/progress")
 def progress_traversal_api(req: ProgressRequest):
     try:
+        active_before = get_active_traversal_step()
         msg = progress_traversal(req.answer)
-        log_agent_action("action", f"Progressed active step. Answer: {req.answer}", [], ["TraversalStep"])
+        active_after = get_active_traversal_step()
+        
+        focus_nodes = []
+        if active_before and active_before.get("id"):
+            focus_nodes.append(str(active_before["id"]))
+        if active_after and active_after.get("id"):
+            focus_nodes.append(str(active_after["id"]))
+            
+        log_agent_action("action", f"Progressed active step. Answer: {req.answer}", focus_nodes, ["TraversalStep"])
         return {"message": msg}
     except Exception as e:
         log_agent_action("error", f"Traversal progress failed: {e}", [], ["TraversalStep"])
@@ -597,7 +1105,7 @@ def get_schema_api():
 @app.get("/api/file/read")
 def read_file_api(path: str):
     # Security: enforce that the file must be within the scratch workspace
-    allowed_prefix = "/Users/isaacwr/.gemini/antigravity/scratch"
+    allowed_prefix = os.environ.get("SCRATCH_WORKSPACE_DIR", "/Users/isaacwr/.gemini/antigravity/scratch")
     normalized_path = os.path.abspath(path)
     if not normalized_path.startswith(allowed_prefix):
         raise HTTPException(status_code=403, detail="Access denied: file path is outside the allowed workspace.")
@@ -607,6 +1115,89 @@ def read_file_api(path: str):
         
     try:
         with open(normalized_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        return {"content": content}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Spec Lab Endpoints
+class SaveSpecRequest(BaseModel):
+    filename: str
+    content: str
+
+@app.get("/api/specs/list")
+def list_specs_api():
+    project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    specs_dir = os.path.join(project_dir, "specs")
+    os.makedirs(specs_dir, exist_ok=True)
+    try:
+        files = [f for f in os.listdir(specs_dir) if f.endswith(".md") or f.endswith(".json")]
+        return {"specs": sorted(files)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/specs/read")
+def read_spec_api(filename: str):
+    project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    specs_dir = os.path.join(project_dir, "specs")
+    target_path = os.path.abspath(os.path.join(specs_dir, filename))
+    if not target_path.startswith(os.path.abspath(specs_dir)):
+        raise HTTPException(status_code=403, detail="Access denied: path traversal attempt.")
+    if not os.path.exists(target_path):
+        raise HTTPException(status_code=404, detail="Specification file not found.")
+    try:
+        with open(target_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        return {"content": content}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/specs/save")
+def save_spec_api(req: SaveSpecRequest):
+    if not (req.filename.endswith(".md") or req.filename.endswith(".json")):
+        raise HTTPException(status_code=400, detail="Filename must end with .md or .json")
+    
+    safe_name = os.path.basename(req.filename)
+    if safe_name != req.filename or ".." in req.filename or "/" in req.filename or "\\" in req.filename:
+        raise HTTPException(status_code=400, detail="Invalid filename format. Directory components are not allowed.")
+
+    project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    specs_dir = os.path.join(project_dir, "specs")
+    os.makedirs(specs_dir, exist_ok=True)
+    target_path = os.path.abspath(os.path.join(specs_dir, req.filename))
+    
+    if not target_path.startswith(os.path.abspath(specs_dir)):
+        raise HTTPException(status_code=403, detail="Access denied: path traversal attempt.")
+        
+    try:
+        with open(target_path, "w", encoding="utf-8") as f:
+            f.write(req.content)
+        return {"success": True, "path": target_path}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/specs/templates")
+def list_templates_api():
+    project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    templates_dir = os.path.join(project_dir, "templates")
+    os.makedirs(templates_dir, exist_ok=True)
+    try:
+        files = [f for f in os.listdir(templates_dir) if f.endswith(".md") or f.endswith(".json")]
+        return {"templates": sorted(files)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/specs/template/read")
+def read_template_api(filename: str):
+    project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    templates_dir = os.path.join(project_dir, "templates")
+    target_path = os.path.abspath(os.path.join(templates_dir, filename))
+    if not target_path.startswith(os.path.abspath(templates_dir)):
+        raise HTTPException(status_code=403, detail="Access denied: path traversal attempt.")
+    if not os.path.exists(target_path):
+        raise HTTPException(status_code=404, detail="Template file not found.")
+    try:
+        with open(target_path, "r", encoding="utf-8") as f:
             content = f.read()
         return {"content": content}
     except Exception as e:
@@ -1143,7 +1734,7 @@ def execute_host_command_api(req: ExecuteHostCommandRequest):
     logger.info(f"Executing shell command in project directory: {req.command}")
     log_agent_action("action", f"Executed shell command: {req.command}", [], [])
     try:
-        project_dir = "/Users/isaacwr/.gemini/antigravity/scratch/cyberneticircus"
+        project_dir = os.environ.get("PROJECT_DIR", "/Users/isaacwr/.gemini/antigravity/scratch/cyberneticircus")
         res = subprocess.run(
             req.command,
             shell=True,

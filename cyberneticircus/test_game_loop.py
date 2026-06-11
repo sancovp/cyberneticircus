@@ -30,7 +30,8 @@ def run_tests():
     test_name = "test_cybernet"
     with engine.driver.session() as session:
         session.run("MATCH (m:Cybernet) WHERE m.name STARTS WITH $name DETACH DELETE m", {"name": test_name})
-        session.run("MATCH (s:Identity) WHERE NOT ()-[:HAS_LIFECYCLE]->(s) DETACH DELETE s")
+        session.run("MATCH (s:Identity) DETACH DELETE s")
+        session.run("MATCH (s:ExecutionState) DETACH DELETE s")
         session.run("MATCH (s:TraversalState) DETACH DELETE s")
         session.run("MATCH (sm:StateMachine {id: 'sub_lifecycle_sm'})-[r:HAS_STEP]->(step) DETACH DELETE sm, step")
         session.run("MATCH (sm:StateMachine {id: 'sub_lifecycle_sm'}) DETACH DELETE sm")
@@ -73,21 +74,24 @@ def run_tests():
         session.run(
             """
             MERGE (sm:StateMachine {id: 'sub_lifecycle_sm'})
-            SET sm.name = 'Sub Lifecycle SM', sm.description = 'Test sub-state machine'
+            SET sm.name = 'Sub Lifecycle SM', sm.description = 'Test sub-state machine',
+                sm.domain = 'cyberneticity', sm.subdomain = 'state_machine'
             """
         )
         session.run(
             """
             MERGE (s1:TraversalStep {id: 'sub_step_1'})
             SET s1.text = 'Sub-step 1: Match subnode',
-                s1.required_pattern = '(?i)MATCH\\\\s*\\\\(s:SubNode\\\\s*.*\\\\)'
+                s1.required_pattern = '(?i)MATCH\\\\s*\\\\(s:SubNode\\\\s*.*\\\\)',
+                s1.domain = 'cyberneticity', s1.subdomain = 'traversal'
             """
         )
         session.run(
             """
             MERGE (s2:TraversalStep {id: 'sub_step_2'})
             SET s2.text = 'Sub-step 2: Match subnode done',
-                s2.required_pattern = '(?i)MATCH\\\\s*\\\\(s:SubNode\\\\s*\\\\{.*done:\\\\s*true.*\\\\}\\\\)'
+                s2.required_pattern = '(?i)MATCH\\\\s*\\\\(s:SubNode\\\\s*\\\\{.*done:\\\\s*true.*\\\\}\\\\)',
+                s2.domain = 'cyberneticity', s2.subdomain = 'traversal'
             """
         )
         session.run(
@@ -178,7 +182,7 @@ def run_tests():
     with engine.driver.session() as session:
         session.run(
             """
-            MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:Identity)
+            MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:ExecutionState)
             MATCH (step:TraversalStep {id: 'sh8_night_evolve'})
             MATCH (s)-[r:CURRENT_STEP]->()
             DELETE r
@@ -198,7 +202,9 @@ def run_tests():
                     created_at: timestamp(),
                     accuracy: 0.1,
                     fitness_score: 0.1,
-                    calibrated: true
+                    calibrated: true,
+                    domain: 'cyberneticity',
+                    subdomain: 'simulation'
                 })
                 CREATE (m)-[:HAS_SIMULATION]->(sim)
                 """,
@@ -237,7 +243,7 @@ def run_tests():
     with engine.driver.session() as session:
         session.run(
             """
-            MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:Identity)
+            MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:ExecutionState)
             MATCH (step:TraversalStep {id: 'sh8_night_evolve'})
             MATCH (s)-[r:CURRENT_STEP]->()
             DELETE r
@@ -256,7 +262,9 @@ def run_tests():
                     created_at: timestamp(),
                     accuracy: 1.0,
                     fitness_score: 1.0,
-                    calibrated: true
+                    calibrated: true,
+                    domain: 'cyberneticity',
+                    subdomain: 'simulation'
                 })
                 CREATE (m)-[:HAS_SIMULATION]->(sim)
                 """,
@@ -287,7 +295,8 @@ def run_tests():
     print("9. Cleaning up test nodes...")
     with engine.driver.session() as session:
         session.run("MATCH (m:Cybernet) WHERE m.name STARTS WITH $name DETACH DELETE m", {"name": test_name})
-        session.run("MATCH (s:Identity) WHERE NOT ()-[:HAS_LIFECYCLE]->(s) DETACH DELETE s")
+        session.run("MATCH (s:Identity) DETACH DELETE s")
+        session.run("MATCH (s:ExecutionState) DETACH DELETE s")
         session.run("MATCH (s:TraversalState) DETACH DELETE s")
         session.run("MATCH (sm:StateMachine {id: 'sub_lifecycle_sm'})-[r:HAS_STEP]->(step) DETACH DELETE sm, step")
         session.run("MATCH (sm:StateMachine {id: 'sub_lifecycle_sm'}) DETACH DELETE sm")

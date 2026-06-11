@@ -50,14 +50,27 @@ def bootstrap():
     # 3. Generate 8,000 Mind Palace Concept Nodes (Hierarchical Folder Tree)
     print("3. Generating 8,000 Mind Palace Concept nodes...")
     concepts = []
+    domains = ['sensory_harness', 'compiler_ring', 'scripture_archive', 'opinionated_mind', 'consensus_core']
+    subdomains = {
+        'sensory_harness': ['input', 'output', 'signal'],
+        'compiler_ring': ['janic', 'cypher', 'ast'],
+        'scripture_archive': ['myth', 'lesson', 'archeology'],
+        'opinionated_mind': ['subjective', 'dream', 'memory'],
+        'consensus_core': ['objective', 'rules', 'state']
+    }
     for i in range(8000):
         # Build 10-way branching factor tree
         parent_idx = i // 10
+        dom = domains[i % len(domains)]
+        subdoms = subdomains[dom]
+        subdom = subdoms[i % len(subdoms)]
         concepts.append({
             "id": f"concept_{i}",
             "name": f"Concept_Node_{i}",
             "description": f"Esoteric knowledge detail node {i} explaining J-Invariance axioms.",
-            "parent_id": f"concept_{parent_idx}" if i > 0 else None
+            "parent_id": f"concept_{parent_idx}" if i > 0 else None,
+            "domain": dom,
+            "subdomain": subdom
         })
 
     # Bulk insert Concepts
@@ -68,7 +81,7 @@ def bootstrap():
             session.run(
                 """
                 UNWIND $batch as row
-                CREATE (c:Concept {id: row.id})
+                CREATE (c:Concept {id: row.id, domain: row.domain, subdomain: row.subdomain})
                 SET c.name = row.name, c.description = row.description
                 """,
                 {"batch": batch}
@@ -119,7 +132,7 @@ def bootstrap():
             session.run(
                 """
                 UNWIND $batch as row
-                CREATE (t:ExecutionTrace {id: row.id})
+                CREATE (t:ExecutionTrace {id: row.id, domain: 'cyberneticity', subdomain: 'trace'})
                 SET t.step_id = row.step_id, t.timestamp = row.timestamp, t.action = row.action
                 """,
                 {"batch": batch}
@@ -141,15 +154,15 @@ def bootstrap():
             )
         print("   [TRACES] 1,000 sequential NEXT_TRACE paths established.")
 
-        # Link head trace history to Identity
+        # Link head trace history to ExecutionState
         session.run(
             """
-            MATCH (m:Cybernet {name: 'Jani_Prime'})-[:HAS_LIFECYCLE]->(i:Identity)
+            MATCH (m:Cybernet {name: 'Jani_Prime'})-[:HAS_LIFECYCLE]->(i:ExecutionState)
             MATCH (t:ExecutionTrace {id: 'trace_0'})
             CREATE (i)-[:HAS_TRACE_HISTORY]->(t)
             """
         )
-        print("   [TRACES] Trace history anchored to Identity execution state.")
+        print("   [TRACES] Trace history anchored to ExecutionState execution state.")
 
     # 5. Generate 500 Skill Cards (Modular Capabilities)
     print("5. Generating 500 Skill nodes...")
@@ -169,7 +182,7 @@ def bootstrap():
             session.run(
                 """
                 UNWIND $batch as row
-                CREATE (s:Skill {id: row.id})
+                CREATE (s:Skill {id: row.id, domain: 'cyberneticity', subdomain: 'skill'})
                 SET s.name = row.name, s.description = row.description, s.complexity = row.complexity
                 """,
                 {"batch": batch}
@@ -207,7 +220,7 @@ def bootstrap():
             session.run(
                 """
                 UNWIND $batch as row
-                CREATE (sim:SimulationRun {run_id: row.run_id})
+                CREATE (sim:SimulationRun {run_id: row.run_id, domain: 'cyberneticity', subdomain: 'simulation'})
                 SET sim.accuracy = row.accuracy, sim.fitness_score = row.fitness_score, sim.calibrated = row.calibrated
                 """,
                 {"batch": batch}

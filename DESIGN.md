@@ -357,6 +357,10 @@ The Neo4j database representation has been migrated from legacy terms (`MetaShif
 * `:TraversalStep`: Individual step containing text and regex gating patterns.
 * `:TraversalState`: Tracks active execution locks.
 
+### Mandatory Property Constraints
+* **`domain` and `subdomain`**: Every single node created or updated in the CybernetiCircus database MUST carry both `domain` and `subdomain` properties.
+* **Primitive types (CybernetiCity itself)**: System components like `Cybernet`, `Identity`, `StateMachine`, `TraversalStep`, `TraversalState`, `SimulationRun`, and `Skill` must explicitly set `domain: "cyberneticity"` and use a relevant subdomain (e.g. `core`, `skills`, `state_machine`, `simulation`).
+
 ### Relationships
 * `(c:Cybernet)-[:HAS_LIFECYCLE]->(i:Identity)`
 * `(c:Cybernet)-[:EQUIPS]->(sm:StateMachine)`
@@ -371,12 +375,20 @@ To allow developers and agents to run commands and inspect the graph directly wi
 * **Interactive CLI Command Shell**: The bottom panel of the dashboard provides a developer-grade command prompt.
   * Direct commands: `help`, `list`, `select <name>`, `tick`, `equip <sm_id>`, `spawn <name> <desc>`, and `clear`.
   * Direct Cypher queries: Entering any Cypher query executes it immediately on the Neo4j database and prints tabular output directly inside the console history.
+* **Spec Lab Block Spec Composer**: A visual block-based specification editor panel that toggles open from the left.
+  * Direct blocks: Supports adding, reordering (▲/▼), and deleting (×) distinct structural blocks (Headers, prose Text, Key-Value lists, Bullet lists, and Code blocks).
+  * Arguments engine: Parametrizes variables (e.g. `${name}`, `[Unique_Name]`) and substitutes their values in real-time in a compiled markdown preview tab.
+  * Bi-directional parser: Decomposes loaded template files or existing custom specs back into visual blocks, while compiling changes back to clean Markdown on save or clipboard copy.
 * **Constrained Graph Visualizer**: A full-canvas D3 visualizer showing the exact connected subgraph of the selected Cybernet (Identity, State Machine, Concepts, Skills, SimulationRuns, and ExecutionTraces).
 * **Large Graph Layout Optimization**: To support rendering 10,000+ nodes in real-time at 60fps, the visualizer dynamically checks node count:
   * Non-highlighted nodes are drawn as simple, lightweight solid circles.
   * Linear gradients and digital character animations are bypassed on inactive links.
   * **Traversed / Active Flows**: Any links or nodes corresponding to the current state machine step or active agent focus light up with high-contrast radial blooms, rotating tech scanner brackets, and flowing monospace digit packet animations, making the active traversal paths highly visible.
 * **Agent Focus Targeter**: When the agent or compiler runs queries, the backend logs their activities. The visualizer matches returned IDs and labels to highlight active focal coordinates on the graph in real-time.
+* **Dynamic Domain-Subdomain Spectrum Layout**: The visualizer's spatial organization and forces are dynamically computed from the database:
+  - **Domain Districts**: Unique domains in the graph are mapped to centers positioned in a circle around the center of the screen, colored using a dynamic HSL rainbow spectrum.
+  - **Subdomain Clusters**: Subdomains form smaller nested sub-clusters offset by `50px` around their parent domain's center.
+  - Clean Substrate: The canvas background is kept completely clean, open, and free of visual blueprint circles, crosshairs, or locale text labels to let the nodes self-organize without visual clutter.
 
 ---
 

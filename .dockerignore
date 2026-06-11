@@ -1,0 +1,8 @@
+**/__pycache__
+**/.git
+**/.venv
+**/venv
+**/*.log
+**/*.pid
+**/.agent
+**/.DS_Store

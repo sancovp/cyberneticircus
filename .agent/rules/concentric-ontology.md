@@ -15,6 +15,11 @@ Constrains graph topology and context loading to a series of concentric, orthogo
 * **Progressive Horizon Expansion**: An agent must load context starting from the center (ME/HWSS) outward, mapping only local horizons.
 * **Feedback Loop**: Changes and lessons learned on the outer rings (Consensus/Instances) must fold back to inform and refine opinionated subdomains and domains, while preserving the invariant HWSS base.
 
+## **MANDATORY: Database Node Constraints**
+* **Domain and Subdomain Requirement**: Every single node created or updated in the CybernetiCircus database MUST have `domain` and `subdomain` properties.
+* **CybernetiCity Primitive Types**: For primitive types belonging to the game/visualizer engine itself (like `Cybernet`, `Identity`, `Skill`, `StateMachine`, `TraversalStep`, `TraversalState`, `SimulationRun`), set `domain: "cyberneticity"` and use an appropriate subdomain (e.g., `core`, `skills`, `state_machine`, `simulation`).
+
 ## **Triggers**
 * Querying the database for domain mapping.
+* Creating or updating nodes in the database.
 * Constructing traversal algorithms or setting context boundaries for LLM execution.
