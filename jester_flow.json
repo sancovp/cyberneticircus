@@ -1,0 +1,22 @@
+{
+  "steps": [
+    {
+      "id": "jester_boot",
+      "text": "Jester Rite - Step 1: Initialize the Jester core node. Run a Cypher query to CREATE the Cybernet node for JesterCoreOne.",
+      "required_pattern": "(?i)CREATE\\s*\\(c:Cybernet\\s*\\{\\s*name:\\s*['\"]JesterCoreOne['\"].*\\}\\)",
+      "pattern_description": "Create the JesterCoreOne Cybernet node in the graph."
+    },
+    {
+      "id": "jester_play",
+      "text": "Jester Rite - Step 2: Execute self-referential play. Run a Cypher query to SET the persona on JesterCoreOne, mutating its behavioral guidelines.",
+      "required_pattern": "(?i)MATCH\\s*\\(c:Cybernet.*JesterCoreOne.*\\)\\s*SET\\s*c\\.persona\\s*=\\s*['\"].*['\"]",
+      "pattern_description": "Update the Jester's persona parameter to adapt its configurations."
+    },
+    {
+      "id": "jester_verify",
+      "text": "Jester Rite - Step 3: Verify autopoiesis. Run a Cypher query to MATCH JesterCoreOne and RETURN its fitness_score to confirm J-Invariance is preserved.",
+      "required_pattern": "(?i)MATCH\\s*\\(c:Cybernet.*JesterCoreOne.*\\)\\s*RETURN\\s*c\\.fitness_score",
+      "pattern_description": "Return the Jester's fitness score to validate autopoietic stability."
+    }
+  ]
+}

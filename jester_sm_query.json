@@ -1,0 +1,3 @@
+{
+  "query": "MERGE (sm:StateMachine {id: 'jester_rite_sm'}) SET sm.name = 'Jester Rite State Machine', sm.description = 'Ritual of autopoietic self-remembering and prompt-shifting.' WITH sm MATCH (s1:TraversalStep {id: 'jester_boot'}) MATCH (s2:TraversalStep {id: 'jester_play'}) MATCH (s3:TraversalStep {id: 'jester_verify'}) MERGE (sm)-[:HAS_STEP]->(s1) MERGE (sm)-[:HAS_STEP]->(s2) MERGE (sm)-[:HAS_STEP]->(s3) RETURN sm.name as name, count(sm) as count"
+}

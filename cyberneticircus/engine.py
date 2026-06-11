@@ -36,19 +36,37 @@ class AgentLLMRunner:
         logger.info(f"LLM Call [Model: {self.model_name}, Temp: {self.temperature}] - Step: {step_id}")
         
         # Generates exact queries to successfully progress the Traversal State Machine
-        if step_id == "sh8_day_start":
+        if step_id in ("sh8_day_start", "ple_ignite_intent", "concentric_spiritual"):
             return f"MATCH (m:Cybernet) RETURN m"
-        elif step_id == "sh8_day_action":
+        elif step_id in ("sh8_day_action", "ple_combust_action", "concentric_wealth"):
             tokens_generated = random.randint(100, 300)
             return f"MATCH (m:Cybernet {{name: '{character_name}'}}) SET m.total_tokens_consumed = m.total_tokens_consumed + {tokens_generated}"
         elif step_id == "sh8_night_calibrate":
             return "MATCH (sim:SimulationRun) RETURN sim"
-        elif step_id == "sh8_night_evolve":
+        elif step_id in ("ple_align_collaboration", "concentric_social"):
+            return f"MATCH (m:Cybernet {{name: '{character_name}'}})-[:HAS_LIFECYCLE]->(i:Identity) RETURN i"
+        elif step_id in ("sh8_night_evolve", "ple_output_promise", "concentric_health"):
             return "MATCH (m:Cybernet) WHERE m.fitness_score >= 0.8 RETURN m"
         elif step_id == "sub_step_1":
             return "MATCH (s:SubNode) RETURN s"
         elif step_id == "sub_step_2":
             return "MATCH (s:SubNode {done: true}) RETURN s"
+        elif step_id == "jester_boot":
+            return f"CREATE (c:Cybernet {{name: 'JesterCoreOne', status: 'initialized'}})"
+        elif step_id == "jester_play":
+            return f"MATCH (c:Cybernet {{name: 'JesterCoreOne'}}) SET c.persona = 'Jester'"
+        elif step_id == "jester_verify":
+            return f"MATCH (c:Cybernet {{name: 'JesterCoreOne'}}) RETURN c.fitness_score"
+        elif step_id == "janic_read_designs":
+            return f"MATCH (arch:Concept {{name: 'CybernetiCircus_Architecture'}}) RETURN arch"
+        elif step_id == "janic_check_state":
+            return f"MATCH (c:Cybernet {{name: '{character_name}'}})-[:USES]->(arch:Concept) RETURN arch"
+        elif step_id == "janic_engineer":
+            return f"MATCH (d:Concept {{is_a: 'Domain'}}) RETURN d.name"
+        elif step_id == "janic_preservation":
+            return f"MATCH (c:Cybernet {{name: '{character_name}'}})-[:HAS_TASK]->(t:Task) RETURN t"
+        elif step_id == "janic_autocommentary":
+            return f"MATCH (c:Cybernet {{name: '{character_name}'}}) RETURN c"
         
         return "MATCH (n) RETURN n"
 
@@ -167,10 +185,16 @@ class CybernetiCircusCompiler:
                 })
                 CREATE (m)-[:HAS_LIFECYCLE]->(s)
                 
-                // Find entry step of the StateMachine and link s to it
+                // Find entry step of the StateMachine (robust to closed loops) and link s to it
                 WITH s, sm
                 MATCH (sm)-[:HAS_STEP]->(entry:TraversalStep)
-                WHERE NOT ()-[:NEXT_STEP]->(entry)
+                WITH s, sm, collect(entry) as entries
+                UNWIND entries as entry
+                OPTIONAL MATCH (prev:TraversalStep)-[:NEXT_STEP]->(entry)
+                WITH s, sm, entry, count(prev) as incoming
+                ORDER BY incoming ASC, entry.id ASC
+                WITH s, sm, collect(entry) as sorted_entries
+                WITH s, sm, sorted_entries[0] as entry
                 CREATE (s)-[:CURRENT_STEP]->(entry)
                 """,
                 {"name": cybernet_name, "sm_id": state_machine_id}
@@ -190,6 +214,7 @@ class CybernetiCircusCompiler:
                 OPTIONAL MATCH (s)-[:CURRENT_STEP]->(curr:TraversalStep)
                 RETURN m, sm.id as equipped_sm_id, sm.name as equipped_sm_name, s, 
                        curr.id as current_step_id, curr.text as current_step_text,
+                       curr.instruction_file_path as current_step_file_path,
                        s.call_stack as call_stack
                 """,
                 {"name": name}
@@ -215,15 +240,30 @@ class CybernetiCircusCompiler:
                 "phase": None,
                 "current_step_id": None,
                 "current_step_text": None,
+                "current_step_file_path": None,
                 "call_stack": "[]"
             }
             
             if rec["s"]:
+                step_text = rec["current_step_text"]
+                file_path = rec["current_step_file_path"]
+                if file_path and os.path.exists(file_path):
+                    try:
+                        with open(file_path, "r", encoding="utf-8") as f:
+                            file_content = f.read()
+                        if step_text:
+                            step_text = f"{step_text}\n\n=== INSTRUCTION FILE CONTENT ===\n{file_content}"
+                        else:
+                            step_text = file_content
+                    except Exception as e:
+                        logger.error(f"Error reading instruction file {file_path}: {e}")
+                
                 status_data.update({
                     "turn_number": rec["s"]["turn_number"],
                     "phase": rec["s"]["phase"],
                     "current_step_id": rec["current_step_id"],
-                    "current_step_text": rec["current_step_text"],
+                    "current_step_text": step_text,
+                    "current_step_file_path": file_path,
                     "equipped_sm_id": rec["s"]["equipped_sm_id"] or rec["equipped_sm_id"],
                     "call_stack": rec["call_stack"] or "[]"
                 })
@@ -256,13 +296,8 @@ class CybernetiCircusCompiler:
             "event_message": ""
         }
         
-        # Lazy load server module to run queries securely
-        import sys
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        sibling_dir = os.path.abspath(os.path.join(current_dir, "..", "neo4j_cypher_mcp"))
-        if sibling_dir not in sys.path:
-            sys.path.insert(0, sibling_dir)
-        from server import query_database, is_traversal_locked, progress_traversal
+        # Load db_logic module to run queries securely
+        from db_logic import query_database, is_traversal_locked, progress_traversal
         
         # 0. Check if the active step triggers a compiler call to a sub-state machine
         with self.driver.session() as session:
@@ -280,18 +315,23 @@ class CybernetiCircusCompiler:
             # Push parent frame onto call stack
             call_stack.append({"sm_id": sm_id, "step_id": step_id})
             
-            # Find entry step of the child StateMachine
+            # Find entry step of the child StateMachine (robust to closed loops)
             with self.driver.session() as session:
                 entry_res = session.run(
                     """
                     MATCH (sm:StateMachine {id: $child_sm_id})-[:HAS_STEP]->(entry:TraversalStep)
-                    WHERE NOT ()-[:NEXT_STEP]->(entry)
-                    RETURN entry.id as entry_id
+                    WITH collect(entry) as entries
+                    UNWIND entries as entry
+                    OPTIONAL MATCH (prev:TraversalStep)-[:NEXT_STEP]->(entry)
+                    WITH entry, count(prev) as incoming
+                    ORDER BY incoming ASC, entry.id ASC
+                    WITH collect(entry) as sorted_entries
+                    RETURN sorted_entries[0].id as entry_id
                     """,
                     {"child_sm_id": child_sm_id}
                 )
                 entry_rec = entry_res.single()
-                if not entry_rec:
+                if not entry_rec or not entry_rec["entry_id"]:
                     raise ValueError(f"StateMachine '{child_sm_id}' does not have a valid entry step.")
                 child_entry_id = entry_rec["entry_id"]
                 
@@ -535,7 +575,13 @@ class CybernetiCircusCompiler:
                     """
                     MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:Identity {equipped_sm_id: $sm_id})
                     MATCH (sm:StateMachine {id: $sm_id})-[:HAS_STEP]->(entry:TraversalStep)
-                    WHERE NOT ()-[:NEXT_STEP]->(entry)
+                    WITH s, collect(entry) as entries
+                    UNWIND entries as entry
+                    OPTIONAL MATCH (prev:TraversalStep)-[:NEXT_STEP]->(entry)
+                    WITH s, entry, count(prev) as incoming
+                    ORDER BY incoming ASC, entry.id ASC
+                    WITH s, collect(entry) as sorted_entries
+                    WITH s, sorted_entries[0] as entry
                     MATCH (s)-[r:CURRENT_STEP]->()
                     DELETE r
                     CREATE (s)-[:CURRENT_STEP]->(entry)
@@ -643,7 +689,13 @@ class CybernetiCircusCompiler:
                     
                     WITH s, sm
                     MATCH (sm)-[:HAS_STEP]->(entry:TraversalStep)
-                    WHERE NOT ()-[:NEXT_STEP]->(entry)
+                    WITH s, sm, collect(entry) as entries
+                    UNWIND entries as entry
+                    OPTIONAL MATCH (prev:TraversalStep)-[:NEXT_STEP]->(entry)
+                    WITH s, sm, entry, count(prev) as incoming
+                    ORDER BY incoming ASC, entry.id ASC
+                    WITH s, sm, collect(entry) as sorted_entries
+                    WITH s, sm, sorted_entries[0] as entry
                     CREATE (s)-[:CURRENT_STEP]->(entry)
                     """,
                     {"name": name, "child_name": child_name}
@@ -654,7 +706,13 @@ class CybernetiCircusCompiler:
                     """
                     MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:Identity {equipped_sm_id: $sm_id})
                     MATCH (sm:StateMachine {id: $sm_id})-[:HAS_STEP]->(entry:TraversalStep)
-                    WHERE NOT ()-[:NEXT_STEP]->(entry)
+                    WITH s, collect(entry) as entries
+                    UNWIND entries as entry
+                    OPTIONAL MATCH (prev:TraversalStep)-[:NEXT_STEP]->(entry)
+                    WITH s, entry, count(prev) as incoming
+                    ORDER BY incoming ASC, entry.id ASC
+                    WITH s, collect(entry) as sorted_entries
+                    WITH s, sorted_entries[0] as entry
                     MATCH (s)-[r:CURRENT_STEP]->()
                     DELETE r
                     CREATE (s)-[:CURRENT_STEP]->(entry)
@@ -679,7 +737,13 @@ class CybernetiCircusCompiler:
                     """
                     MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:Identity {equipped_sm_id: $sm_id})
                     MATCH (sm:StateMachine {id: $sm_id})-[:HAS_STEP]->(entry:TraversalStep)
-                    WHERE NOT ()-[:NEXT_STEP]->(entry)
+                    WITH s, collect(entry) as entries
+                    UNWIND entries as entry
+                    OPTIONAL MATCH (prev:TraversalStep)-[:NEXT_STEP]->(entry)
+                    WITH s, entry, count(prev) as incoming
+                    ORDER BY incoming ASC, entry.id ASC
+                    WITH s, collect(entry) as sorted_entries
+                    WITH s, sorted_entries[0] as entry
                     MATCH (s)-[r:CURRENT_STEP]->()
                     DELETE r
                     CREATE (s)-[:CURRENT_STEP]->(entry)

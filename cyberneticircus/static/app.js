@@ -1,467 +1,85 @@
-// CybernetiCircus Dashboard Controller
-// Interacts with /api/ endpoints to run the game loop and render status.
-
+// CybernetiCircus Full-Window Graph Visualizer
 document.addEventListener("DOMContentLoaded", () => {
-    // D3 Graph Visualizer variables
-    let canvas, ctx, simulation;
+    let canvas = null;
+    let ctx = null;
+    let simulation = null;
     let nodes = [];
     let links = [];
     let hoveredNode = null;
     let mouseX = 0, mouseY = 0;
-    const width = 600;
-    const height = 300;
-
-    // DOM Elements
-    const dbStatus = document.getElementById("db-status-indicator");
-    const selectCybernet = document.getElementById("cybernet-select");
-    const selectStateMachine = document.getElementById("state-machine-select");
-    const activeStats = document.getElementById("active-stats-container");
-    const placeholder = document.getElementById("no-identity-placeholder");
-    const arenaContent = document.getElementById("arena-content");
-    const terminalOutput = document.getElementById("terminal-output");
-    
-    // Stats elements
-    const statModel = document.getElementById("stat-model");
-    const statFitness = document.getElementById("stat-fitness");
-    const statTokens = document.getElementById("stat-tokens");
-    const statCost = document.getElementById("stat-cost");
-    
-    // Arena elements
-    const activeSmName = document.getElementById("active-sm-name");
-    const activeStepId = document.getElementById("active-step-id");
-    const activeStepText = document.getElementById("active-step-text");
-    const callStackContainer = document.getElementById("call-stack-container");
-    const callStackFrames = document.getElementById("call-stack-frames");
-    const phaseBadge = document.getElementById("phase-badge");
-    const tickBtn = document.getElementById("tick-compiler-btn");
-    
-    // Simulation history elements
-    const simulationPlaceholder = document.getElementById("no-simulation-placeholder");
-    const simulationTableWrapper = document.getElementById("simulation-table-wrapper");
-    const simulationHistoryList = document.getElementById("simulation-history-list");
-
-    // Modal drawer elements
-    const openCreateBtn = document.getElementById("open-create-btn");
-    const closeCreateBtn = document.getElementById("close-create-btn");
-    const cancelCreateBtn = document.getElementById("cancel-create-btn");
-    const createModal = document.getElementById("create-modal");
-    const createForm = document.getElementById("create-cybernet-form");
-
-    // Trace buttons
-    const clearTraceBtn = document.getElementById("clear-trace-btn");
 
     let activeIdentity = "";
+    let activeStepId = "";
+    let activeFocusNodes = new Set();
+    let activeFocusLabels = new Set();
 
-    // Load initial data
-    loadCybernets();
-    loadStateMachines();
-    drawGraph(null);
+    function getDistrict(node, W, H) {
+        W = W || window.innerWidth;
+        H = H || window.innerHeight;
+        const r = Math.min(W, H) * 0.22;
+        if (node.label === "Cybernet" || node.label === "Identity" || node.label === "Skill") {
+            return { name: "GHOST SHELL CUSTOMIZER", x: W * 0.28, y: H * 0.32, r, color: [46, 213, 115] };
+        }
+        if (node.label === "StateMachine" || node.label === "TraversalStep" || node.label === "ExecutionTrace") {
+            return { name: "COMPILER RING", x: W * 0.72, y: H * 0.32, r, color: [160, 100, 255] };
+        }
+        if (node.label === "SimulationRun") {
+            return { name: "THE ARENA", x: W * 0.28, y: H * 0.68, r, color: [255, 80, 140] };
+        }
+        if (node.label === "Concept") {
+            return { name: "SCRIPTURE ARCHIVES", x: W * 0.72, y: H * 0.68, r, color: [255, 140, 0] };
+        }
+        return null;
+    }
 
-    // Helper: Add styled lines to the console
-    function logToConsole(type, text) {
-        const line = document.createElement("div");
-        line.classList.add("terminal-line");
+    // Initialize visualizer
+    initVisualizer();
+
+    // Track mouse movements
+    window.addEventListener("resize", resizeCanvas);
+    window.addEventListener("mousemove", (e) => {
+        if (!canvas) return;
+        const r = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        mouseX = (e.clientX - r.left) * ((canvas.width / dpr) / r.width);
+        mouseY = (e.clientY - r.top) * ((canvas.height / dpr) / r.height);
         
-        if (type === "system") line.classList.add("system-line");
-        else if (type === "action") line.classList.add("action-line");
-        else if (type === "event") line.classList.add("event-line");
-        else if (type === "error") line.classList.add("error-line");
-        else if (type === "success") line.classList.add("success-line");
-        
-        // Add timestamp
-        const time = new Date().toLocaleTimeString();
-        line.innerText = `[${time}] ${text}`;
-        
-        terminalOutput.appendChild(line);
-        terminalOutput.scrollTop = terminalOutput.scrollHeight;
-    }
-
-    // API: Load list of Cybernets
-    async function loadCybernets() {
-        try {
-            const res = await fetch("/api/list");
-            const data = await res.json();
-            
-            // Keep active selection if it still exists
-            const currentSelection = selectCybernet.value;
-            selectCybernet.innerHTML = '<option value="">-- No Active Identity --</option>';
-            
-            data.cybernets.forEach(name => {
-                const opt = document.createElement("option");
-                opt.value = name;
-                opt.innerText = name;
-                selectCybernet.appendChild(opt);
-            });
-            
-            if (data.cybernets.includes(currentSelection)) {
-                selectCybernet.value = currentSelection;
-            } else if (activeIdentity) {
-                // Active identity got reaped/deleted
-                logToConsole("error", `Cybernet '${activeIdentity}' not found. Deselecting.`);
-                deselectIdentity();
+        hoveredNode = null;
+        for (let i = nodes.length - 1; i >= 0; i--) {
+            const node = nodes[i];
+            if (Math.hypot(node.x - mouseX, node.y - mouseY) < node.r + 8) {
+                hoveredNode = node;
+                break;
             }
-        } catch (e) {
-            logToConsole("error", `Failed to fetch Cybernet list: ${e}`);
-        }
-    }
-
-    // API: Load list of State Machines
-    async function loadStateMachines() {
-        try {
-            const res = await fetch("/api/state_machines");
-            const data = await res.json();
-            
-            selectStateMachine.innerHTML = '<option value="">Load different State Machine...</option>';
-            data.state_machines.forEach(sm => {
-                const opt = document.createElement("option");
-                opt.value = sm.id;
-                opt.innerText = `${sm.name} (${sm.id})`;
-                selectStateMachine.appendChild(opt);
-            });
-        } catch (e) {
-            logToConsole("error", `Failed to fetch State Machines: ${e}`);
-        }
-    }
-
-    // UI: Deselect active identity
-    function deselectIdentity() {
-        activeIdentity = "";
-        selectCybernet.value = "";
-        placeholder.classList.remove("hidden");
-        arenaContent.classList.add("hidden");
-        activeStats.classList.add("hidden");
-        
-        // Reset simulation history
-        simulationPlaceholder.innerText = "Select a Cybernet core to view simulation logs";
-        simulationPlaceholder.classList.remove("hidden");
-        simulationTableWrapper.classList.add("hidden");
-        simulationHistoryList.innerHTML = "";
-
-        // Render generic database graph when no identity is selected
-        drawGraph(null);
-    }
-
-    // API: Fetch and display identity status sheet
-    async function updateIdentitySheet(name) {
-        if (!name) {
-            deselectIdentity();
-            return;
-        }
-
-        try {
-            const res = await fetch(`/api/status/${name}`);
-            if (res.status === 404) {
-                logToConsole("error", `Cybernet '${name}' not found.`);
-                loadCybernets();
-                deselectIdentity();
-                return;
-            }
-            
-            const data = await res.json();
-            activeIdentity = name;
-
-            // Render Metrics (LLM stats replaced with dashes)
-            statModel.innerText = "--";
-            statFitness.innerText = "--";
-            statTokens.innerText = "--";
-            statCost.innerText = "--";
-
-            // Render Arena Content
-            if (data.equipped_sm_id) {
-                placeholder.classList.add("hidden");
-                arenaContent.classList.remove("hidden");
-                
-                activeSmName.innerText = data.equipped_sm_name || data.equipped_sm_id;
-                activeStepId.innerText = data.current_step_id || "sh8_day_start";
-                activeStepText.innerText = data.current_step_text || "Awaiting compilation...";
-                
-                // Show phase badge
-                if (data.phase) {
-                    phaseBadge.innerText = data.phase.toUpperCase();
-                    phaseBadge.className = `active-badge ${data.phase.toLowerCase() === 'night' ? 'accent-badge' : ''}`;
-                    phaseBadge.classList.remove("hidden");
-                }
-
-                // Render Call Stack frames
-                const stack = JSON.parse(data.call_stack || "[]");
-                if (stack && stack.length > 0) {
-                    callStackContainer.classList.remove("hidden");
-                    callStackFrames.innerHTML = "";
-                    stack.forEach((frame, idx) => {
-                        const frameEl = document.createElement("div");
-                        frameEl.className = "stack-frame";
-                        frameEl.innerHTML = `
-                            <span class="frame-idx">L${idx+1}</span>
-                            <span class="frame-sm">${frame.sm_id}</span>
-                            <span class="frame-arrow">→</span>
-                            <span class="frame-step">${frame.step_id}</span>
-                        `;
-                        callStackFrames.appendChild(frameEl);
-                    });
-                } else {
-                    callStackContainer.classList.add("hidden");
-                }
-            } else {
-                // Has identity but no state machine equipped yet
-                placeholder.classList.add("hidden");
-                arenaContent.classList.remove("hidden");
-                
-                activeSmName.innerText = "No State Machine Equipped";
-                activeStepId.innerText = "LOCKED";
-                activeStepText.innerText = "Please select a State Machine loadout in the dropdown menu to equip and initialize.";
-                phaseBadge.classList.add("hidden");
-                callStackContainer.classList.add("hidden");
-            }
-
-            activeStats.classList.remove("hidden");
-            
-            // Render Simulation History
-            await updateSimulationHistory(name);
-
-            // Draw active state machine graph
-            await drawGraph(name);
-
-        } catch (e) {
-            logToConsole("error", `Failed to fetch status for '${name}': ${e}`);
-        }
-    }
-
-    // API: Fetch and display simulation runs for an identity
-    async function updateSimulationHistory(name) {
-        if (!name) {
-            simulationPlaceholder.classList.remove("hidden");
-            simulationTableWrapper.classList.add("hidden");
-            simulationHistoryList.innerHTML = "";
-            return;
-        }
-
-        try {
-            const res = await fetch(`/api/simulations/${name}`);
-            const data = await res.json();
-            const sims = data.simulations || [];
-
-            if (sims.length === 0) {
-                simulationPlaceholder.innerText = "No simulation logs found for this identity core.";
-                simulationPlaceholder.classList.remove("hidden");
-                simulationTableWrapper.classList.add("hidden");
-                simulationHistoryList.innerHTML = "";
-            } else {
-                simulationPlaceholder.classList.add("hidden");
-                simulationTableWrapper.classList.remove("hidden");
-                simulationHistoryList.innerHTML = "";
-
-                sims.forEach(sim => {
-                    const row = document.createElement("tr");
-                    
-                    // Format accuracy
-                    const accVal = parseFloat(sim.accuracy);
-                    let accClass = "accuracy-mid";
-                    if (accVal >= 0.8) {
-                        accClass = "accuracy-high";
-                    } else if (accVal < 0.4) {
-                        accClass = "accuracy-low";
-                    }
-
-                    // Format date
-                    let dateStr = sim.created_at;
-                    if (dateStr) {
-                        try {
-                            const d = new Date(dateStr);
-                            dateStr = d.toLocaleString();
-                        } catch (e) {
-                            // Keep raw
-                        }
-                    } else {
-                        dateStr = "N/A";
-                    }
-
-                    row.innerHTML = `
-                        <td class="run-id-cell">${sim.run_id}</td>
-                        <td><span class="accuracy-badge ${accClass}">${accVal.toFixed(4)}</span></td>
-                        <td class="date-cell">${dateStr}</td>
-                    `;
-                    simulationHistoryList.appendChild(row);
-                });
-            }
-        } catch (e) {
-            logToConsole("error", `Failed to fetch simulation history: ${e}`);
-        }
-    }
-
-    // Action: Select Cybernet Core
-    selectCybernet.addEventListener("change", (e) => {
-        const name = e.target.value;
-        if (name) {
-            logToConsole("system", `Swapping core loadout to Cybernet Identity: '${name}'`);
-            updateIdentitySheet(name);
-        } else {
-            deselectIdentity();
         }
     });
 
-    // Action: Equip State Machine
-    selectStateMachine.addEventListener("change", async (e) => {
-        const smId = e.target.value;
-        if (!activeIdentity || !smId) return;
-
-        logToConsole("system", `Compiling and equipping State Machine '${smId}' onto '${activeIdentity}'...`);
-        try {
-            const res = await fetch("/api/equip", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ character_name: activeIdentity, state_machine_id: smId })
-            });
-            const data = await res.json();
-            if (data.success) {
-                logToConsole("success", data.message);
-                updateIdentitySheet(activeIdentity);
-            } else {
-                logToConsole("error", data.detail || "Equip compilation error.");
-            }
-        } catch (e) {
-            logToConsole("error", `Equip request failed: ${e}`);
-        }
-        selectStateMachine.value = ""; // Reset dropdown
-    });
-
-    // Action: Tick Compiler Turn
-    tickBtn.addEventListener("click", async () => {
-        if (!activeIdentity) return;
-
-        tickBtn.classList.add("loading");
-        tickBtn.disabled = true;
-        logToConsole("system", `Ticking turn step for '${activeIdentity}'...`);
-
-        try {
-            const res = await fetch("/api/tick", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ character_name: activeIdentity })
-            });
-            const data = await res.json();
-            
-            if (res.status === 400 || res.status === 500) {
-                logToConsole("error", data.detail || "Turn execution failed.");
-            } else {
-                logToConsole("action", `Action Query: ${data.action_taken}`);
-                logToConsole("event", `Event logs: ${data.event_message}`);
-                
-                // Check if reaped
-                if (data.event_message.includes("Reaped from DB")) {
-                    logToConsole("error", `Evolution check: Cybernet was pruned from the database.`);
-                    deselectIdentity();
-                    loadCybernets();
-                } else {
-                    // Refresh sheets
-                    await updateIdentitySheet(activeIdentity);
-                    // Refresh list (in case clone reproduction spawned a V2 clone!)
-                    if (data.event_message.includes("REPRODUCED")) {
-                        logToConsole("success", `Reproduction triggered! Mutated child identity spawned in Cyberneticity.`);
-                        loadCybernets();
-                    }
-                }
-            }
-        } catch (e) {
-            logToConsole("error", `Tick request failed: ${e}`);
-        } finally {
-            tickBtn.classList.remove("loading");
-            tickBtn.disabled = false;
-        }
-    });
-
-    // Action: Spawn Cybernet Form Submit
-    createForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        
-        const name = document.getElementById("input-name").value.trim();
-        const desc = document.getElementById("input-desc").value.trim();
-
-        logToConsole("system", `Compiling and spawning Cybernet Core '${name}'...`);
-        try {
-            const res = await fetch("/api/create", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    name: name,
-                    description: desc
-                })
-            });
-            const data = await res.json();
-            if (res.status === 200 && data.success) {
-                logToConsole("success", data.message);
-                createModal.classList.add("hidden");
-                createForm.reset();
-                
-                // Reload names and select this new core
-                await loadCybernets();
-                selectCybernet.value = name;
-                updateIdentitySheet(name);
-            } else {
-                logToConsole("error", data.detail || "Failed to create identity.");
-            }
-        } catch (err) {
-            logToConsole("error", `Create request failed: ${err}`);
-        }
-    });
-
-    // Modal Drawer triggers
-    openCreateBtn.addEventListener("click", () => {
-        createModal.classList.remove("hidden");
-    });
-    
-    closeCreateBtn.addEventListener("click", () => {
-        createModal.classList.add("hidden");
-    });
-    
-    cancelCreateBtn.addEventListener("click", () => {
-        createModal.classList.add("hidden");
-    });
-
-    // Click outside drawer closes it
-    createModal.addEventListener("click", (e) => {
-        if (e.target === createModal) {
-            createModal.classList.add("hidden");
-        }
-    });
-
-    // Clear trace logs
-    clearTraceBtn.addEventListener("click", () => {
-        terminalOutput.innerHTML = '<div class="terminal-line system-line">[SYSTEM] Terminal logs cleared.</div>';
-    });
-
-    // D3 Graph Visualizer logic
-
-    function initGraphVisualizer() {
+    function initVisualizer() {
         const container = document.getElementById("graph-visualizer");
         if (!container) return;
         
         container.innerHTML = "";
-        
         canvas = document.createElement("canvas");
-        canvas.style.width = "100%";
-        canvas.style.height = "100%";
         container.appendChild(canvas);
-        
         ctx = canvas.getContext("2d");
         
-        // Handle High-DPI displays
-        const dpr = window.devicePixelRatio || 1;
-        const rect = container.getBoundingClientRect();
-        canvas.width = rect.width * dpr;
-        canvas.height = height * dpr;
-        ctx.scale(dpr, dpr);
-        
-        const drawWidth = rect.width;
-        
+        resizeCanvas();
+
         simulation = d3.forceSimulation()
             .force("link", d3.forceLink().id(d => d.id).distance(85))
-            .force("charge", d3.forceManyBody().strength(-200))
-            .force("center", d3.forceCenter(drawWidth / 2, height / 2))
-            .force("collision", d3.forceCollide().radius(25));
+            .force("charge", d3.forceManyBody().strength(-120))
+            .force("center", d3.forceCenter(window.innerWidth / 2, window.innerHeight / 2))
+            .force("collision", d3.forceCollide().radius(22))
+            .force("x", d3.forceX().x(d => {
+                const dist = getDistrict(d);
+                return dist ? dist.x : window.innerWidth / 2;
+            }).strength(0.15))
+            .force("y", d3.forceY().y(d => {
+                const dist = getDistrict(d);
+                return dist ? dist.y : window.innerHeight / 2;
+            }).strength(0.15));
             
-        window.simulation = simulation;
-            
-        // Bind D3 drag behavior to canvas
+        // Bind drag behavior
         d3.select(canvas)
             .call(d3.drag()
                 .container(canvas)
@@ -470,47 +88,36 @@ document.addEventListener("DOMContentLoaded", () => {
                 .on("drag", dragged)
                 .on("end", dragended));
                 
-        // Bind mouse movements for hover detection
-        canvas.addEventListener("mousemove", (e) => {
-            const r = canvas.getBoundingClientRect();
-            const dpr = window.devicePixelRatio || 1;
-            // Scale mouse coordinates to match canvas coordinate system dynamically
-            mouseX = (e.clientX - r.left) * ((canvas.width / dpr) / r.width);
-            mouseY = (e.clientY - r.top) * ((canvas.height / dpr) / r.height);
-            
-            // Hover detection
-            hoveredNode = null;
-            for (let i = nodes.length - 1; i >= 0; i--) {
-                const node = nodes[i];
-                if (Math.hypot(node.x - mouseX, node.y - mouseY) < node.r + 8) {
-                    hoveredNode = node;
-                    break;
-                }
-            }
-            window.debugMouse = {
-                mouseX: mouseX,
-                mouseY: mouseY,
-                hoveredNode: hoveredNode ? { name: hoveredNode.name, x: hoveredNode.x, y: hoveredNode.y, r: hoveredNode.r } : null
-            };
-        });
-        
-        canvas.addEventListener("mouseleave", () => {
-            hoveredNode = null;
-        });
-
-        // Start 60fps render loop
         requestAnimationFrame(renderLoop);
     }
 
-    function dragsubject(event) {
-        const r = canvas.getBoundingClientRect();
-        const rect = document.getElementById("graph-visualizer").getBoundingClientRect();
-        const x = event.x * (rect.width / r.width);
-        const y = event.y * (height / r.height);
+    function resizeCanvas() {
+        if (!canvas) return;
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = window.innerWidth * dpr;
+        canvas.height = window.innerHeight * dpr;
+        ctx.scale(dpr, dpr);
         
+        if (simulation) {
+            const W = window.innerWidth;
+            const H = window.innerHeight;
+            simulation.force("center", d3.forceCenter(W / 2, H / 2));
+            simulation.force("x", d3.forceX().x(d => {
+                const dist = getDistrict(d, W, H);
+                return dist ? dist.x : W / 2;
+            }).strength(0.15));
+            simulation.force("y", d3.forceY().y(d => {
+                const dist = getDistrict(d, W, H);
+                return dist ? dist.y : H / 2;
+            }).strength(0.15));
+            simulation.alpha(0.1).restart();
+        }
+    }
+
+    function dragsubject(event) {
         for (let i = nodes.length - 1; i >= 0; i--) {
             const node = nodes[i];
-            if (Math.hypot(node.x - x, node.y - y) < node.r + 8) {
+            if (Math.hypot(node.x - event.x, node.y - event.y) < node.r + 8) {
                 return node;
             }
         }
@@ -544,25 +151,21 @@ document.addEventListener("DOMContentLoaded", () => {
         for (let y = 0; y < H; y += gs) {
             ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
         }
-        ctx.strokeStyle = "rgba(180, 210, 230, 0.04)";
-        for (let x = 0; x < W; x += gs * 4) {
-            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
-        }
-        for (let y = 0; y < H; y += gs * 4) {
-            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-        }
     }
 
     function getRGBColor(node) {
-        if (node.active_tag === "shifter") return [46, 213, 115]; // neon green
-        if (node.active_tag === "step") return [0, 210, 255]; // neon cyan
-        if (node.active_tag === "state_machine") return [160, 100, 255]; // neon purple
+        if (node.active_tag === "cybernet") return [46, 213, 115]; // green
+        if (node.active_tag === "step") return [0, 210, 255]; // cyan
+        if (node.active_tag === "state_machine") return [160, 100, 255]; // purple
         
-        if (node.label === "Cybernet") return [46, 213, 115]; // neon green
-        if (node.label === "StateMachine") return [160, 100, 255]; // neon purple
-        if (node.label === "TraversalStep") return [0, 210, 255]; // neon cyan
-        if (node.label === "Identity") return [80, 120, 220]; // slate blue
-        if (node.label === "SimulationRun") return [255, 80, 140]; // neon pink
+        if (node.label === "Cybernet") return [46, 213, 115]; 
+        if (node.label === "StateMachine") return [160, 100, 255]; 
+        if (node.label === "TraversalStep") return [0, 210, 255]; 
+        if (node.label === "Identity") return [80, 120, 220]; 
+        if (node.label === "Concept") return [255, 140, 0]; // orange
+        if (node.label === "Skill") return [255, 215, 0]; // gold
+        if (node.label === "ExecutionTrace") return [220, 20, 60]; // pinkish-red
+        if (node.label === "SimulationRun") return [255, 80, 140]; // pink
         return [120, 120, 120];
     }
 
@@ -574,51 +177,18 @@ document.addEventListener("DOMContentLoaded", () => {
     function drawBloom(ctx, x, y, r, c, glow, act) {
         const br = r * 6.5 + glow * 15;
         const ba = 0.04 + glow * 0.015 + act * 0.02;
-        
         const g = ctx.createRadialGradient(x, y, 0, x, y, br);
         g.addColorStop(0, `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${ba})`);
         g.addColorStop(0.3, `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${ba * 0.4})`);
         g.addColorStop(1, `rgba(${c[0]}, ${c[1]}, ${c[2]}, 0)`);
         ctx.fillStyle = g;
         ctx.beginPath(); ctx.arc(x, y, br, 0, Math.PI * 2); ctx.fill();
-        
-        const br2 = r * 2.5 + glow * 6;
-        const ba2 = 0.08 + glow * 0.025 + act * 0.03;
-        const g2 = ctx.createRadialGradient(x, y, 0, x, y, br2);
-        g2.addColorStop(0, `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${ba2})`);
-        g2.addColorStop(0.5, `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${ba2 * 0.25})`);
-        g2.addColorStop(1, `rgba(${c[0]}, ${c[1]}, ${c[2]}, 0)`);
-        ctx.fillStyle = g2;
-        ctx.beginPath(); ctx.arc(x, y, br2, 0, Math.PI * 2); ctx.fill();
     }
 
-    function drawOrb(ctx, x, y, r, c, act, glow, t, seed, isHov, isSel, refMx, refMy, label) {
+    function drawOrb(ctx, x, y, r, c, act, glow, t, seed, isHov, refMx, refMy, label) {
         const pulse = 0.85 + 0.15 * Math.sin(t * 2.5 + seed);
         const radius = r * pulse;
         
-        // Draw orbital halos for shifters or state machines
-        if (label === "Cybernet") {
-            ctx.strokeStyle = `rgba(${c[0]}, ${c[1]}, ${c[2]}, 0.45)`;
-            ctx.lineWidth = 0.7;
-            ctx.beginPath(); ctx.arc(x, y, radius + 4, 0, Math.PI * 2); ctx.stroke();
-            
-            ctx.strokeStyle = "rgba(255, 220, 140, 0.3)";
-            ctx.setLineDash([3, 3]);
-            ctx.beginPath(); ctx.arc(x, y, radius + 7, 0, Math.PI * 2); ctx.stroke();
-            ctx.setLineDash([]);
-        } else if (label === "StateMachine") {
-            ctx.strokeStyle = `rgba(${c[0]}, ${c[1]}, ${c[2]}, 0.4)`;
-            ctx.lineWidth = 0.5;
-            for (let i = 0; i < 6; i++) {
-                const ang = Math.PI / 3 * i + t * 0.5;
-                ctx.beginPath();
-                ctx.moveTo(x + Math.cos(ang) * (radius + 2), y + Math.sin(ang) * (radius + 2));
-                ctx.lineTo(x + Math.cos(ang) * (radius + 4), y + Math.sin(ang) * (radius + 4));
-                ctx.stroke();
-            }
-        }
-        
-        // Orb shading using radial gradient
         const lx = (refMx - x), ly = (refMy - y);
         const ld = Math.sqrt(lx * lx + ly * ly) || 1;
         const hxoff = lx / ld * radius * 0.25, hyoff = ly / ld * radius * 0.25;
@@ -632,172 +202,123 @@ document.addEventListener("DOMContentLoaded", () => {
         ctx.fillStyle = bodyG;
         ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.fill();
         
-        // Specular highlight highlight
         const sx = x + hxoff * 0.7, sy = y + hyoff * 0.7;
         const sg = ctx.createRadialGradient(sx, sy, 0, sx, sy, radius * 0.4);
         sg.addColorStop(0, `rgba(255, 255, 255, ${0.55 + act * 0.2})`);
         sg.addColorStop(0.4, `rgba(255, 255, 255, 0.15)`);
         sg.addColorStop(1, `rgba(255, 255, 255, 0)`);
-        ctx.fillStyle = sg;
         ctx.beginPath(); ctx.arc(sx, sy, radius * 0.4, 0, Math.PI * 2); ctx.fill();
-        
-        // Inner glowing core
-        ctx.fillStyle = `rgba(255, 255, 255, ${0.7 * pulse})`;
-        ctx.beginPath(); ctx.arc(x, y, radius * 0.12, 0, Math.PI * 2); ctx.fill();
+    }
+
+    function drawDistricts(ctx, W, H, time) {
+        const districtNames = [
+            { name: "GHOST SHELL CUSTOMIZER", key: "customizer", color: [46, 213, 115], x: W * 0.28, y: H * 0.32 },
+            { name: "COMPILER RING", key: "compiler", color: [160, 100, 255], x: W * 0.72, y: H * 0.32 },
+            { name: "THE ARENA", key: "arena", color: [255, 80, 140], x: W * 0.28, y: H * 0.68 },
+            { name: "SCRIPTURE ARCHIVES", key: "archives", color: [255, 140, 0], x: W * 0.72, y: H * 0.68 }
+        ];
+
+        const r = Math.min(W, H) * 0.22;
+
+        districtNames.forEach(dist => {
+            // 1. Draw glowing outer dashed circle
+            ctx.save();
+            ctx.strokeStyle = `rgba(${dist.color[0]}, ${dist.color[1]}, ${dist.color[2]}, 0.045)`;
+            ctx.setLineDash([6, 12]);
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.arc(dist.x, dist.y, r, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+
+            // 2. Draw subtle inner glow
+            const g = ctx.createRadialGradient(dist.x, dist.y, r * 0.8, dist.x, dist.y, r);
+            g.addColorStop(0, "rgba(0, 0, 0, 0)");
+            g.addColorStop(1, `rgba(${dist.color[0]}, ${dist.color[1]}, ${dist.color[2]}, 0.01)`);
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.arc(dist.x, dist.y, r, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 3. Draw center crosshair
+            ctx.strokeStyle = `rgba(${dist.color[0]}, ${dist.color[1]}, ${dist.color[2]}, 0.12)`;
+            ctx.lineWidth = 0.8;
+            ctx.beginPath();
+            ctx.moveTo(dist.x - 8, dist.y); ctx.lineTo(dist.x + 8, dist.y);
+            ctx.moveTo(dist.x, dist.y - 8); ctx.lineTo(dist.x, dist.y + 8);
+            ctx.stroke();
+
+            // 4. Draw district label with digital scanline feel
+            ctx.fillStyle = `rgba(${dist.color[0]}, ${dist.color[1]}, ${dist.color[2]}, 0.35)`;
+            ctx.font = "bold 9px 'JetBrains Mono', monospace";
+            ctx.textAlign = "center";
+            ctx.fillText(dist.name, dist.x, dist.y - r + 15);
+        });
     }
 
     function renderLoop(timestamp) {
         if (!ctx) return;
         
-        const rect = canvas.getBoundingClientRect();
-        const dpr = window.devicePixelRatio || 1;
-        
-        // Dynamically handle resize if container dimensions changed
-        if (canvas.width !== rect.width * dpr) {
-            canvas.width = rect.width * dpr;
-            canvas.height = height * dpr;
-            ctx.scale(dpr, dpr);
-            simulation.force("center", d3.forceCenter(rect.width / 2, height / 2));
-        }
-        
-        const drawWidth = rect.width;
+        const W = window.innerWidth;
+        const H = window.innerHeight;
         const time = timestamp / 1000;
         
-        // Clear canvas
-        ctx.clearRect(0, 0, drawWidth, height);
+        ctx.clearRect(0, 0, W, H);
+        drawGrid(ctx, W, H);
+        drawDistricts(ctx, W, H, time);
         
-        // Draw grid background
-        drawGrid(ctx, drawWidth, height);
-        
-        // Draw isometric tech grid cards (holographic background chips from circuit_microparticles_v5.html)
-        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-        const A_iso = Math.PI / 6;
-        for (let i = 0; i < 4; i++) {
-            const px = [drawWidth * 0.15, drawWidth * 0.75, drawWidth * 0.45, drawWidth * 0.62][i];
-            const py = [height * 0.22, height * 0.18, height * 0.78, height * 0.65][i];
-            const pw = [130, 150, 110, 120][i];
-            const ph = [60, 50, 75, 45][i];
-            
-            ctx.save();
-            ctx.translate(px, py);
-            ctx.rotate(A_iso);
-            
-            const ga = 0.012 + 0.006 * Math.sin(time * 0.5 + px * 0.01);
-            ctx.fillStyle = `rgba(0, 160, 255, ${ga})`;
-            ctx.fillRect(-pw / 2, -ph / 2, pw, ph);
-            ctx.strokeStyle = `rgba(0, 210, 255, ${ga * 2.8})`;
-            ctx.lineWidth = 0.45;
-            ctx.strokeRect(-pw / 2, -ph / 2, pw, ph);
-            
-            ctx.restore();
-        }
-
-        // Initialize background microparticles dynamically if not present
-        if (!window.bgParticles) {
-            window.bgParticles = [];
-            const particleCount = 50;
-            const G_chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン01';
-            for (let i = 0; i < particleCount; i++) {
-                window.bgParticles.push({
-                    x: Math.random() * drawWidth,
-                    y: Math.random() * height,
-                    vx: (Math.random() - 0.5) * 15,
-                    vy: (Math.random() - 0.5) * 15,
-                    char: G_chars[Math.floor(Math.random() * G_chars.length)],
-                    size: 4.5 + Math.random() * 4.5,
-                    alpha: 0.03 + Math.random() * 0.11,
-                    speed: 20 + Math.random() * 40,
-                    cycle: 0,
-                    cycleRate: 0.1 + Math.random() * 0.3
-                });
-            }
-        }
-
-        // Update and draw background microparticles
-        const G_chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン01';
-        const mRep = 110; // mouse repulsion radius
-        window.bgParticles.forEach(p => {
-            p.cycle += 0.016; // approximate dt
-            if (p.cycle > p.cycleRate) {
-                p.char = G_chars[Math.floor(Math.random() * G_chars.length)];
-                p.cycle = 0;
-            }
-            
-            // Mouse deflection / repulsion force
-            const dx = p.x - mouseX;
-            const dy = p.y - mouseY;
-            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-            if (dist < mRep) {
-                const force = (1 - dist / mRep) * 55;
-                p.vx += (dx / dist) * force * 0.016;
-                p.vy += (dy / dist) * force * 0.016;
-            }
-            
-            // Apply drift & drag
-            p.x += p.vx;
-            p.y += p.vy;
-            p.vx *= 0.95;
-            p.vy *= 0.95;
-            
-            // Boundary wrap
-            if (p.x < -20) p.x = drawWidth + 20;
-            if (p.x > drawWidth + 20) p.x = -20;
-            if (p.y < -20) p.y = height + 20;
-            if (p.y > height + 20) p.y = -20;
-            
-            // Render microparticle
-            ctx.fillStyle = `rgba(0, 210, 255, ${p.alpha})`;
-            ctx.font = `${Math.round(p.size)}px monospace`;
-            ctx.fillText(p.char, p.x, p.y);
-        });
+        const largeGraphMode = (nodes.length > 150);
         
         // Draw links
         links.forEach(link => {
             const source = link.source;
             const target = link.target;
             if (source.x && source.y && target.x && target.y) {
-                const grad = ctx.createLinearGradient(source.x, source.y, target.x, target.y);
-                const colorStart = getRGBColorString(source);
-                const colorEnd = getRGBColorString(target);
-                
-                grad.addColorStop(0, `rgba(${colorStart}, 0.18)`);
-                grad.addColorStop(1, `rgba(${colorEnd}, 0.18)`);
-                
-                ctx.strokeStyle = grad;
-                ctx.lineWidth = 1.0;
-                ctx.beginPath();
-                ctx.moveTo(source.x, source.y);
-                ctx.lineTo(target.x, target.y);
-                ctx.stroke();
-                
-                // Draw multiple digital characters flowing along the link
-                const packetCount = 3;
-                for (let j = 0; j < packetCount; j++) {
-                    const offset = j / packetCount;
-                    const p = (time * 0.22 + (parseInt(source.id) * 0.08 || 0) + offset) % 1.0;
-                    const px = source.x + (target.x - source.x) * p;
-                    const py = source.y + (target.y - source.y) * p;
+                const isActiveTransition = (
+                    source.active_tag === "step" || target.active_tag === "step" ||
+                    source.highlighted || target.highlighted ||
+                    activeFocusNodes.has(source.name) || activeFocusNodes.has(target.name)
+                );
+
+                if (largeGraphMode && !isActiveTransition) {
+                    ctx.strokeStyle = "rgba(120, 120, 120, 0.05)";
+                    ctx.lineWidth = 0.5;
+                    ctx.beginPath();
+                    ctx.moveTo(source.x, source.y);
+                    ctx.lineTo(target.x, target.y);
+                    ctx.stroke();
+                } else {
+                    const grad = ctx.createLinearGradient(source.x, source.y, target.x, target.y);
+                    const colorStart = getRGBColorString(source);
+                    const colorEnd = getRGBColorString(target);
                     
-                    // Draw cycling digital character
-                    const G_flow = '01アイウエオ';
-                    const charIdx = Math.floor((time * 6 + j) % G_flow.length);
-                    const flowChar = G_flow[charIdx];
+                    grad.addColorStop(0, `rgba(${colorStart}, 0.22)`);
+                    grad.addColorStop(1, `rgba(${colorEnd}, 0.22)`);
                     
-                    // Flow trail: draw 3 trailing dots
-                    ctx.fillStyle = `rgba(${colorEnd}, 0.16)`;
-                    for (let k = 1; k <= 3; k++) {
-                        const tp = Math.max(0, p - k * 0.02);
-                        const tpx = source.x + (target.x - source.x) * tp;
-                        const tpy = source.y + (target.y - source.y) * tp;
-                        ctx.beginPath();
-                        ctx.arc(tpx, tpy, 1.2 - k * 0.25, 0, Math.PI * 2);
-                        ctx.fill();
+                    ctx.strokeStyle = grad;
+                    ctx.lineWidth = isActiveTransition ? 1.5 : 0.8;
+                    ctx.beginPath();
+                    ctx.moveTo(source.x, source.y);
+                    ctx.lineTo(target.x, target.y);
+                    ctx.stroke();
+                    
+                    if (isActiveTransition || !largeGraphMode) {
+                        const packetCount = 2;
+                        for (let j = 0; j < packetCount; j++) {
+                            const offset = j / packetCount;
+                            const p = (time * 0.22 + (parseInt(source.id) * 0.08 || 0) + offset) % 1.0;
+                            const px = source.x + (target.x - source.x) * p;
+                            const py = source.y + (target.y - source.y) * p;
+                            
+                            const G_flow = '01アイウエオ';
+                            const charIdx = Math.floor((time * 6 + j) % G_flow.length);
+                            const flowChar = G_flow[charIdx];
+                            
+                            ctx.fillStyle = `rgba(${colorEnd}, 0.75)`;
+                            ctx.font = '7px monospace';
+                            ctx.fillText(flowChar, px - 2, py + 2);
+                        }
                     }
-                    
-                    // Draw main glowing character
-                    ctx.fillStyle = `rgba(${colorEnd}, 0.72)`;
-                    ctx.font = '7px monospace';
-                    ctx.fillText(flowChar, px - 2, py + 2);
                 }
             }
         });
@@ -805,32 +326,42 @@ document.addEventListener("DOMContentLoaded", () => {
         // Draw blooms
         nodes.forEach(node => {
             if (node.x && node.y) {
-                const c = getRGBColor(node);
-                const glow = node.active_tag ? 2.2 : 0.4;
-                const act = node.active_tag === "step" ? 1.6 : 0.1;
-                drawBloom(ctx, node.x, node.y, node.r, c, glow, act);
+                const isActive = node.active_tag || node.highlighted || (node === hoveredNode) || activeFocusNodes.has(node.name) || activeFocusNodes.has(node.id);
+                if (!largeGraphMode || isActive) {
+                    const c = getRGBColor(node);
+                    const glow = node.active_tag ? 2.2 : 0.4;
+                    const act = node.active_tag === "step" ? 1.6 : 0.1;
+                    drawBloom(ctx, node.x, node.y, node.r, c, glow, act);
+                }
             }
         });
         
-        // Draw light orbs
+        // Draw node orbs
         nodes.forEach(node => {
             if (node.x && node.y) {
                 const c = getRGBColor(node);
-                const act = node.active_tag === "step" ? 1.6 : 0.1;
-                const glow = node.active_tag ? 2.2 : 0.4;
-                const isHov = (node === hoveredNode);
+                const isActive = node.active_tag || node.highlighted || (node === hoveredNode) || activeFocusNodes.has(node.name) || activeFocusNodes.has(node.id);
                 
-                drawOrb(ctx, node.x, node.y, node.r, c, act, glow, time, node.seed || 0, isHov, false, mouseX, mouseY, node.label);
+                if (largeGraphMode && !isActive) {
+                    ctx.fillStyle = `rgba(${c[0]}, ${c[1]}, ${c[2]}, 0.55)`;
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, node.r * 0.8, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    const act = node.active_tag === "step" ? 1.6 : 0.1;
+                    const glow = node.active_tag ? 2.2 : 0.4;
+                    drawOrb(ctx, node.x, node.y, node.r, c, act, glow, time, node.seed || 0, node === hoveredNode, mouseX, mouseY, node.label);
+                }
             }
         });
         
-        // Draw overlays (labels, crosshairs, tooltips)
+        // Draw labels, focus indicators, overlays
         nodes.forEach(node => {
             if (node.x && node.y) {
                 const isHov = (node === hoveredNode);
-                
+                const isFocused = activeFocusNodes.has(node.name) || activeFocusNodes.has(node.id) || node.highlighted;
+
                 if (isHov) {
-                    // Rotating crosshair lock brackets
                     ctx.save();
                     ctx.translate(node.x, node.y);
                     ctx.rotate(time * 0.5);
@@ -849,7 +380,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                     ctx.restore();
                     
-                    // Sci-fi Leader line & HUD text box
                     ctx.strokeStyle = "rgba(255, 180, 80, 0.4)";
                     ctx.lineWidth = 0.8;
                     ctx.beginPath();
@@ -857,10 +387,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     const lx = node.x + node.r + 22;
                     const ly = node.y - 18;
                     ctx.lineTo(lx, ly);
-                    ctx.lineTo(lx + 125, ly);
+                    ctx.lineTo(lx + 130, ly);
                     ctx.stroke();
                     
-                    // Render HUD Metadata text
                     ctx.fillStyle = "rgba(255, 220, 140, 0.98)";
                     ctx.font = "bold 8px 'JetBrains Mono', monospace";
                     ctx.textAlign = "left";
@@ -868,9 +397,37 @@ document.addEventListener("DOMContentLoaded", () => {
                     
                     ctx.fillStyle = "rgba(180, 210, 230, 0.85)";
                     ctx.font = "8px 'Outfit', sans-serif";
-                    ctx.fillText(node.name.length > 21 ? node.name.substring(0, 18) + "..." : node.name, lx + 4, ly - 4);
+                    ctx.fillText(node.name.length > 22 ? node.name.substring(0, 19) + "..." : node.name, lx + 4, ly - 4);
+                } else if (isFocused) {
+                    ctx.save();
+                    ctx.translate(node.x, node.y);
+                    ctx.rotate(-time * 0.8 + node.seed * 0.01);
+                    const ringR = node.r * 2.2;
+                    ctx.strokeStyle = "rgba(180, 90, 255, 0.85)";
+                    ctx.lineWidth = 1.0;
+                    for (let i = 0; i < 4; i++) {
+                        ctx.save();
+                        ctx.rotate(Math.PI / 2 * i);
+                        ctx.beginPath();
+                        ctx.moveTo(ringR * 0.6, -ringR);
+                        ctx.lineTo(ringR, -ringR);
+                        ctx.lineTo(ringR, -ringR * 0.6);
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+                    ctx.restore();
+                    
+                    ctx.fillStyle = "rgba(210, 150, 255, 0.95)";
+                    ctx.beginPath();
+                    const dotAngle = time * 2.5 + node.seed;
+                    ctx.arc(node.x + Math.cos(dotAngle) * ringR, node.y + Math.sin(dotAngle) * ringR, 2.0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = "rgba(210, 160, 255, 0.9)";
+                    ctx.font = "bold 7px monospace";
+                    ctx.textAlign = "center";
+                    ctx.fillText("[AGENT FOCUS]", node.x, node.y - node.r - 8);
                 } else if (node.active_tag === "step" || node.label === "Cybernet") {
-                    // Constant label on primary nodes
                     ctx.fillStyle = "rgba(180, 210, 230, 0.7)";
                     ctx.font = "8px 'Outfit', sans-serif";
                     ctx.textAlign = "center";
@@ -883,8 +440,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function drawGraph(name) {
-        if (!canvas) initGraphVisualizer();
-        if (!canvas) return; // Escape if DOM not loaded yet
+        if (!canvas) initVisualizer();
+        if (!canvas) return;
         
         try {
             const url = name ? `/api/graph?name=${name}` : "/api/graph";
@@ -894,7 +451,6 @@ document.addEventListener("DOMContentLoaded", () => {
             const rawNodes = graph.nodes;
             const rawLinks = graph.links;
 
-            // Map nodes to visual orb sizes and assign seeds for animations
             rawNodes.forEach(node => {
                 node.seed = Math.random() * 1000;
                 if (node.label === "Cybernet") node.r = 13;
@@ -905,7 +461,35 @@ document.addEventListener("DOMContentLoaded", () => {
                 else node.r = 5;
             });
 
-            // Preserve positions of existing nodes in the simulation
+            const largeGraphMode = (rawNodes.length > 150);
+            if (largeGraphMode) {
+                simulation.force("charge").strength(-15);
+                simulation.force("collision").radius(6);
+                simulation.force("link").distance(25);
+                simulation.alphaDecay(0.08);
+                simulation.force("x", d3.forceX().x(d => {
+                    const dist = getDistrict(d);
+                    return dist ? dist.x : window.innerWidth / 2;
+                }).strength(0.12));
+                simulation.force("y", d3.forceY().y(d => {
+                    const dist = getDistrict(d);
+                    return dist ? dist.y : window.innerHeight / 2;
+                }).strength(0.12));
+            } else {
+                simulation.force("charge").strength(-120);
+                simulation.force("collision").radius(22);
+                simulation.force("link").distance(70);
+                simulation.alphaDecay(0.0228);
+                simulation.force("x", d3.forceX().x(d => {
+                    const dist = getDistrict(d);
+                    return dist ? dist.x : window.innerWidth / 2;
+                }).strength(0.18));
+                simulation.force("y", d3.forceY().y(d => {
+                    const dist = getDistrict(d);
+                    return dist ? dist.y : window.innerHeight / 2;
+                }).strength(0.18));
+            }
+
             const existingNodes = new Map();
             if (simulation) {
                 simulation.nodes().forEach(node => {
@@ -927,7 +511,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 return node;
             });
 
-            // Map link source/target IDs to actual node references
             const nodeById = new Map(nodes.map(n => [n.id, n]));
             links = rawLinks.map(link => {
                 return {
@@ -940,29 +523,52 @@ document.addEventListener("DOMContentLoaded", () => {
             simulation.nodes(nodes);
             simulation.force("link").links(links);
             simulation.alpha(0.3).restart();
-            
-            window.graphNodes = nodes;
-            window.graphLinks = links;
 
         } catch (e) {
             console.error("D3 Draw Error:", e);
         }
     }
 
-    // Real-time dashboard auto-refresh polling loop
-    async function tickDashboard() {
-        if (activeIdentity) {
-            await updateIdentitySheet(activeIdentity);
-        } else {
-            await drawGraph(null);
+    async function syncActiveIdentity() {
+        try {
+            const res = await fetch("/api/agent_logs");
+            const data = await res.json();
+            
+            // Track active focus targets to highlight on graph
+            activeFocusNodes = new Set(data.active_focus_nodes || []);
+            activeFocusLabels = new Set(data.active_focus_labels || []);
+
+            // Auto-synchronize graph layout when identity or step changes
+            const identityChanged = data.active_cybernet && data.active_cybernet !== activeIdentity;
+            const stepChanged = data.active_step_id && data.active_step_id !== activeStepId;
+            
+            if (identityChanged || stepChanged) {
+                activeIdentity = data.active_cybernet || "";
+                activeStepId = data.active_step_id || "";
+                await drawGraph(activeIdentity);
+            } else if (!data.active_cybernet && activeIdentity) {
+                activeIdentity = "";
+                activeStepId = "";
+                await drawGraph(null);
+            } else {
+                // If nodes are already loaded, dynamically update focus/highlight states in memory for 60fps rendering
+                nodes.forEach(node => {
+                    node.highlighted = (
+                        activeFocusNodes.has(node.name) || 
+                        activeFocusNodes.has(node.id) || 
+                        activeFocusLabels.has(node.label)
+                    );
+                });
+            }
+        } catch (e) {
+            console.error("Failed to sync identity state:", e);
         }
     }
 
-    // Run polling every 1000ms
-    const pollInterval = setInterval(tickDashboard, 1000);
+    // Refresh layout state every 1500ms
+    const syncInterval = setInterval(syncActiveIdentity, 1500);
 
-    // Cleanup interval on window unload
     window.addEventListener("beforeunload", () => {
-        clearInterval(pollInterval);
+        clearInterval(syncInterval);
     });
 });
