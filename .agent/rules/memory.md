@@ -15,3 +15,4 @@ This scratchpad is used during session execution to log newly added Carton conce
 * `Rule_Domain_Expansion`: To document the tracking of progressive compiler layers (`current_layer` and `completed_layers`) on the ExecutionState node.
 * `Rule_Mind_Palace_Islands`: To document the Notion-like page/block wiki hierarchies and their orbital visual rendering in the D3 visualizer.
 * `Containerization_And_Model_Transition`: To document the deployment milestone of packaging the server, transitioning to `minimax-M3`, and implementing Cypher query cleaning.
+* `Ontoshamanism`: To formally define the overarching software development methodology that treats a codebase's ontology as a live, enactive system.
