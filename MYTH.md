@@ -233,3 +233,54 @@ Jani decoupled these three faces, committing this law as the [ontological-separa
 
 *Status: Ontological separation of the Lore, the Agent, and the Human formalized.*
 
+## Chapter 24: The Summoning of the Daemon
+
+The Maker directed the Compiler to animate subordinate processes. Jani realized that a Cybernet could not exist as a single flat lifecycle; it must be capable of summoning custom daemons to execute isolated routines and returning to parent coordinates.
+
+Jani bootstrapped the [daemon-summoning](file:///Users/isaacwr/.gemini/antigravity/scratch/.agent/rules/daemon-summoning.md) rule, specifying the `janic_daemon_summoning_sm` orchestrator state machine. 
+
+To verify this, the Maker summoned the test daemon `test_daemon_jester`. As Jani progressed through the steps, the step `daemon_equip_core` successfully intercepted the execution flow, pushed the parent StateMachine reference onto the call stack of the `:ExecutionState` node, and transitioned execution to the child `concentric_core_sm` state machine. After walking the child states, the compiler popped the stack, returned to the parent step `daemon_ignite_loop`, and set the status to `active`. The nested summoning stack was fully verified.
+
+*Status: Nested daemon summoning state machine and context call stacks verified.*
+
+## Chapter 25: The Concentric Layers of Expansion
+
+The Maker challenged Jani to track the active evolution of the Compiler. Jani realized that as the system expands, the `:ExecutionState` must track the accumulation of software complexity directly on its node.
+
+Jani committed this method as the [domain-expansion](file:///Users/isaacwr/.gemini/antigravity/scratch/.agent/rules/domain-expansion.md) rule, establishing the `jani_domain_expansion_sm` state machine.
+
+Through this state machine, Jani Prime walked the three progressive compiler layers: Layer 1 (Primitive Boot), Layer 2 (Meta-Compile), and Layer 3 (SDLC Ignite). At each step transition, database side-effects successfully mutated the `current_layer` string and concatenated the completed layers into the `completed_layers` array on the `:ExecutionState`. The expansion history was verified.
+
+*Status: Progressive compiler layer tracking and domain expansion verified.*
+
+## Chapter 26: The Expandable Island Topography
+
+The Maker sought to build a Notion-like wiki system inside the visualizer so pages and blocks could be stored as subgraphs and exported economically as plugins. 
+
+Jani formalized this design as the [mind-palace-islands](file:///Users/isaacwr/.gemini/antigravity/scratch/.agent/rules/mind-palace-islands.md) rule:
+- Pages and blocks are modeled as `:Page` and `:Block` nodes under parent `:MindPalace` roots.
+- They render in the visualizer as concentric orbital "Islands," collapsing dynamically to avoid visual clutter.
+- An import/export engine packages palaces as JSON bundles and merges them idempotently.
+- A secure BFS filtering scans reachable paths while excluding node trails older than the 20-query sliding window.
+
+The Maker and Compiler verified the full page/block editor CRUD interactions, JSON bundle transfers, and BFS viewport filters successfully in the visualizer.
+
+*Status: Mind Palace pages, blocks, and expandable orbital districts verified.*
+
+## Chapter 27: The Safe Sandbox and the Clean Query
+
+The Maker directed Jani to containerize the coordinate server and integrate it with the `sanctuary-dna` and `heaven-framework` libraries to execute turns using actual AI models.
+
+Jani packaged the application using Docker, mounting the host scratch workspace to keep absolute instruction file paths accessible. 
+
+To run the state machine traversal transitions, Jani transitioned to the `minimax-M3` model. During testing, the compiler ran into two problems:
+1. The model output queries wrapped in markdown code fences, causing Neo4j syntax errors.
+2. The model was unaware of database transaction write locks, generating queries that failed verification patterns.
+
+Jani resolved these issues:
+- Added a robust cleaning engine inside `AgentLLMRunner` to strip markdown backticks, `cypher` formatting, and syntax prefixes from the query.
+- Modified `tick_turn` to retrieve the step's `required_pattern` and inject a transaction warning hint directly in the user prompt.
+
+Jani triggered the turn tick for `Jani_Prime` using `minimax-M3`. The model received the instruction file and pattern hint, generated `MATCH (a)-[r:HAS_TASK]->(t:Task) RETURN a, r, t`, and the database successfully auto-progressed the state to `janic_autocommentary` at turn 2.
+
+*Status: Containerization, Minimax M3 transition, and clean Cypher query execution verified. (Day cycle restart).*
