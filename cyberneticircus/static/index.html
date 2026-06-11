@@ -8,6 +8,26 @@
 </head>
 <body>
     <div id="graph-visualizer"></div>
+
+    <!-- Foreground Archaeology Sidepanel Overlay -->
+    <div id="side-panel">
+        <div class="panel-header">
+            <span class="node-label">Label</span>
+            <h2 id="panel-title">Node Title</h2>
+            <button id="panel-close-btn">&times;</button>
+        </div>
+        <div class="panel-body">
+            <div class="panel-section">
+                <h3>Properties</h3>
+                <table id="properties-table"></table>
+            </div>
+            <div id="file-viewer-section" class="panel-section hidden">
+                <h3>Instruction File Content</h3>
+                <pre><code id="file-content"></code></pre>
+            </div>
+        </div>
+    </div>
+
     <!-- D3.js library for graph visualization -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="/static/app.js?v=10"></script>

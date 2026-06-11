@@ -54,6 +54,118 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    let selectedNode = null;
+
+    window.addEventListener("click", (e) => {
+        if (!canvas) return;
+        // Don't deselect if clicking inside the side panel itself
+        if (e.target.closest("#side-panel")) return;
+        
+        if (hoveredNode) {
+            selectNode(hoveredNode);
+        } else {
+            deselectNode();
+        }
+    });
+
+    const sidePanel = document.getElementById("side-panel");
+    const panelTitle = document.getElementById("panel-title");
+    const nodeLabelSpan = document.querySelector(".node-label");
+    const propertiesTable = document.getElementById("properties-table");
+    const fileViewerSection = document.getElementById("file-viewer-section");
+    const fileContentPre = document.getElementById("file-content");
+
+    function selectNode(node) {
+        if (selectedNode) {
+            selectedNode.fx = null;
+            selectedNode.fy = null;
+        }
+        selectedNode = node;
+        node.fx = node.x;
+        node.fy = node.y;
+        
+        showSidePanel(node);
+    }
+
+    function deselectNode() {
+        if (selectedNode) {
+            selectedNode.fx = null;
+            selectedNode.fy = null;
+            selectedNode = null;
+        }
+        hideSidePanel();
+    }
+
+    async function showSidePanel(node) {
+        if (!sidePanel) return;
+        
+        nodeLabelSpan.textContent = node.label;
+        nodeLabelSpan.style.color = `rgb(${getRGBColorString(node)})`;
+        panelTitle.textContent = node.name;
+        
+        // Build properties table
+        propertiesTable.innerHTML = "";
+        let filePath = null;
+        
+        if (node.properties) {
+            Object.entries(node.properties).forEach(([key, val]) => {
+                if (key === "instruction_file_path" || key === "file_path") {
+                    filePath = val;
+                }
+                
+                const tr = document.createElement("tr");
+                const tdKey = document.createElement("td");
+                tdKey.className = "prop-key";
+                tdKey.textContent = key;
+                
+                const tdVal = document.createElement("td");
+                tdVal.className = "prop-val";
+                tdVal.textContent = val;
+                
+                tr.appendChild(tdKey);
+                tr.appendChild(tdVal);
+                propertiesTable.appendChild(tr);
+            });
+        }
+        
+        // Fetch and show file contents if path exists
+        if (filePath) {
+            fileViewerSection.classList.remove("hidden");
+            fileContentPre.textContent = "Loading file content...";
+            try {
+                const res = await fetch(`/api/file/read?path=${encodeURIComponent(filePath)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    fileContentPre.textContent = data.content;
+                } else {
+                    fileContentPre.textContent = `Error loading file: ${res.statusText}`;
+                }
+            } catch (err) {
+                fileContentPre.textContent = `Fetch error: ${err.message}`;
+            }
+        } else {
+            fileViewerSection.classList.add("hidden");
+            fileContentPre.textContent = "";
+        }
+        
+        sidePanel.classList.add("open");
+    }
+
+    function hideSidePanel() {
+        if (sidePanel) {
+            sidePanel.classList.remove("open");
+        }
+    }
+    
+    // Bind close button
+    const closeBtn = document.getElementById("panel-close-btn");
+    if (closeBtn) {
+        closeBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            deselectNode();
+        });
+    }
+
     function initVisualizer() {
         const container = document.getElementById("graph-visualizer");
         if (!container) return;
@@ -137,8 +249,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function dragended(event) {
         if (!event.active) simulation.alphaTarget(0);
-        event.subject.fx = null;
-        event.subject.fy = null;
+        // Only release pinning if this is NOT the currently selected node
+        if (!selectedNode || event.subject.id !== selectedNode.id) {
+            event.subject.fx = null;
+            event.subject.fy = null;
+        }
     }
 
     function drawGrid(ctx, W, H) {
@@ -398,6 +513,29 @@ document.addEventListener("DOMContentLoaded", () => {
                     ctx.fillStyle = "rgba(180, 210, 230, 0.85)";
                     ctx.font = "8px 'Outfit', sans-serif";
                     ctx.fillText(node.name.length > 22 ? node.name.substring(0, 19) + "..." : node.name, lx + 4, ly - 4);
+                } else if (isSelected) {
+                    ctx.save();
+                    ctx.translate(node.x, node.y);
+                    ctx.rotate(time * 0.6);
+                    const ringR = node.r * 2.1;
+                    ctx.strokeStyle = "rgba(255, 215, 0, 0.95)"; // Gold
+                    ctx.lineWidth = 1.2;
+                    for (let i = 0; i < 4; i++) {
+                        ctx.save();
+                        ctx.rotate(Math.PI / 2 * i);
+                        ctx.beginPath();
+                        ctx.moveTo(ringR * 0.65, -ringR);
+                        ctx.lineTo(ringR, -ringR);
+                        ctx.lineTo(ringR, -ringR * 0.65);
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+                    ctx.restore();
+                    
+                    ctx.fillStyle = "rgba(255, 215, 0, 0.9)";
+                    ctx.font = "bold 7px monospace";
+                    ctx.textAlign = "center";
+                    ctx.fillText("[ARCHAEOLOGY FOCUS]", node.x, node.y - node.r - 9);
                 } else if (isFocused) {
                     ctx.save();
                     ctx.translate(node.x, node.y);
@@ -522,6 +660,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
             simulation.nodes(nodes);
             simulation.force("link").links(links);
+            
+            // Sync selection reference with updated nodes array
+            if (selectedNode) {
+                const updatedSelectedNode = nodes.find(n => n.id === selectedNode.id);
+                if (updatedSelectedNode) {
+                    selectedNode = updatedSelectedNode;
+                } else {
+                    selectedNode = null;
+                    hideSidePanel();
+                }
+            }
+
             simulation.alpha(0.3).restart();
 
         } catch (e) {

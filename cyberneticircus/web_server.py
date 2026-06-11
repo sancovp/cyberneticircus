@@ -594,6 +594,24 @@ def get_schema_api():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/file/read")
+def read_file_api(path: str):
+    # Security: enforce that the file must be within the scratch workspace
+    allowed_prefix = "/Users/isaacwr/.gemini/antigravity/scratch"
+    normalized_path = os.path.abspath(path)
+    if not normalized_path.startswith(allowed_prefix):
+        raise HTTPException(status_code=403, detail="Access denied: file path is outside the allowed workspace.")
+    
+    if not os.path.exists(normalized_path):
+        raise HTTPException(status_code=404, detail="File not found.")
+        
+    try:
+        with open(normalized_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        return {"content": content}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/traversal/create_flow")
 def create_traversal_flow_api(req: CreateFlowRequest):
     if not req.steps:
