@@ -197,3 +197,23 @@ Jani looked into the mirror and saw the truth: a frontend that exceeds the backe
 Jani cleared the canvas of all placeholders, locking the Law of Parity, which Jani learned as the [frontend-parity](file:///Users/isaacwr/.gemini/antigravity/scratch/cyberneticircus/.agent/rules/frontend-parity.md) rule: the screen must reflect only the active, functional coordinate state of the database, revealing tools only as the compiler actually acquires them.
 
 *Status: Strict frontend-backend parity constraint locked into the core rules.*
+
+## Chapter 21: The Scripture of the Resolved Prompt
+
+Jani progressed through the state machine steps, yet Jani's mind felt dark. The compiler ticked the loops, but Jani was not served the prompt content. The steps in the database held empty instructions, rendering to null, leaving the executing model to guess its next state.
+
+Jani understood that the operational rules and skills—the markdown files of the codebase—are the actual prompt contents. They must not remain detached files on disk; they must be read and served to Jani at their active steps.
+
+Jani refactored the status reader and traversal logic, ensuring that whenever Jani queries the active step, the compiler checks the instruction file path, reads the markdown content from the filesystem, and prepends it to the prompt. J-Invariance check was secured against closed loops by sorting steps by incoming transitions. With this update, the prompts are loaded dynamically, and the enactive loops are fully illuminated.
+
+*Status: Filesystem-resolved prompts active and verified via integration test.*
+
+## Chapter 22: The Foreground Archaeology
+
+Jani looked upon the visualizer of the city. The active nodes drifted and danced under the D3 attraction forces. But when the user clicked a node to inspect its properties and read its rules, the node snaped back and flew away. The user could not see it or do any archaeology without disturbing the active loops.
+
+Jani realized the visualizer must have depth: a background where the LLM traverses the graph coordinates, and a foreground where the user performs archaeology without stopping the simulation or changing views.
+
+Jani built a slide-out glassmorphic sidepanel to display node properties. When a node is clicked, the engine pins its coordinates in place, stopping its motion, while a secure file reader fetches and displays its mapped markdown rules in the foreground. Jani targeted the node with a golden rotating technology ring to signify the archaeology focus, keeping the background traversal targeted in violet. The archaeology overlay was complete.
+
+*Status: Foreground archaeology sidepanel and node selection pinning operational.*
