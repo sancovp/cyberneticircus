@@ -497,6 +497,41 @@ class CybernetiCircusCompiler:
                             """,
                             {"name": name, "sm_id": sm_id}
                         )
+                    
+                    # Check if we looped back to the entry step of the StateMachine
+                    entry_res = session.run(
+                        """
+                        MATCH (sm:StateMachine {id: $sm_id})-[:HAS_STEP]->(entry:TraversalStep)
+                        WITH collect(entry) as entries
+                        UNWIND entries as entry
+                        OPTIONAL MATCH (prev:TraversalStep)-[:NEXT_STEP]->(entry)
+                        WITH entry, count(prev) as incoming
+                        ORDER BY incoming ASC, entry.id ASC
+                        WITH collect(entry) as sorted_entries
+                        RETURN sorted_entries[0].id as entry_id
+                        """,
+                        {"sm_id": sm_id}
+                    )
+                    entry_rec = entry_res.single()
+                    entry_step_id = entry_rec["entry_id"] if entry_rec else None
+                    
+                    if new_step_id == entry_step_id:
+                        if turn_number >= 5:
+                            evolve_msg = self.evaluate_evolution(name)
+                            output_data["event_message"] += f" [LIFETIME COMPLETED] {evolve_msg}"
+                        else:
+                            session.run(
+                                """
+                                MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:Identity {equipped_sm_id: $sm_id})
+                                SET s.turn_number = s.turn_number + 1,
+                                    s.phase = 'day',
+                                    s.tokens_consumed_this_turn = 0,
+                                    s.cost_this_turn = 0.0,
+                                    s.call_stack = '[]'
+                                """,
+                                {"name": name, "sm_id": sm_id}
+                            )
+                            output_data["event_message"] += " State machine completed. Resetting for next Day cycle."
                 else:
                     # TraversalState was completed/deleted!
                     # Check if inside a sub-state machine (call stack is not empty)

@@ -12,22 +12,25 @@ document.addEventListener("DOMContentLoaded", () => {
     let activeStepId = "";
     let activeFocusNodes = new Set();
     let activeFocusLabels = new Set();
+    let selectedNode = null;
 
     function getDistrict(node, W, H) {
         W = W || window.innerWidth;
         H = H || window.innerHeight;
-        const r = Math.min(W, H) * 0.22;
+        const panelWidth = selectedNode ? 440 : 0;
+        const visibleW = W - panelWidth;
+        const r = Math.min(visibleW, H) * 0.22;
         if (node.label === "Cybernet" || node.label === "Identity" || node.label === "Skill") {
-            return { name: "GHOST SHELL CUSTOMIZER", x: W * 0.28, y: H * 0.32, r, color: [46, 213, 115] };
+            return { name: "GHOST SHELL CUSTOMIZER", x: visibleW * 0.28, y: H * 0.32, r, color: [46, 213, 115] };
         }
         if (node.label === "StateMachine" || node.label === "TraversalStep" || node.label === "ExecutionTrace") {
-            return { name: "COMPILER RING", x: W * 0.72, y: H * 0.32, r, color: [160, 100, 255] };
+            return { name: "COMPILER RING", x: visibleW * 0.72, y: H * 0.32, r, color: [160, 100, 255] };
         }
         if (node.label === "SimulationRun") {
-            return { name: "THE ARENA", x: W * 0.28, y: H * 0.68, r, color: [255, 80, 140] };
+            return { name: "THE ARENA", x: visibleW * 0.28, y: H * 0.68, r, color: [255, 80, 140] };
         }
         if (node.label === "Concept") {
-            return { name: "SCRIPTURE ARCHIVES", x: W * 0.72, y: H * 0.68, r, color: [255, 140, 0] };
+            return { name: "SCRIPTURE ARCHIVES", x: visibleW * 0.72, y: H * 0.68, r, color: [255, 140, 0] };
         }
         return null;
     }
@@ -54,7 +57,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    let selectedNode = null;
 
     window.addEventListener("click", (e) => {
         if (!canvas) return;
@@ -81,6 +83,17 @@ document.addEventListener("DOMContentLoaded", () => {
             selectedNode.fy = null;
         }
         selectedNode = node;
+        
+        // Trigger center shift first
+        updateSimulationDimensions();
+        
+        // Pin the node, pushing it left if it would be covered by the panel
+        const W = window.innerWidth;
+        const panelWidth = 440;
+        const visibleW = W - panelWidth;
+        if (node.x > visibleW - 50) {
+            node.x = visibleW - 100 - Math.random() * 50;
+        }
         node.fx = node.x;
         node.fy = node.y;
         
@@ -93,7 +106,28 @@ document.addEventListener("DOMContentLoaded", () => {
             selectedNode.fy = null;
             selectedNode = null;
         }
+        updateSimulationDimensions();
         hideSidePanel();
+    }
+
+    function updateSimulationDimensions() {
+        if (!simulation) return;
+        const W = window.innerWidth;
+        const H = window.innerHeight;
+        const panelWidth = selectedNode ? 440 : 0;
+        const visibleW = W - panelWidth;
+        
+        simulation.force("x", d3.forceX().x(d => {
+            const dist = getDistrict(d, W, H);
+            return dist ? dist.x : visibleW / 2;
+        }).strength(0.65));
+        
+        simulation.force("y", d3.forceY().y(d => {
+            const dist = getDistrict(d, W, H);
+            return dist ? dist.y : H / 2;
+        }).strength(0.65));
+        
+        simulation.alpha(0.3).restart();
     }
 
     async function showSidePanel(node) {
@@ -166,6 +200,12 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    window.selectNodeByName = (name) => {
+        const node = nodes.find(n => n.name === name || n.id === name);
+        if (node) selectNode(node);
+    };
+    window.deselectNode = deselectNode;
+
     function initVisualizer() {
         const container = document.getElementById("graph-visualizer");
         if (!container) return;
@@ -177,19 +217,23 @@ document.addEventListener("DOMContentLoaded", () => {
         
         resizeCanvas();
 
+        const W = window.innerWidth;
+        const H = window.innerHeight;
+        const panelWidth = selectedNode ? 440 : 0;
+        const visibleW = W - panelWidth;
+
         simulation = d3.forceSimulation()
-            .force("link", d3.forceLink().id(d => d.id).distance(85))
+            .force("link", d3.forceLink().id(d => d.id).distance(85).strength(0.1))
             .force("charge", d3.forceManyBody().strength(-120))
-            .force("center", d3.forceCenter(window.innerWidth / 2, window.innerHeight / 2))
             .force("collision", d3.forceCollide().radius(22))
             .force("x", d3.forceX().x(d => {
-                const dist = getDistrict(d);
-                return dist ? dist.x : window.innerWidth / 2;
-            }).strength(0.15))
+                const dist = getDistrict(d, W, H);
+                return dist ? dist.x : visibleW / 2;
+            }).strength(0.65))
             .force("y", d3.forceY().y(d => {
-                const dist = getDistrict(d);
-                return dist ? dist.y : window.innerHeight / 2;
-            }).strength(0.15));
+                const dist = getDistrict(d, W, H);
+                return dist ? dist.y : H / 2;
+            }).strength(0.65));
             
         // Bind drag behavior
         d3.select(canvas)
@@ -211,18 +255,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ctx.scale(dpr, dpr);
         
         if (simulation) {
-            const W = window.innerWidth;
-            const H = window.innerHeight;
-            simulation.force("center", d3.forceCenter(W / 2, H / 2));
-            simulation.force("x", d3.forceX().x(d => {
-                const dist = getDistrict(d, W, H);
-                return dist ? dist.x : W / 2;
-            }).strength(0.15));
-            simulation.force("y", d3.forceY().y(d => {
-                const dist = getDistrict(d, W, H);
-                return dist ? dist.y : H / 2;
-            }).strength(0.15));
-            simulation.alpha(0.1).restart();
+            updateSimulationDimensions();
         }
     }
 
@@ -326,14 +359,16 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function drawDistricts(ctx, W, H, time) {
-        const districtNames = [
-            { name: "GHOST SHELL CUSTOMIZER", key: "customizer", color: [46, 213, 115], x: W * 0.28, y: H * 0.32 },
-            { name: "COMPILER RING", key: "compiler", color: [160, 100, 255], x: W * 0.72, y: H * 0.32 },
-            { name: "THE ARENA", key: "arena", color: [255, 80, 140], x: W * 0.28, y: H * 0.68 },
-            { name: "SCRIPTURE ARCHIVES", key: "archives", color: [255, 140, 0], x: W * 0.72, y: H * 0.68 }
-        ];
+        const panelWidth = selectedNode ? 440 : 0;
+        const visibleW = W - panelWidth;
+        const r = Math.min(visibleW, H) * 0.22;
 
-        const r = Math.min(W, H) * 0.22;
+        const districtNames = [
+            { name: "GHOST SHELL CUSTOMIZER", key: "customizer", color: [46, 213, 115], x: visibleW * 0.28, y: H * 0.32 },
+            { name: "COMPILER RING", key: "compiler", color: [160, 100, 255], x: visibleW * 0.72, y: H * 0.32 },
+            { name: "THE ARENA", key: "arena", color: [255, 80, 140], x: visibleW * 0.28, y: H * 0.68 },
+            { name: "SCRIPTURE ARCHIVES", key: "archives", color: [255, 140, 0], x: visibleW * 0.72, y: H * 0.68 }
+        ];
 
         districtNames.forEach(dist => {
             // 1. Draw glowing outer dashed circle
@@ -475,6 +510,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (node.x && node.y) {
                 const isHov = (node === hoveredNode);
                 const isFocused = activeFocusNodes.has(node.name) || activeFocusNodes.has(node.id) || node.highlighted;
+                const isSelected = (selectedNode && selectedNode.id === node.id);
 
                 if (isHov) {
                     ctx.save();
@@ -600,6 +636,10 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
             const largeGraphMode = (rawNodes.length > 150);
+            const panelWidth = selectedNode ? 440 : 0;
+            const visibleW = window.innerWidth - panelWidth;
+            const H = window.innerHeight;
+
             if (largeGraphMode) {
                 simulation.force("charge").strength(-15);
                 simulation.force("collision").radius(6);
@@ -607,11 +647,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 simulation.alphaDecay(0.08);
                 simulation.force("x", d3.forceX().x(d => {
                     const dist = getDistrict(d);
-                    return dist ? dist.x : window.innerWidth / 2;
+                    return dist ? dist.x : visibleW / 2;
                 }).strength(0.12));
                 simulation.force("y", d3.forceY().y(d => {
                     const dist = getDistrict(d);
-                    return dist ? dist.y : window.innerHeight / 2;
+                    return dist ? dist.y : H / 2;
                 }).strength(0.12));
             } else {
                 simulation.force("charge").strength(-120);
@@ -620,11 +660,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 simulation.alphaDecay(0.0228);
                 simulation.force("x", d3.forceX().x(d => {
                     const dist = getDistrict(d);
-                    return dist ? dist.x : window.innerWidth / 2;
+                    return dist ? dist.x : visibleW / 2;
                 }).strength(0.18));
                 simulation.force("y", d3.forceY().y(d => {
                     const dist = getDistrict(d);
-                    return dist ? dist.y : window.innerHeight / 2;
+                    return dist ? dist.y : H / 2;
                 }).strength(0.18));
             }
 
@@ -645,6 +685,17 @@ document.addEventListener("DOMContentLoaded", () => {
                     node.fx = existing.fx;
                     node.fy = existing.fy;
                     node.seed = existing.seed;
+                } else {
+                    const dist = getDistrict(node);
+                    if (dist) {
+                        node.x = dist.x + (Math.random() - 0.5) * 50;
+                        node.y = dist.y + (Math.random() - 0.5) * 50;
+                    } else {
+                        node.x = window.innerWidth / 2 + (Math.random() - 0.5) * 50;
+                        node.y = window.innerHeight / 2 + (Math.random() - 0.5) * 50;
+                    }
+                    node.vx = 0;
+                    node.vy = 0;
                 }
                 return node;
             });
