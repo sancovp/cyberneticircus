@@ -528,6 +528,7 @@ class BlockItem(BaseModel):
     language: Optional[str] = "text"
 
 class BlocksPayload(BaseModel):
+    title: Optional[str] = None
     blocks: List[BlockItem]
 
 @app.get("/api/mindpalaces")
@@ -674,6 +675,14 @@ def save_mind_palace_page_blocks(page_id: str, payload: BlocksPayload):
             page_id_int = -1
             
         with compiler.driver.session() as session:
+            if payload.title:
+                session.run(
+                    """
+                    MATCH (p:Page) WHERE elementId(p) = $page_id OR id(p) = $page_id_int OR p.id = $page_id
+                    SET p.title = $title
+                    """,
+                    {"page_id": page_id, "page_id_int": page_id_int, "title": payload.title}
+                )
             session.run(
                 """
                 MATCH (p:Page) WHERE elementId(p) = $page_id OR id(p) = $page_id_int OR p.id = $page_id

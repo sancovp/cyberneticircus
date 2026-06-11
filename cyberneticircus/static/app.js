@@ -2065,6 +2065,190 @@ document.addEventListener("DOMContentLoaded", () => {
     const speclabWorkspace = document.getElementById("speclab-workspace");
     const mindpalaceWorkspace = document.getElementById("mindpalace-workspace");
 
+    const mpTabComposerBtn = document.getElementById("mp-tab-composer");
+    const mpTabPreviewBtn = document.getElementById("mp-tab-preview");
+    const mpComposerView = document.getElementById("mp-composer-view");
+    const mpPreviewView = document.getElementById("mp-preview-view");
+    const mpEditRawCheckbox = document.getElementById("mp-edit-raw-mode");
+    const mpRawEditor = document.getElementById("mp-raw-editor");
+
+    if (mpTabComposerBtn && mpTabPreviewBtn && mpComposerView && mpPreviewView) {
+        mpTabComposerBtn.addEventListener("click", () => {
+            mpTabComposerBtn.classList.add("active");
+            mpTabPreviewBtn.classList.remove("active");
+            mpComposerView.classList.remove("hidden");
+            mpPreviewView.classList.add("hidden");
+            
+            if (mpEditRawCheckbox && mpEditRawCheckbox.checked && mpRawEditor) {
+                const rawContent = mpRawEditor.value;
+                currentPageBlocks = parseMarkdownToMpBlocks(rawContent);
+                renderMpBlocks();
+            }
+            compileMpPreview();
+        });
+        
+        mpTabPreviewBtn.addEventListener("click", () => {
+            mpTabPreviewBtn.classList.add("active");
+            mpTabComposerBtn.classList.remove("active");
+            mpPreviewView.classList.remove("hidden");
+            mpComposerView.classList.add("hidden");
+            
+            if (mpEditRawCheckbox && mpEditRawCheckbox.checked && mpRawEditor) {
+                mpRawEditor.value = compileMpMarkdown();
+            } else {
+                compileMpPreview();
+            }
+        });
+    }
+
+    if (mpEditRawCheckbox && mpRawEditor) {
+        mpEditRawCheckbox.addEventListener("change", () => {
+            const preview = document.getElementById("mp-wiki-preview");
+            if (mpEditRawCheckbox.checked) {
+                mpRawEditor.classList.remove("hidden");
+                if (preview) preview.classList.add("hidden");
+                mpRawEditor.value = compileMpMarkdown();
+            } else {
+                mpRawEditor.classList.add("hidden");
+                if (preview) preview.classList.remove("hidden");
+                
+                const rawContent = mpRawEditor.value;
+                currentPageBlocks = parseMarkdownToMpBlocks(rawContent);
+                renderMpBlocks();
+                compileMpPreview();
+            }
+        });
+    }
+
+    if (mpRawEditor) {
+        mpRawEditor.addEventListener("input", () => {
+            const preview = document.getElementById("mp-wiki-preview");
+            if (mpEditRawCheckbox && mpEditRawCheckbox.checked) {
+                if (preview) {
+                    preview.innerHTML = parseMarkdownToHtml(mpRawEditor.value);
+                }
+            }
+        });
+    }
+
+    function compileMpMarkdown() {
+        let markdown = '';
+        for (let block of currentPageBlocks) {
+            if (block.type === 'header') {
+                let prefix = '#'.repeat(block.level || 1);
+                markdown += `${prefix} ${block.content}\n\n`;
+            } else if (block.type === 'text') {
+                markdown += `${block.content}\n\n`;
+            } else if (block.type === 'kv') {
+                let pairs = [];
+                try {
+                    pairs = JSON.parse(block.content);
+                } catch(e) {
+                    pairs = [];
+                }
+                if (Array.isArray(pairs)) {
+                    for (let pair of pairs) {
+                        let key = pair.key;
+                        let value = pair.value;
+                        if (value && value.includes('\n')) {
+                            let indented = value.split('\n').map(line => '  ' + line).join('\n');
+                            markdown += `* **${key}**: |\n${indented}\n`;
+                        } else {
+                            markdown += `* **${key}**: ${value || ""}\n`;
+                        }
+                    }
+                }
+                markdown += '\n';
+            } else if (block.type === 'list') {
+                let lines = (block.content || '').split('\n');
+                for (let line of lines) {
+                    if (line.trim() !== '') {
+                        markdown += `* ${line}\n`;
+                    }
+                }
+                markdown += '\n';
+            } else if (block.type === 'code') {
+                markdown += `\`\`\`${block.language || 'text'}\n${block.content || ""}\n\`\`\`\n\n`;
+            }
+        }
+        return markdown;
+    }
+
+    function parseMarkdownToMpBlocks(markdown) {
+        const parsed = parseMarkdownToBlocks(markdown);
+        return parsed.map(block => {
+            if (block.type === 'kv') {
+                const pairs = (block.kvPairs || []).map(p => ({ key: p.key, value: p.value }));
+                return {
+                    id: block.id,
+                    type: 'kv',
+                    content: JSON.stringify(pairs),
+                    level: 1,
+                    language: 'text'
+                };
+            } else if (block.type === 'code') {
+                return {
+                    id: block.id,
+                    type: 'code',
+                    content: block.content,
+                    level: 1,
+                    language: block.lang || 'text'
+                };
+            } else {
+                return {
+                    id: block.id,
+                    type: block.type,
+                    content: block.content,
+                    level: block.level || 1,
+                    language: block.language || 'text'
+                };
+            }
+        });
+    }
+
+    function parseMarkdownToHtml(markdown) {
+        const tempBlocks = parseMarkdownToMpBlocks(markdown);
+        let html = "";
+        tempBlocks.forEach(block => {
+            if (block.type === "header") {
+                const lvl = block.level || 1;
+                html += `<h${lvl}>${block.content || ""}</h${lvl}>`;
+            } else if (block.type === "text") {
+                const text = block.content || "";
+                const paras = text.split("\n\n").map(p => `<p>${p.replace(/\n/g, "<br/>")}</p>`).join("");
+                html += paras;
+            } else if (block.type === "kv") {
+                let pairs = [];
+                try {
+                    pairs = JSON.parse(block.content);
+                } catch(e) { pairs = []; }
+                if (Array.isArray(pairs) && pairs.length > 0) {
+                    html += `<table style="width:100%; border-collapse:collapse; margin:8px 0; border:1px solid rgba(255,255,255,0.05);">`;
+                    pairs.forEach(p => {
+                        html += `<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                            <td style="padding:6px; font-weight:600; color:var(--neon-cyan); width:30%;">${p.key || ""}</td>
+                            <td style="padding:6px; color:var(--text-secondary);">${p.value || ""}</td>
+                        </tr>`;
+                    });
+                    html += `</table>`;
+                }
+            } else if (block.type === "list") {
+                const text = block.content || "";
+                const items = text.split("\n").filter(line => line.trim().length > 0);
+                if (items.length > 0) {
+                    html += `<ul style="padding-left: 20px; margin: 8px 0;">`;
+                    items.forEach(it => {
+                        html += `<li style="margin: 4px 0;">${it}</li>`;
+                    });
+                    html += `</ul>`;
+                }
+            } else if (block.type === "code") {
+                html += `<pre style="background:rgba(0,0,0,0.35); padding:8px; border-radius:4px; font-family:monospace; margin:8px 0; overflow-x:auto;"><code>${block.content || ""}</code></pre>`;
+            }
+        });
+        return html || "<p style='color:var(--text-muted); font-style:italic;'>No page blocks declared yet.</p>";
+    }
+
     if (tabSpecLab && tabMindPalace && speclabWorkspace && mindpalaceWorkspace) {
         tabSpecLab.addEventListener("click", () => {
             tabSpecLab.classList.add("active");
@@ -2168,6 +2352,16 @@ document.addEventListener("DOMContentLoaded", () => {
             titleInput.value = data.title || "";
             
             currentPageBlocks = data.blocks || [];
+            
+            // Reset active sub-tabs to "Composer", uncheck "Edit Raw", and hide raw view elements
+            if (mpTabComposerBtn) mpTabComposerBtn.classList.add("active");
+            if (mpTabPreviewBtn) mpTabPreviewBtn.classList.remove("active");
+            if (mpComposerView) mpComposerView.classList.remove("hidden");
+            if (mpPreviewView) mpPreviewView.classList.add("hidden");
+            if (mpEditRawCheckbox) mpEditRawCheckbox.checked = false;
+            if (mpRawEditor) mpRawEditor.classList.add("hidden");
+            const preview = document.getElementById("mp-wiki-preview");
+            if (preview) preview.classList.remove("hidden");
             
             renderMpBlocks();
             compileMpPreview();
@@ -2544,15 +2738,24 @@ document.addEventListener("DOMContentLoaded", () => {
         saveMpPageBtn.addEventListener("click", async () => {
             if (!currentPageId) return;
             
+            if (mpEditRawCheckbox && mpEditRawCheckbox.checked && mpRawEditor) {
+                currentPageBlocks = parseMarkdownToMpBlocks(mpRawEditor.value);
+                renderMpBlocks();
+            }
+            
+            const titleInput = document.getElementById("mp-page-title");
+            const updatedTitle = titleInput ? titleInput.value.trim() : "";
+            
             try {
                 const resBlocks = await fetch(`/api/mindpalace/page/${currentPageId}/blocks`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ blocks: currentPageBlocks })
+                    body: JSON.stringify({ title: updatedTitle, blocks: currentPageBlocks })
                 });
                 
                 if (resBlocks.ok) {
                     showSpecStatus("Page saved to graph!");
+                    await loadPalacePages(currentPalaceId);
                     await drawGraph(activeIdentity);
                 } else {
                     const err = await resBlocks.json();

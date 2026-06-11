@@ -151,28 +151,46 @@
                                 <input type="text" id="mp-page-title" placeholder="Page Title" class="large-title-input" />
                             </div>
 
-                            <div class="panel-section">
-                                <h3>Block Library</h3>
-                                <div class="block-library">
-                                    <button class="add-mp-block-btn" data-type="header" style="border-color: #60a5fa;"># Header</button>
-                                    <button class="add-mp-block-btn" data-type="text" style="border-color: #fbbf24;">✏️ Text</button>
-                                    <button class="add-mp-block-btn" data-type="kv" style="border-color: #4ade80;">📋 KV List</button>
-                                    <button class="add-mp-block-btn" data-type="list" style="border-color: #f472b6;">• Bullet List</button>
-                                    <button class="add-mp-block-btn" data-type="code" style="border-color: #a78bfa;">``` Code</button>
+                            <!-- Mind Palace Editor Sub-Tabs -->
+                            <div class="spec-tabs" style="margin-bottom: 12px;">
+                                <button class="spec-tab-btn active" id="mp-tab-composer">Composer</button>
+                                <button class="spec-tab-btn" id="mp-tab-preview">Raw & Preview</button>
+                            </div>
+
+                            <!-- COMPOSER VIEW -->
+                            <div id="mp-composer-view">
+                                <div class="panel-section">
+                                    <h3>Block Library</h3>
+                                    <div class="block-library">
+                                        <button class="add-mp-block-btn" data-type="header" style="border-color: #60a5fa;"># Header</button>
+                                        <button class="add-mp-block-btn" data-type="text" style="border-color: #fbbf24;">✏️ Text</button>
+                                        <button class="add-mp-block-btn" data-type="kv" style="border-color: #4ade80;">📋 KV List</button>
+                                        <button class="add-mp-block-btn" data-type="list" style="border-color: #f472b6;">• Bullet List</button>
+                                        <button class="add-mp-block-btn" data-type="code" style="border-color: #a78bfa;">``` Code</button>
+                                    </div>
+                                </div>
+
+                                <div class="panel-section block-workspace-section">
+                                    <h3>Page Blocks</h3>
+                                    <div id="mp-blocks-container">
+                                        <!-- Dynamic blocks loaded here -->
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="panel-section block-workspace-section">
-                                <h3>Page Blocks</h3>
-                                <div id="mp-blocks-container">
-                                    <!-- Dynamic blocks loaded here -->
-                                </div>
-                            </div>
-
-                            <div class="panel-section">
-                                <h3>Live Wiki Preview</h3>
-                                <div class="wiki-preview-container">
-                                    <div id="mp-wiki-preview" class="preview-content"></div>
+                            <!-- RAW & PREVIEW VIEW -->
+                            <div id="mp-preview-view" class="hidden">
+                                <div class="panel-section">
+                                    <div class="preview-mode-header">
+                                        <h3>Workspace</h3>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="mp-edit-raw-mode" /> Edit Raw
+                                        </label>
+                                    </div>
+                                    <div class="editor-container">
+                                        <textarea id="mp-raw-editor" class="hidden" placeholder="# Page Title&#10;&#10;Write page contents here..." spellcheck="false" style="width: 100%; min-height: 200px; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.08); border-radius: 4px; padding: 8px; color: var(--text-primary); font-family: monospace; resize: vertical; box-sizing: border-box;"></textarea>
+                                        <div id="mp-wiki-preview" class="preview-content">Compiled preview will load here...</div>
+                                    </div>
                                 </div>
                             </div>
 

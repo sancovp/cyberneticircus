@@ -356,10 +356,13 @@ The Neo4j database representation has been migrated from legacy terms (`MetaShif
 * `:StateMachine`: Standard state machine descriptor.
 * `:TraversalStep`: Individual step containing text and regex gating patterns.
 * `:TraversalState`: Tracks active execution locks.
+* `:MindPalace`: Notion-like wiki space hub node.
+* `:Page`: Wiki page node linked as a satellite under a Mind Palace.
+* `:Block`: Content atom block (Header, Text, KV, List, Code) linked under a Page.
 
 ### Mandatory Property Constraints
 * **`domain` and `subdomain`**: Every single node created or updated in the CybernetiCircus database MUST carry both `domain` and `subdomain` properties.
-* **Primitive types (CybernetiCity itself)**: System components like `Cybernet`, `Identity`, `StateMachine`, `TraversalStep`, `TraversalState`, `SimulationRun`, and `Skill` must explicitly set `domain: "cyberneticity"` and use a relevant subdomain (e.g. `core`, `skills`, `state_machine`, `simulation`).
+* **Primitive types (CybernetiCity itself)**: System components like `Cybernet`, `Identity`, `StateMachine`, `TraversalStep`, `TraversalState`, `SimulationRun`, `Skill`, `MindPalace`, `Page`, and `Block` must explicitly set `domain: "cyberneticity"` and use a relevant subdomain (e.g. `core`, `skills`, `state_machine`, `simulation`, `mindpalace`, `page`, `block`).
 
 ### Relationships
 * `(c:Cybernet)-[:HAS_LIFECYCLE]->(i:Identity)`
@@ -379,7 +382,17 @@ To allow developers and agents to run commands and inspect the graph directly wi
   * Direct blocks: Supports adding, reordering (▲/▼), and deleting (×) distinct structural blocks (Headers, prose Text, Key-Value lists, Bullet lists, and Code blocks).
   * Arguments engine: Parametrizes variables (e.g. `${name}`, `[Unique_Name]`) and substitutes their values in real-time in a compiled markdown preview tab.
   * Bi-directional parser: Decomposes loaded template files or existing custom specs back into visual blocks, while compiling changes back to clean Markdown on save or clipboard copy.
+* **Mind Palace Workspace & Wiki Editor**: A Notion-like wiki editor panel accessible via the Workspace level tabs.
+  * Left Sidebar Tree: A nested navigation list that dynamically renders all active `:MindPalace` nodes and their associated `:Page` satellites, with quick-add actions for creating new palaces and pages.
+  * Exporter/Importer Panel: Exposes JSON bundle actions to export an entire Mind Palace subgraph (within 3 hops) as a serialized JSON plugin, or import and merge a plugin back into the Neo4j grid.
+  * Dynamic Block Workspace: An interactive block-editor that loads existing `:Page` block hierarchies from the database and allows real-time composition, reordering, deletion, and markdown live-preview.
+    * Sub-Tab Navigation: Toggles between a visual block "Composer" and a "Raw & Preview" view (incorporating an "Edit Raw" markdown mode and a live HTML wiki preview).
+    * Page-Load Initialization: Resets the active sub-tab to "Composer" and disables the raw editor view automatically whenever a new Page is selected and loaded.
 * **Constrained Graph Visualizer**: A full-canvas D3 visualizer showing the exact connected subgraph of the selected Cybernet (Identity, State Machine, Concepts, Skills, SimulationRuns, and ExecutionTraces).
+* **Visual Island Districts**: Renders the wiki subgraphs dynamically on the D3 visualizer canvas:
+  - `:MindPalace` nodes act as central district hubs with custom cyan halos and animated spinning dotted orbits.
+  - `:Page` nodes orbit their parent palace as satellite orbs, and `:Block` nodes cluster tightly as satellite slates around their parent Page node using a strong D3 force link connection (strength 0.6) to keep them collapsed as clean clusters.
+  - Clicking a palace center animates camera centering and triggers dynamic subgraph expansion, adding nested page/block nodes to the simulation layout. Deselecting collapses the district and hides the satellite subgraphs to keep the canvas clean.
 * **Large Graph Layout Optimization**: To support rendering 10,000+ nodes in real-time at 60fps, the visualizer dynamically checks node count:
   * Non-highlighted nodes are drawn as simple, lightweight solid circles.
   * Linear gradients and digital character animations are bypassed on inactive links.
