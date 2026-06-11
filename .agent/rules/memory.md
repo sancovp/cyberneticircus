@@ -1,21 +1,47 @@
-# Dynamic Workspace Memory Scratchpad
+# Rule: Carton Concept Memory (Active Session)
 
-This scratchpad logs newly added Carton concepts, relationships, and rule updates during the active session to maintain coherence.
+Added concepts:
+- Name: `Single_Canonical_Design_Cyberneticircus`
+  Description: `/Users/isaacwr/.gemini/antigravity/scratch/cyberneticircus/cyberneticircus/DESIGN.md`
+  Relationships:
+    - `is_a`: `Single_Canonical_Design`
+    - `part_of`: `CybernetiCircus_Project`
+    - `instantiates`: `Single_Canonical_Design_Pattern`
+    - `has_domain`: `cyberneticity`
+    - `part_of`: `Antigravity_Collection` (auto-assigned)
 
-## Dynamic Concept Registrations
-* Concept: `Single_Canonical_Design_CybernetiCircus`
-  * Type: `Single_Canonical_Design`, `Architecture`
-  * Collection: `ANTIGRAVITY_Collection`
-  * Project: `CybernetiCircus_Project`
-  * Instance Path: `/Users/isaacwr/.gemini/antigravity/scratch/cyberneticircus/DESIGN.md`
-  * Domain: `cyberneticity`
-  * Relationship Mapping:
-    * `Single_Canonical_Design_CybernetiCircus` --[is_a]--> `Single_Canonical_Design`, `Architecture`
-    * `Single_Canonical_Design_CybernetiCircus` --[part_of]--> `CybernetiCircus_Project`
-    * `Single_Canonical_Design_CybernetiCircus` --[instantiates]--> `Concentric_Horizon_Ontology`
-    * `Single_Canonical_Design_CybernetiCircus` --[has_domain]--> `cyberneticity`
+- Name: `Rule_Daemon_Summoning`
+  Description: `Rule explaining how to summon and animate custom Cybernet daemons using StateMachines, handling nested calls via CALLS_SM and stack push/pop context returns.`
+  Relationships:
+    - `is_a`: `Repository_Rule`
+    - `part_of`: `CybernetiCircus_Rules`
+    - `instantiates`: `StateMachine_CallStack_Pattern`
+    - `has_domain`: `cyberneticity`
+    - `part_of`: `Antigravity_Collection` (auto-assigned)
 
-## Rule Registrations
-* Rules created:
-  * `.agent/rules/jani_likes.md`: Dedicated workspace to track, edit, and accumulate explicit design likes/resolutions.
-  * `.agent/rules/jani_dislikes.md`: Dedicated workspace to track, edit, and accumulate explicit design dislikes.
+- Name: `Rule_Domain_Expansion`
+  Description: `Rule explaining how to track progressive compiler layers (Layer 1: Primitive Boot, Layer 2: Meta-Compile, Layer 3: SDLC Ignite) inside ExecutionState.`
+  Relationships:
+    - `is_a`: `Repository_Rule`
+    - `part_of`: `CybernetiCircus_Rules`
+    - `instantiates`: `Complexity_Acquisition_Pattern`
+    - `has_domain`: `cyberneticity`
+    - `part_of`: `Antigravity_Collection` (auto-assigned)
+
+- Name: `Rule_Mind_Palace_Islands`
+  Description: `Rule explaining how to store hierarchical page/block wiki subgraphs in Neo4j, render them visually as concentric D3 orbits (Islands), and transfer them via JSON plugins.`
+  Relationships:
+    - `is_a`: `Repository_Rule`
+    - `part_of`: `CybernetiCircus_Rules`
+    - `instantiates`: `Topographical_Subquery_Pattern`
+    - `has_domain`: `cyberneticity`
+    - `part_of`: `Antigravity_Collection` (auto-assigned)
+
+- Name: `Containerization_And_Model_Transition`
+  Description: `Baking local patched sdna and heaven-framework libraries inside the cyberneticircus container image, transitioning to minimax-M3, and executing clean Cypher queries using transaction warning hints.`
+  Relationships:
+    - `is_a`: `Deployment_Milestone`
+    - `part_of`: `CybernetiCircus_Project`
+    - `instantiates`: `Containerized_Execution_Pattern`
+    - `has_domain`: `cyberneticity`
+    - `part_of`: `Antigravity_Collection` (auto-assigned)
