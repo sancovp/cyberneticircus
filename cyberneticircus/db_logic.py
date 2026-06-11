@@ -632,6 +632,25 @@ def validate_cypher_query(query: str) -> None:
                         "Security Policy Violation: Node creation/merge queries (using CREATE or MERGE with a label) "
                         "MUST specify both 'domain' and 'subdomain' properties."
                     )
+                
+                # Ontoshamanisic Enactive Validator (Namespace Check)
+                domain_match = re.search(r"(?i)domain\s*:\s*['\"]([a-zA-Z0-9_-]+)['\"]", query)
+                subdomain_match = re.search(r"(?i)subdomain\s*:\s*['\"]([a-zA-Z0-9_-]+)['\"]", query)
+                if domain_match and subdomain_match:
+                    domain_val = domain_match.group(1).lower()
+                    subdomain_val = subdomain_match.group(1).lower()
+                    if domain_val == 'cyberneticity':
+                        allowed_subdomains = {
+                            'cybernet', 'identity', 'execution_state', 'state_machine', 
+                            'traversal', 'traversal_state', 'simulation', 'mindpalace', 
+                            'page', 'block', 'task_list', 'task', 'skill'
+                        }
+                        if subdomain_val not in allowed_subdomains:
+                            logger.warning(f"Blocked query attempt with invalid subdomain '{subdomain_val}' in cyberneticity domain.")
+                            raise PermissionError(
+                                f"Ontoshamanisic Security Violation: Subdomain '{subdomain_val}' is not a valid subdomain in the 'cyberneticity' domain. "
+                                f"Allowed subdomains: {sorted(list(allowed_subdomains))}"
+                            )
 
 def get_active_traversal_step() -> Optional[Dict[str, Any]]:
     """Retrieve the properties and outgoing transitions of the currently active TraversalStep."""
