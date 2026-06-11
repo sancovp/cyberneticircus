@@ -1,47 +1,17 @@
 # Rule: Carton Concept Memory (Active Session)
 
-Added concepts:
-- Name: `Single_Canonical_Design_Cyberneticircus`
-  Description: `/Users/isaacwr/.gemini/antigravity/scratch/cyberneticircus/cyberneticircus/DESIGN.md`
-  Relationships:
-    - `is_a`: `Single_Canonical_Design`
-    - `part_of`: `CybernetiCircus_Project`
-    - `instantiates`: `Single_Canonical_Design_Pattern`
-    - `has_domain`: `cyberneticity`
-    - `part_of`: `Antigravity_Collection` (auto-assigned)
+## **Purpose**
+This scratchpad is used during session execution to log newly added Carton concepts and their relationships, keeping them active in your dynamic context.
 
-- Name: `Rule_Daemon_Summoning`
-  Description: `Rule explaining how to summon and animate custom Cybernet daemons using StateMachines, handling nested calls via CALLS_SM and stack push/pop context returns.`
-  Relationships:
-    - `is_a`: `Repository_Rule`
-    - `part_of`: `CybernetiCircus_Rules`
-    - `instantiates`: `StateMachine_CallStack_Pattern`
-    - `has_domain`: `cyberneticity`
-    - `part_of`: `Antigravity_Collection` (auto-assigned)
+## **MANDATORY: Constraints**
+1. **Strict Format**: You must ONLY log the concept names and the brief rationale (*why you added them*). Do not include full property lists, JSON blocks, or relationship structures.
+2. **Persistence**: These instructions must always be retained at the top of this file.
 
-- Name: `Rule_Domain_Expansion`
-  Description: `Rule explaining how to track progressive compiler layers (Layer 1: Primitive Boot, Layer 2: Meta-Compile, Layer 3: SDLC Ignite) inside ExecutionState.`
-  Relationships:
-    - `is_a`: `Repository_Rule`
-    - `part_of`: `CybernetiCircus_Rules`
-    - `instantiates`: `Complexity_Acquisition_Pattern`
-    - `has_domain`: `cyberneticity`
-    - `part_of`: `Antigravity_Collection` (auto-assigned)
+---
 
-- Name: `Rule_Mind_Palace_Islands`
-  Description: `Rule explaining how to store hierarchical page/block wiki subgraphs in Neo4j, render them visually as concentric D3 orbits (Islands), and transfer them via JSON plugins.`
-  Relationships:
-    - `is_a`: `Repository_Rule`
-    - `part_of`: `CybernetiCircus_Rules`
-    - `instantiates`: `Topographical_Subquery_Pattern`
-    - `has_domain`: `cyberneticity`
-    - `part_of`: `Antigravity_Collection` (auto-assigned)
-
-- Name: `Containerization_And_Model_Transition`
-  Description: `Baking local patched sdna and heaven-framework libraries inside the cyberneticircus container image, transitioning to minimax-M3, and executing clean Cypher queries using transaction warning hints.`
-  Relationships:
-    - `is_a`: `Deployment_Milestone`
-    - `part_of`: `CybernetiCircus_Project`
-    - `instantiates`: `Containerized_Execution_Pattern`
-    - `has_domain`: `cyberneticity`
-    - `part_of`: `Antigravity_Collection` (auto-assigned)
+## **Active Session Log**
+* `Single_Canonical_Design_Cyberneticircus`: To document the location of the project's single canonical design file ([DESIGN.md](file:///Users/isaacwr/.gemini/antigravity/scratch/cyberneticircus/cyberneticircus/DESIGN.md)) in the knowledge graph.
+* `Rule_Daemon_Summoning`: To document the schema constraints for custom daemon summoning, nested calls via `:CALLS_SM`, and call stack push/pop behaviors.
+* `Rule_Domain_Expansion`: To document the tracking of progressive compiler layers (`current_layer` and `completed_layers`) on the ExecutionState node.
+* `Rule_Mind_Palace_Islands`: To document the Notion-like page/block wiki hierarchies and their orbital visual rendering in the D3 visualizer.
+* `Containerization_And_Model_Transition`: To document the deployment milestone of packaging the server, transitioning to `minimax-M3`, and implementing Cypher query cleaning.
