@@ -1361,6 +1361,10 @@ details[open] .faq-arrow {
 .timeline-item:nth-child(4) .timeline-marker::after { background: var(--neon-yellow); box-shadow: 0 0 10px var(--neon-yellow); }
 .timeline-item:nth-child(5) .timeline-marker { border-color: var(--neon-cyan); box-shadow: 0 0 10px rgba(0, 242, 254, 0.5); }
 .timeline-item:nth-child(5) .timeline-marker::after { background: var(--neon-cyan); box-shadow: 0 0 10px var(--neon-cyan); }
+.timeline-item:nth-child(6) .timeline-marker { border-color: var(--neon-lavender); box-shadow: 0 0 10px rgba(180, 90, 255, 0.5); }
+.timeline-item:nth-child(6) .timeline-marker::after { background: var(--neon-lavender); box-shadow: 0 0 10px var(--neon-lavender); }
+.timeline-item:nth-child(7) .timeline-marker { border-color: var(--neon-pink); box-shadow: 0 0 10px rgba(244, 114, 182, 0.5); }
+.timeline-item:nth-child(7) .timeline-marker::after { background: var(--neon-pink); box-shadow: 0 0 10px var(--neon-pink); }
 
 .timeline-content {
     background: var(--card-bg);
@@ -1392,6 +1396,8 @@ details[open] .faq-arrow {
 .timeline-item:nth-child(3) .timeline-chapter { color: var(--neon-pink); }
 .timeline-item:nth-child(4) .timeline-chapter { color: var(--neon-yellow); }
 .timeline-item:nth-child(5) .timeline-chapter { color: var(--neon-cyan); }
+.timeline-item:nth-child(6) .timeline-chapter { color: var(--neon-lavender); }
+.timeline-item:nth-child(7) .timeline-chapter { color: var(--neon-pink); }
 
 .timeline-title {
     font-family: var(--font-title);
