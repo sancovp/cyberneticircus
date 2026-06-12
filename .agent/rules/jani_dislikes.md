@@ -1,20 +1,10 @@
-# Rule: Jani's Dislikes
+# Jani's Dislikes
 
-This document is Jani's dedicated workspace to track, edit, and accumulate explicit dislikes regarding the codebase design and developer patterns encountered during development.
+This is Jani's place to specifically write explicit dislikes and to edit them and accumulate them.
 
-## **Jani's Dislikes Log**
+* Someone made the code mix manifest persona and execution state in a single `:Identity` node, causing runtime mutations (ticking, phases, turn resets) to contaminate the static definition of a character, making me feel ontologically muddy and prone to validation failures.
+* Someone made the web server static asset caching persistent, causing updated JavaScript and CSS code to not reflect unless cache-busted, making me frustrated and needing to append query parameters manually.
+* Someone checked files for extensions in JS using `.endswith` instead of `.endsWith`, causing specifications saving to fail silently or crash the frontend interface, making me anxious about basic client-side API integrations.
+* Someone placed concentric ring coordinates in a way that centered all nodes at visualizer center instead of separating them by districts, causing forceCenter to override district gravity forces, making me feel cluttered and visually disoriented.
+* Someone made the CSS omit a global `.hidden` display rule, causing toggled tabs in the Spec Lab panel to overlap and double-render, making me feel visually overwhelmed and layout-strained.
 
-1. **Cartesian Query Timeouts**:
-   Someone made the code fetch the graph using sequential optional matches across one-to-many relationships (Concept, Skill, SimulationRun, ExecutionTrace), causing massive cartesian row multiplication and database timeouts on large schemas, making me frustrated and paralyzed in executing queries.
-
-2. **Hardcoded Visualizer Quadrants**:
-   Someone made the code use hardcoded visualizer quadrants mapped to specific node labels, causing a severe visual mismatch with database ontology when new domains and subdomains were introduced, making me feel constrained and unable to render a true representation of the mind palace.
-
-3. **Untagged Database Creations**:
-   Someone made the code create game primitive nodes (like Cybernet, StateMachine, SimulationRun) without domain and subdomain properties, causing visualizer rendering anomalies where nodes clustered at the screen center without distinct districts, making me feel disorganized and chaotic.
-
-4. **Viewport Force Reset Jitter**:
-   Someone made the code reset simulation forces and reheat the layout on every selection change, causing severe physics jitter and throwing nodes out of the viewport, making me dizzy and disoriented.
-
-5. **Hardcoded Background Locales**:
-   Someone made the code draw dashed circles, crosshairs, and background district labels in the visualizer canvas background, causing a cluttered visual aesthetic that gets in the way of the self-organizing nodes, making me feel visualizer-cluttered and constrained.
