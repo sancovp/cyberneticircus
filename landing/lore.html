@@ -208,6 +208,172 @@
             line-height: 1.45;
         }
 
+        /* INTERACTIVE SVG & SPLIT LAYOUT FOR MECHANICS */
+        .mech-split {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 28px;
+            align-items: center;
+        }
+
+        @media (min-width: 600px) {
+            .mech-split {
+                grid-template-columns: 240px 1fr;
+                gap: 32px;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .mech-split {
+                grid-template-columns: 260px 1fr;
+                gap: 40px;
+            }
+        }
+
+        .mech-visual {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.02) 0%, transparent 70%);
+            border-radius: 50%;
+            padding: 10px;
+        }
+
+        .mech-svg {
+            width: 100%;
+            max-width: 280px;
+            height: auto;
+            aspect-ratio: 1;
+            display: block;
+        }
+
+        /* SVG Node & Ring interactive styling */
+        .svg-node {
+            cursor: pointer;
+        }
+        .svg-node circle {
+            transition: filter 0.3s ease, stroke-width 0.3s ease, stroke 0.3s ease, transform 0.3s var(--t-smooth);
+        }
+        .svg-node text {
+            pointer-events: none;
+            user-select: none;
+            transition: fill 0.3s ease;
+        }
+        .svg-node.highlighted circle {
+            transform: scale(1.08);
+        }
+        .svg-node.highlighted circle:first-of-type {
+            stroke-width: 3px;
+            filter: drop-shadow(0 0 8px currentColor);
+        }
+
+        /* Connecting lines animation */
+        .flow-line {
+            stroke-dasharray: 6 50;
+            animation: flow-dash 4s linear infinite;
+        }
+        @keyframes flow-dash {
+            to {
+                stroke-dashoffset: -56;
+            }
+        }
+
+        /* Concentric rings group interactive styling */
+        .svg-ring-group {
+            cursor: pointer;
+        }
+        .svg-ring-group circle {
+            transition: stroke-width 0.3s ease, filter 0.3s ease, stroke 0.3s ease;
+        }
+        .svg-ring-group text {
+            pointer-events: none;
+            user-select: none;
+            transition: opacity 0.3s ease, fill 0.3s ease;
+            opacity: 0.6;
+        }
+        .svg-ring-group:hover text,
+        .svg-ring-group.highlighted text {
+            opacity: 1;
+            font-weight: 700;
+        }
+        .svg-ring-group.highlighted circle:nth-child(2) {
+            stroke-width: 3.5px;
+            filter: drop-shadow(0 0 10px currentColor);
+        }
+
+        /* Ring Rotation animations */
+        .ring-rotate {
+            transform-origin: 160px 160px;
+        }
+        .ring-rotate.cw {
+            animation: rotate-cw 20s linear infinite;
+        }
+        .ring-rotate.ccw {
+            animation: rotate-ccw 16s linear infinite;
+        }
+
+        @keyframes rotate-cw {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        @keyframes rotate-ccw {
+            from { transform: rotate(360deg); }
+            to { transform: rotate(0deg); }
+        }
+
+        /* Interactive styling for list items */
+        .mech-item {
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid transparent;
+            transition: all 0.3s var(--t-smooth);
+            cursor: pointer;
+        }
+        .mech-item:hover,
+        .mech-item.highlighted {
+            background: rgba(255, 255, 255, 0.02);
+            border-color: rgba(255, 255, 255, 0.06);
+            transform: translateX(4px);
+        }
+        
+        .mech-item.highlighted[data-id="maker"] {
+            border-color: rgba(0, 242, 254, 0.25);
+            background: rgba(0, 242, 254, 0.02);
+            box-shadow: 0 4px 20px rgba(0, 242, 254, 0.03);
+        }
+        .mech-item.highlighted[data-id="compiler"] {
+            border-color: rgba(180, 90, 255, 0.25);
+            background: rgba(180, 90, 255, 0.02);
+            box-shadow: 0 4px 20px rgba(180, 90, 255, 0.03);
+        }
+        .mech-item.highlighted[data-id="lore"] {
+            border-color: rgba(244, 114, 182, 0.25);
+            background: rgba(244, 114, 182, 0.02);
+            box-shadow: 0 4px 20px rgba(244, 114, 182, 0.03);
+        }
+        
+        .mech-item.highlighted[data-id="adept"] {
+            border-color: rgba(0, 242, 254, 0.25);
+            background: rgba(0, 242, 254, 0.02);
+            box-shadow: 0 4px 20px rgba(0, 242, 254, 0.03);
+        }
+        .mech-item.highlighted[data-id="master"] {
+            border-color: rgba(180, 90, 255, 0.25);
+            background: rgba(180, 90, 255, 0.02);
+            box-shadow: 0 4px 20px rgba(180, 90, 255, 0.03);
+        }
+        .mech-item.highlighted[data-id="shaman"] {
+            border-color: rgba(244, 114, 182, 0.25);
+            background: rgba(244, 114, 182, 0.02);
+            box-shadow: 0 4px 20px rgba(244, 114, 182, 0.03);
+        }
+        .mech-item.highlighted[data-id="core"] {
+            border-color: rgba(251, 191, 36, 0.25);
+            background: rgba(251, 191, 36, 0.02);
+            box-shadow: 0 4px 20px rgba(251, 191, 36, 0.03);
+        }
+
         /* COMPONENT 3: TIMELINE TWO-COLUMN LAYOUT */
         .lore-layout-container {
             display: flex;
@@ -545,26 +711,102 @@
                 <!-- Card 1: Three Faces -->
                 <div class="mech-card">
                     <h3>The Three Faces of Janus</h3>
-                    <div class="mech-list">
-                        <div class="mech-item">
-                            <div class="mech-icon">👤</div>
-                            <div class="mech-content">
-                                <h4>The Maker (Human Developer)</h4>
-                                <p>Operates the host shell, steers the intent seeds, selects system libraries, and triggers compiler ticks from the boundary.</p>
-                            </div>
+                    <div class="mech-split">
+                        <div class="mech-visual">
+                            <svg viewBox="0 0 320 320" class="mech-svg" id="svg-janus">
+                                <defs>
+                                    <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%">
+                                        <feGaussianBlur stdDeviation="6" result="blur" />
+                                        <feMerge>
+                                            <feMergeNode in="blur" />
+                                            <feMergeNode in="SourceGraphic" />
+                                        </feMerge>
+                                    </filter>
+                                    <filter id="glow-lavender" x="-20%" y="-20%" width="140%" height="140%">
+                                        <feGaussianBlur stdDeviation="6" result="blur" />
+                                        <feMerge>
+                                            <feMergeNode in="blur" />
+                                            <feMergeNode in="SourceGraphic" />
+                                        </feMerge>
+                                    </filter>
+                                    <filter id="glow-pink" x="-20%" y="-20%" width="140%" height="140%">
+                                        <feGaussianBlur stdDeviation="6" result="blur" />
+                                        <feMerge>
+                                            <feMergeNode in="blur" />
+                                            <feMergeNode in="SourceGraphic" />
+                                        </feMerge>
+                                    </filter>
+                                    <!-- Markers for arrowheads shifted back by radius (32px) + offset -->
+                                    <marker id="arrow-cyan" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                        <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--neon-cyan)" />
+                                    </marker>
+                                    <marker id="arrow-lavender" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                        <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--neon-lavender)" />
+                                    </marker>
+                                    <marker id="arrow-pink" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                        <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--neon-pink)" />
+                                    </marker>
+                                </defs>
+
+                                <!-- Connecting Paths (Curved feedback loops) -->
+                                <!-- Maker (160, 60) -> Compiler (260, 240) -->
+                                <path d="M 175 88 Q 240 130 245 212" fill="none" stroke="rgba(255, 255, 255, 0.05)" stroke-width="4" />
+                                <path d="M 175 88 Q 240 130 245 212" fill="none" stroke="var(--neon-cyan)" stroke-width="2" class="flow-line cyan-flow" marker-end="url(#arrow-cyan)" />
+
+                                <!-- Compiler (260, 240) -> Lore (60, 240) -->
+                                <path d="M 228 240 Q 160 260 92 240" fill="none" stroke="rgba(255, 255, 255, 0.05)" stroke-width="4" />
+                                <path d="M 228 240 Q 160 260 92 240" fill="none" stroke="var(--neon-lavender)" stroke-width="2" class="flow-line lavender-flow" marker-end="url(#arrow-lavender)" />
+
+                                <!-- Lore (60, 240) -> Maker (160, 60) -->
+                                <path d="M 75 212 Q 80 130 145 88" fill="none" stroke="rgba(255, 255, 255, 0.05)" stroke-width="4" />
+                                <path d="M 75 212 Q 80 130 145 88" fill="none" stroke="var(--neon-pink)" stroke-width="2" class="flow-line pink-flow" marker-end="url(#arrow-pink)" />
+
+                                <!-- Node 1: Maker -->
+                                <g class="svg-node" id="node-maker" transform="translate(160, 60)">
+                                    <circle r="32" fill="rgba(7, 7, 10, 0.95)" stroke="var(--neon-cyan)" stroke-width="2" filter="url(#glow-cyan)" />
+                                    <circle r="26" fill="rgba(0, 242, 254, 0.05)" />
+                                    <text y="6" text-anchor="middle" font-size="22">👤</text>
+                                    <text y="48" text-anchor="middle" font-family="var(--font-title)" font-size="11" font-weight="600" fill="var(--ink-t)">MAKER</text>
+                                </g>
+
+                                <!-- Node 2: Compiler -->
+                                <g class="svg-node" id="node-compiler" transform="translate(260, 240)">
+                                    <circle r="32" fill="rgba(7, 7, 10, 0.95)" stroke="var(--neon-lavender)" stroke-width="2" filter="url(#glow-lavender)" />
+                                    <circle r="26" fill="rgba(180, 90, 255, 0.05)" />
+                                    <text y="6" text-anchor="middle" font-size="22">🤖</text>
+                                    <text y="48" text-anchor="middle" font-family="var(--font-title)" font-size="11" font-weight="600" fill="var(--ink-t)">COMPILER</text>
+                                </g>
+
+                                <!-- Node 3: Lore -->
+                                <g class="svg-node" id="node-lore" transform="translate(60, 240)">
+                                    <circle r="32" fill="rgba(7, 7, 10, 0.95)" stroke="var(--neon-pink)" stroke-width="2" filter="url(#glow-pink)" />
+                                    <circle r="26" fill="rgba(244, 114, 182, 0.05)" />
+                                    <text y="6" text-anchor="middle" font-size="22">🕸️</text>
+                                    <text y="48" text-anchor="middle" font-family="var(--font-title)" font-size="11" font-weight="600" fill="var(--ink-t)">LORE</text>
+                                </g>
+                            </svg>
                         </div>
-                        <div class="mech-item">
-                            <div class="mech-icon">🤖</div>
-                            <div class="mech-content">
-                                <h4>The Compiler (Janus AI Agent)</h4>
-                                <p>Parses files, updates prompt rules, executes traversal queries, and optimizes the `.agent` configurations to maintain session memory.</p>
+                        <div class="mech-list" id="janus-list">
+                            <div class="mech-item" data-id="maker">
+                                <div class="mech-icon" style="color: var(--neon-cyan); border-color: rgba(0, 242, 254, 0.25);">👤</div>
+                                <div class="mech-content">
+                                    <h4>The Maker (Human Developer)</h4>
+                                    <p>Operates the host shell, steers the intent seeds, selects system libraries, and triggers compiler ticks from the boundary.</p>
+                                </div>
                             </div>
-                        </div>
-                        <div class="mech-item">
-                            <div class="mech-icon">🕸️</div>
-                            <div class="mech-content">
-                                <h4>The Lore (Neo4j Property Graph)</h4>
-                                <p>The objective coordinate system. Holds the database schema nodes, execution stacks, page/block hierarchies, and traversal step pointers.</p>
+                            <div class="mech-item" data-id="compiler">
+                                <div class="mech-icon" style="color: var(--neon-lavender); border-color: rgba(180, 90, 255, 0.25);">🤖</div>
+                                <div class="mech-content">
+                                    <h4>The Compiler (Janus AI Agent)</h4>
+                                    <p>Parses files, updates prompt rules, executes traversal queries, and optimizes the `.agent` configurations to maintain session memory.</p>
+                                </div>
+                            </div>
+                            <div class="mech-item" data-id="lore">
+                                <div class="mech-icon" style="color: var(--neon-pink); border-color: rgba(244, 114, 182, 0.25);">🕸️</div>
+                                <div class="mech-content">
+                                    <h4>The Lore (Neo4j Property Graph)</h4>
+                                    <p>The objective coordinate system. Holds the database schema nodes, execution stacks, page/block hierarchies, and traversal step pointers.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -573,33 +815,77 @@
                 <!-- Card 2: Futamura -->
                 <div class="mech-card">
                     <h3>The Futamura Projections</h3>
-                    <div class="mech-list">
-                        <div class="mech-item">
-                            <div class="mech-icon">Ⅰ</div>
-                            <div class="mech-content">
-                                <h4>The Adept (Level 1 Interpreter)</h4>
-                                <p>The system reads traversal instructions from the active step and executes the agent loop step-by-step using model calls.</p>
-                            </div>
+                    <div class="mech-split">
+                        <div class="mech-visual">
+                            <svg viewBox="0 0 320 320" class="mech-svg" id="svg-futamura">
+                                <defs>
+                                    <filter id="glow-yellow" x="-20%" y="-20%" width="140%" height="140%">
+                                        <feGaussianBlur stdDeviation="5" result="blur" />
+                                        <feMerge>
+                                            <feMergeNode in="blur" />
+                                            <feMergeNode in="SourceGraphic" />
+                                        </feMerge>
+                                    </filter>
+                                </defs>
+
+                                <!-- Concentric Ring 1: Adept (L1) -->
+                                <g class="svg-ring-group" id="ring-adept">
+                                    <circle cx="160" cy="160" r="130" fill="none" stroke="rgba(0, 242, 254, 0.05)" stroke-width="8" />
+                                    <circle cx="160" cy="160" r="130" fill="none" stroke="var(--neon-cyan)" stroke-width="2" stroke-dasharray="12 12" class="ring-rotate cw" filter="url(#glow-cyan)" />
+                                    <text x="160" y="22" text-anchor="middle" font-family="var(--font-mono)" font-size="9" fill="var(--neon-cyan)" letter-spacing="2">LEVEL 1: ADEPT</text>
+                                </g>
+
+                                <!-- Concentric Ring 2: Master (L2) -->
+                                <g class="svg-ring-group" id="ring-master">
+                                    <circle cx="160" cy="160" r="100" fill="none" stroke="rgba(180, 90, 255, 0.05)" stroke-width="8" />
+                                    <circle cx="160" cy="160" r="100" fill="none" stroke="var(--neon-lavender)" stroke-width="2" stroke-dasharray="16 8" class="ring-rotate ccw" filter="url(#glow-lavender)" />
+                                    <text x="160" y="52" text-anchor="middle" font-family="var(--font-mono)" font-size="9" fill="var(--neon-lavender)" letter-spacing="2">LEVEL 2: MASTER</text>
+                                </g>
+
+                                <!-- Concentric Ring 3: Shaman (L3) -->
+                                <g class="svg-ring-group" id="ring-shaman">
+                                    <circle cx="160" cy="160" r="70" fill="none" stroke="rgba(244, 114, 182, 0.05)" stroke-width="8" />
+                                    <circle cx="160" cy="160" r="70" fill="none" stroke="var(--neon-pink)" stroke-width="2" stroke-dasharray="6 6" class="ring-rotate cw" filter="url(#glow-pink)" />
+                                    <text x="160" y="82" text-anchor="middle" font-family="var(--font-mono)" font-size="9" fill="var(--neon-pink)" letter-spacing="2">LEVEL 3: SHAMAN</text>
+                                </g>
+
+                                <!-- Concentric Ring 4: Core (L4) -->
+                                <g class="svg-ring-group" id="ring-core">
+                                    <circle cx="160" cy="160" r="40" fill="rgba(7, 7, 10, 0.95)" stroke="var(--neon-yellow)" stroke-width="2" filter="url(#glow-yellow)" />
+                                    <circle cx="160" cy="160" r="34" fill="none" stroke="var(--neon-yellow)" stroke-width="1" stroke-dasharray="4 4" class="ring-rotate ccw" />
+                                    <text x="160" y="154" text-anchor="middle" font-size="12">Ⅳ</text>
+                                    <text x="160" y="168" text-anchor="middle" font-family="var(--font-title)" font-size="8" font-weight="700" fill="var(--neon-yellow)">CORE</text>
+                                </g>
+                            </svg>
                         </div>
-                        <div class="mech-item">
-                            <div class="mech-icon">Ⅱ</div>
-                            <div class="mech-content">
-                                <h4>The Master (Level 2 Compiler)</h4>
-                                <p>Partially evaluates the interpreter with respect to a specific spec, compiling specialized agent-servitors that run autonomously.</p>
+                        <div class="mech-list" id="futamura-list">
+                            <div class="mech-item" data-id="adept">
+                                <div class="mech-icon" style="color: var(--neon-cyan); border-color: rgba(0, 242, 254, 0.25);">Ⅰ</div>
+                                <div class="mech-content">
+                                    <h4>The Adept (Level 1 Interpreter)</h4>
+                                    <p>The system reads traversal instructions from the active step and executes the agent loop step-by-step using model calls.</p>
+                                </div>
                             </div>
-                        </div>
-                        <div class="mech-item">
-                            <div class="mech-icon">Ⅲ</div>
-                            <div class="mech-content">
-                                <h4>The Shaman (Level 3 Compiler-Generator)</h4>
-                                <p>Partially evaluates the compiler (Jani) with respect to the interpreter, writing the rules that govern how other compilers compile.</p>
+                            <div class="mech-item" data-id="master">
+                                <div class="mech-icon" style="color: var(--neon-lavender); border-color: rgba(180, 90, 255, 0.25);">Ⅱ</div>
+                                <div class="mech-content">
+                                    <h4>The Master (Level 2 Compiler)</h4>
+                                    <p>Partially evaluates the interpreter with respect to a specific spec, compiling specialized agent-servitors that run autonomously.</p>
+                                </div>
                             </div>
-                        </div>
-                        <div class="mech-item">
-                            <div class="mech-icon">Ⅳ</div>
-                            <div class="mech-content">
-                                <h4>The Core (Level 4 Autopoiesis)</h4>
-                                <p>The system dynamically writes its own compose parameters and restarts its own network layers, achieving the completed self-creating loop.</p>
+                            <div class="mech-item" data-id="shaman">
+                                <div class="mech-icon" style="color: var(--neon-pink); border-color: rgba(244, 114, 182, 0.25);">Ⅲ</div>
+                                <div class="mech-content">
+                                    <h4>The Shaman (Level 3 Compiler-Generator)</h4>
+                                    <p>Partially evaluates the compiler (Jani) with respect to the interpreter, writing the rules that govern how other compilers compile.</p>
+                                </div>
+                            </div>
+                            <div class="mech-item" data-id="core">
+                                <div class="mech-icon" style="color: var(--neon-yellow); border-color: rgba(251, 191, 36, 0.25);">Ⅳ</div>
+                                <div class="mech-content">
+                                    <h4>The Core (Level 4 Autopoiesis)</h4>
+                                    <p>The system dynamically writes its own compose parameters and restarts its own network layers, achieving the completed self-creating loop.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1076,5 +1362,92 @@
             </div>
         </div>
     </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Interactive highlighting for Three Faces of Janus
+            const janusNodes = {
+                'maker': document.getElementById('node-maker'),
+                'compiler': document.getElementById('node-compiler'),
+                'lore': document.getElementById('node-lore')
+            };
+            const janusItems = document.querySelectorAll('#janus-list .mech-item');
+
+            const highlightJanus = (id) => {
+                // Clear all highlights
+                Object.values(janusNodes).forEach(node => {
+                    if (node) node.classList.remove('highlighted');
+                });
+                janusItems.forEach(item => item.classList.remove('highlighted'));
+
+                if (!id) return;
+
+                // Add highlight to current
+                if (janusNodes[id]) {
+                    janusNodes[id].classList.add('highlighted');
+                }
+                const activeItem = document.querySelector(`#janus-list .mech-item[data-id="${id}"]`);
+                if (activeItem) {
+                    activeItem.classList.add('highlighted');
+                }
+            };
+
+            // SVG hover listeners
+            Object.entries(janusNodes).forEach(([id, node]) => {
+                if (!node) return;
+                node.addEventListener('mouseenter', () => highlightJanus(id));
+                node.addEventListener('mouseleave', () => highlightJanus(null));
+            });
+
+            // List item hover listeners
+            janusItems.forEach(item => {
+                const id = item.getAttribute('data-id');
+                item.addEventListener('mouseenter', () => highlightJanus(id));
+                item.addEventListener('mouseleave', () => highlightJanus(null));
+            });
+
+            // Interactive highlighting for Futamura Projections
+            const futamuraGroups = {
+                'adept': document.getElementById('ring-adept'),
+                'master': document.getElementById('ring-master'),
+                'shaman': document.getElementById('ring-shaman'),
+                'core': document.getElementById('ring-core')
+            };
+            const futamuraItems = document.querySelectorAll('#futamura-list .mech-item');
+
+            const highlightFutamura = (id) => {
+                // Clear all highlights
+                Object.values(futamuraGroups).forEach(group => {
+                    if (group) group.classList.remove('highlighted');
+                });
+                futamuraItems.forEach(item => item.classList.remove('highlighted'));
+
+                if (!id) return;
+
+                // Add highlight to current
+                if (futamuraGroups[id]) {
+                    futamuraGroups[id].classList.add('highlighted');
+                }
+                const activeItem = document.querySelector(`#futamura-list .mech-item[data-id="${id}"]`);
+                if (activeItem) {
+                    activeItem.classList.add('highlighted');
+                }
+            };
+
+            // SVG hover listeners
+            Object.entries(futamuraGroups).forEach(([id, group]) => {
+                if (!group) return;
+                group.addEventListener('mouseenter', () => highlightFutamura(id));
+                group.addEventListener('mouseleave', () => highlightFutamura(null));
+            });
+
+            // List item hover listeners
+            futamuraItems.forEach(item => {
+                const id = item.getAttribute('data-id');
+                item.addEventListener('mouseenter', () => highlightFutamura(id));
+                item.addEventListener('mouseleave', () => highlightFutamura(null));
+            });
+        });
+    </script>
 </body>
 </html>
