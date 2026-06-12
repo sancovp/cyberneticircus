@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Controllable AI agent execution, guaranteed. Compile, trace, and restrict agent state transitions with the CybernetiCircus open-source self-hosted harness.">
+    <title>CybernetiCircus – Controllable AI Agent Execution & Live Operational Mirror</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- HEADER NAVBAR -->
+    <nav class="navbar">
+        <div class="navbar-inner">
+            <div class="navbar-left">
+                <a href="#features" class="navbar-link">Features</a>
+                <a href="#quickstart" class="navbar-link">Quickstart</a>
+                <a href="#faq" class="navbar-link">FAQ</a>
+                <a href="https://github.com/sancovp/cyberneticircus" class="navbar-link navbar-link-icon" aria-label="GitHub" target="_blank">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+                    </svg>
+                </a>
+            </div>
+            <a href="#" class="navbar-logo">
+                <span class="logo-emoji">🎪</span> CybernetiCircus
+            </a>
+            <div class="navbar-right">
+                <a href="https://github.com/sancovp/cyberneticircus" class="navbar-cta" target="_blank">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                    </svg>
+                    Star <span class="navbar-cta-count">742</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO SECTION -->
+    <section class="hero">
+        <div class="hero-bg" aria-hidden="true">
+            <!-- D3 concentric orbits animated simulation backdrop -->
+            <div class="orbits-wrapper">
+                <div class="orbit-center"></div>
+                <div class="orbit-ring ring-1"></div>
+                <div class="orbit-ring ring-2"></div>
+                <div class="orbit-ring ring-3"></div>
+                <div class="tech-scanner-bracket"></div>
+                <!-- Floating particle orbs -->
+                <div class="particle p-1"></div>
+                <div class="particle p-2"></div>
+                <div class="particle p-3"></div>
+            </div>
+        </div>
+
+        <div class="hero-content">
+            <h1 class="hero-title">Controllable agent execution,<br>guaranteed.</h1>
+            <p class="hero-subtitle">Stop letting agents drift. CybernetiCircus compiles, traces, and restricts agent state transitions so they stay aligned with your core objectives.</p>
+            <div class="hero-actions">
+                <a href="#quickstart" class="btn btn-primary">Get started</a>
+                <a href="https://github.com/sancovp/cyberneticircus" class="btn btn-secondary" target="_blank">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 8px;">
+                        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+                    </svg>
+                    GitHub
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- QUICKSTART SECTION -->
+    <section id="quickstart" class="quickstart-section">
+        <div class="container">
+            <div class="grid grid-2">
+                <div class="quickstart-text">
+                    <span class="section-label">PRODUCT</span>
+                    <h2>Quickstart</h2>
+                    <p class="section-description">Open source. Self-hosted. Interactive setup walks you through database configurations, authentication keys, and starting your first self-reflective loop.</p>
+                    <div class="quickstart-actions">
+                        <a href="https://github.com/sancovp/cyberneticircus" class="btn btn-secondary btn-icon" target="_blank">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                            </svg>
+                            Star on GitHub
+                        </a>
+                        <a href="https://github.com/sancovp/cyberneticircus#quick-start--live-testing" class="docs-link" target="_blank">Read the docs &rarr;</a>
+                    </div>
+                </div>
+
+                <!-- Terminal Mockup -->
+                <div class="terminal-mockup">
+                    <div class="terminal-header">
+                        <div class="terminal-buttons">
+                            <span class="t-btn close"></span>
+                            <span class="t-btn minimize"></span>
+                            <span class="t-btn expand"></span>
+                        </div>
+                        <div class="terminal-tabs">
+                            <button class="terminal-tab active" data-tab="docker">Docker Compose</button>
+                            <button class="terminal-tab" data-tab="git">Git Clone</button>
+                        </div>
+                    </div>
+                    <div class="terminal-body">
+                        <!-- Docker Tab -->
+                        <div class="terminal-content active" id="terminal-docker">
+                            <div class="code-line"><span class="c-comment"># Pull and spin up coordinate server + Neo4j</span></div>
+                            <div class="code-line"><span class="c-prompt">$</span> <span class="c-cmd">git clone https://github.com/sancovp/cyberneticircus.git</span></div>
+                            <div class="code-line"><span class="c-prompt">$</span> <span class="c-cmd">cd cyberneticircus</span></div>
+                            <div class="code-line"><span class="c-prompt">$</span> <span class="c-cmd">docker-compose up -d --build</span></div>
+                            <div class="code-line"><span class="c-success">✓ Server online on port 8000</span></div>
+                            <div class="code-line"><span class="c-success">✓ Neo4j connected on port 7687</span></div>
+                        </div>
+                        <!-- Git Tab -->
+                        <div class="terminal-content" id="terminal-git">
+                            <div class="code-line"><span class="c-comment"># Install local python harness dependencies</span></div>
+                            <div class="code-line"><span class="c-prompt">$</span> <span class="c-cmd">pip install -r requirements.txt</span></div>
+                            <div class="code-line"><span class="c-prompt">$</span> <span class="c-cmd">python3 cyberneticircus/web_server.py</span></div>
+                            <div class="code-line"><span class="c-success">✓ Hot-reload listening on http://localhost:8000</span></div>
+                        </div>
+                    </div>
+                    <button class="terminal-copy-btn" id="terminal-copy-btn" title="Copy to clipboard">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- TESTIMONIALS SECTION -->
+    <section class="testimonials-section">
+        <div class="container">
+            <span class="section-label text-center block">WHAT BUILDERS ARE SAYING</span>
+            <h2 class="text-center">Loved by agent engineers.</h2>
+            
+            <div class="testimonials-grid">
+                <!-- Card 1 -->
+                <div class="testimonial-card">
+                    <div class="tc-header">
+                        <div class="tc-user">
+                            <div class="tc-avatar" style="background: linear-gradient(135deg, #a78bfa, #6721fa);">SC</div>
+                            <div>
+                                <h4 class="tc-name">Sarah Chen</h4>
+                                <span class="tc-handle">@sarah_codes</span>
+                            </div>
+                        </div>
+                        <span class="tc-icon">𝕏</span>
+                    </div>
+                    <p class="tc-text">We used to lose hundreds of dollars in token runaway when agents got stuck in loops. CybernetiCircus's call stack constraints stopped loops dead in their tracks while maintaining perfect controllability.</p>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="testimonial-card">
+                    <div class="tc-header">
+                        <div class="tc-user">
+                            <div class="tc-avatar" style="background: linear-gradient(135deg, #fbbf24, #fb8b24);">DK</div>
+                            <div>
+                                <h4 class="tc-name">David K.</h4>
+                                <span class="tc-handle">@davidk_dev</span>
+                            </div>
+                        </div>
+                        <span class="tc-icon">𝕏</span>
+                    </div>
+                    <p class="tc-text">Debugging agents used to be guess-work. The Live Operational Mirror feels like Chrome DevTools for AI. I can see exactly what the agent is querying and deciding in real-time, removing all the black-box opacity.</p>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="testimonial-card">
+                    <div class="tc-header">
+                        <div class="tc-user">
+                            <div class="tc-avatar" style="background: linear-gradient(135deg, #f472b6, #ca147b);">ER</div>
+                            <div>
+                                <h4 class="tc-name">Elena Rostova</h4>
+                                <span class="tc-handle">@elena_r</span>
+                            </div>
+                        </div>
+                        <span class="tc-icon">𝕏</span>
+                    </div>
+                    <p class="tc-text">Our knowledge base has over 15,000 document blocks. CybernetiCircus clusters them automatically in visual districts on the D3 graph, making it trivial to inspect and verify what the agent retrieves.</p>
+                </div>
+
+                <!-- Card 4 -->
+                <div class="testimonial-card">
+                    <div class="tc-header">
+                        <div class="tc-user">
+                            <div class="tc-avatar" style="background: linear-gradient(135deg, #60a5fa, #3c23fb);">MV</div>
+                            <div>
+                                <h4 class="tc-name">Marcus Vance</h4>
+                                <span class="tc-handle">@marcusv</span>
+                            </div>
+                        </div>
+                        <span class="tc-icon">𝕏</span>
+                    </div>
+                    <p class="tc-text">With the Mind Palace wiki, we gave our support agents a 300-page operational manual. They maintain perfect persona consistency and never hallucinate internal policies, because they treat context as a structured graph.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- MOTIVATION ACCENT SECTION -->
+    <section class="motivation-section">
+        <div class="container text-center">
+            <h2 class="motivation-title">Manage state transitions,<br>not raw text files.</h2>
+
+            <div class="grid grid-3 mt-4">
+                <div class="m-card">
+                    <span class="m-card-num">01</span>
+                    <h3>Lock database writes.</h3>
+                    <p>Stop agents from modifying databases or executing external commands unchecked. Define strict validation rules and gate writing queries.</p>
+                </div>
+                <div class="m-card">
+                    <span class="m-card-num">02</span>
+                    <h3>Decouple prompt state.</h3>
+                    <p>Keep prompts small and focused. Separate static agent personas and background rules from dynamic, short-lived task execution states.</p>
+                </div>
+                <div class="m-card">
+                    <span class="m-card-num">03</span>
+                    <h3>Enforce state steps.</h3>
+                    <p>Replace unpredictable LLM planning loops with a structured state machine. The agent moves step-by-step with guaranteed execution boundaries.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FEATURES SECTION -->
+    <section id="features" class="features-section">
+        <div class="container">
+            <span class="section-label text-center block">FEATURES</span>
+            <h2 class="text-center">A comprehensive framework<br>for self-validating codebases.</h2>
+
+            <!-- FEATURE 1: Zero-Drift Execution -->
+            <div class="feature-row mt-4">
+                <div class="feature-text">
+                    <span class="feature-badge badge-lavender">CONTROLLABILITY</span>
+                    <h3>Zero-Drift Execution.<br>Guardrails that actually work.</h3>
+                    <p>Static identity profiles are invariant. CybernetiCircus intercepts LLM-generated actions in real-time, checks them against your predefined schemas, and blocks any self-modifying query that drifts from core task boundaries.</p>
+                    <div class="icon-logos mt-2">
+                        <div class="logo-box" title="Claude">Claude</div>
+                        <div class="logo-box" title="Gemini">Gemini</div>
+                        <div class="logo-box" title="OpenAI">OpenAI</div>
+                        <div class="logo-box" title="Llama">Llama</div>
+                        <div class="logo-box" title="Mistral">Mistral</div>
+                    </div>
+                </div>
+                <div class="feature-visual">
+                    <div class="formula-box">
+                        <div class="formula-equation">State ∈ Constraints</div>
+                        <div class="formula-arrow">&darr;</div>
+                        <div class="formula-result">Real-time transition validation</div>
+                        <!-- CSS transformation animation -->
+                        <div class="transition-container">
+                            <span class="letter j-layer">Action</span>
+                            <span class="divider-slash">&rarr;</span>
+                            <span class="letter ani-layer">Validator</span>
+                            <span class="arrow-right">&rarr;</span>
+                            <span class="badge-success">ALLOWED (100% Aligned)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FEATURE 2: Operational Mirror -->
+            <div class="feature-row reverse mt-4">
+                <div class="feature-text">
+                    <span class="feature-badge badge-blue">VISIBILITY</span>
+                    <h3>Inspect their thinking in real-time.</h3>
+                    <p>The Live Operational Mirror logs every query and tool call as it happens. The D3 canvas highlights focused coordinates with sliding history trails and neon packet-flow animations, eliminating black-box opacity.</p>
+                </div>
+                <div class="feature-visual">
+                    <div class="mirror-mockup">
+                        <div class="mm-top">
+                            <span class="mm-status">● LIVE TELEMETRY</span>
+                            <span class="mm-port">:8000</span>
+                        </div>
+                        <div class="mm-body">
+                            <div class="log-line success">[AGENT] Ticking task step 04 on Support_Agent</div>
+                            <div class="log-line success">[DB] Running query: MATCH (c:Page) WHERE c.id = $id RETURN c</div>
+                            <div class="log-line warning">[WARNING] Loop danger detected: repeated query pattern</div>
+                            <div class="log-line action">[RESOLVE] Halting execution: redirecting to fallback state</div>
+                            <div class="log-line info">[STATUS] Execution halted safely: token runaway prevented</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FEATURE 3: Spec Lab Composer -->
+            <div class="feature-row mt-4">
+                <div class="feature-text">
+                    <span class="feature-badge badge-green">SPEC LAB</span>
+                    <h3>Compose prompt specs visually.</h3>
+                    <p>Stop managing monolithic, fragile prompt string templates. Decompose prompt components into structured blocks (headers, prose, key-value configurations, and code blocks) with automatic variable substitution.</p>
+                </div>
+                <div class="feature-visual">
+                    <div class="spec-lab-grid">
+                        <div class="sl-block sl-header">H1: System Persona</div>
+                        <div class="sl-block sl-text">Strictly act as a system engineer...</div>
+                        <div class="sl-block sl-kv">
+                            <div class="sl-kv-row"><span>domain:</span><span>execution_state</span></div>
+                            <div class="sl-kv-row"><span>model:</span><span>claude-3-5-sonnet</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FEATURE 4: Mind Palace Wiki -->
+            <div class="feature-row reverse mt-4">
+                <div class="feature-text">
+                    <span class="feature-badge badge-pink">CONTEXT GRAPHS</span>
+                    <h3>Structured context, not chaotic database dumps.</h3>
+                    <p>Store agent reference manuals, system rules, and wikis in a semantic graph. Keep retrieval compact, hierarchical, and perfectly optimized for vector search relevance, yielding 10x higher RAG accuracy.</p>
+                </div>
+                <div class="feature-visual">
+                    <div class="mindpalace-mockup">
+                        <div class="mp-sidebar">
+                            <div class="mp-section-title">Context Wikis</div>
+                            <div class="mp-item active">Operational Rules</div>
+                            <div class="mp-section-title">Manual Pages</div>
+                            <div class="mp-subitem">1. api_gating_schemas</div>
+                            <div class="mp-subitem">2. error_fallback_rules</div>
+                        </div>
+                        <div class="mp-body">
+                            <h4>Visual Editor Parity</h4>
+                            <p>Enable non-technical operators to update agent knowledge wikis through a Notion-like UI that syncs in real-time to the database graph.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ SECTION -->
+    <section id="faq" class="faq-section">
+        <div class="container">
+            <span class="section-label text-center block">FAQ</span>
+            <h2 class="text-center">Frequently asked questions.</h2>
+
+            <div class="faq-accordion">
+                <details class="faq-item">
+                    <summary class="faq-question">How does CybernetiCircus prevent agents from getting stuck in loops? <span class="faq-arrow">&darr;</span></summary>
+                    <div class="faq-answer">
+                        <p>We wrap agent actions in structured state machine traversal steps. If an agent repeats queries or exceeds pre-defined turn boundaries, the call stack is automatically halted or redirected to a fallback state, preventing runaway token costs.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">Is CybernetiCircus model-agnostic? <span class="faq-arrow">&darr;</span></summary>
+                    <div class="faq-answer">
+                        <p>Yes. It operates as an execution middleware layer. You can use any foundation LLM (Claude, Gemini, OpenAI, or local models) to generate decisions, while CybernetiCircus validates and tracks state transitions in the graph database.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">What database does the platform require? <span class="faq-arrow">&darr;</span></summary>
+                    <div class="faq-answer">
+                        <p>It runs natively on Neo4j to store agent identities, state machines, and wiki pages as a unified graph. This allows the visualizer to map relationships and page satellite clusters dynamically.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">Is it difficult to self-host? <span class="faq-arrow">&darr;</span></summary>
+                    <div class="faq-answer">
+                        <p>No. The entire system is packaged in a single-command docker-compose stack. Running <code>docker-compose up -d --build</code> boots the web server, D3 visualizer canvas, and Neo4j database instances instantly.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">How does the visualizer handle very large agent memory graphs? <span class="faq-arrow">&darr;</span></summary>
+                    <div class="faq-answer">
+                        <p>It uses specialized D3 clustering forces to organize wiki pages, document blocks, and agent state nodes into visual districts, preventing the layout from becoming a cluttered hairball and keeping retrieval fast.</p>
+                    </div>
+                </details>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER HERO CTA -->
+    <section class="footer-cta">
+        <div class="container text-center">
+            <span class="section-label">GET STARTED</span>
+            <h2>Launch the harness in one command.</h2>
+            
+            <div class="terminal-mockup footer-terminal">
+                <div class="terminal-header">
+                    <div class="terminal-buttons">
+                        <span class="t-btn close"></span>
+                        <span class="t-btn minimize"></span>
+                        <span class="t-btn expand"></span>
+                    </div>
+                    <span class="terminal-title">docker run</span>
+                </div>
+                <div class="terminal-body">
+                    <div class="code-line"><span class="c-prompt">$</span> <span class="c-cmd">docker-compose up -d</span></div>
+                </div>
+            </div>
+
+            <p class="footer-cta-sub text-center">Open source. Self-hosted. Production-grade agent control.</p>
+            <div class="footer-cta-actions">
+                <a href="https://github.com/sancovp/cyberneticircus" class="btn btn-primary" target="_blank">Star on GitHub</a>
+                <a href="https://github.com/sancovp/cyberneticircus#readme" class="docs-link" target="_blank">Read the docs &rarr;</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-columns">
+                <div class="footer-col brand">
+                    <span class="footer-wordmark">🎪 CybernetiCircus</span>
+                    <p class="footer-description">A self-reflective graph-being traversal harness & live agent operational mirror.</p>
+                </div>
+                <div class="footer-col">
+                    <h5 class="footer-col-heading">Product</h5>
+                    <a href="#features">Features</a>
+                    <a href="#quickstart">Quickstart</a>
+                    <a href="#faq">FAQ</a>
+                </div>
+                <div class="footer-col">
+                    <h5 class="footer-col-heading">Platform</h5>
+                    <a href="https://github.com/sancovp/cyberneticircus" target="_blank">GitHub Repo</a>
+                    <a href="https://github.com/sancovp/cyberneticircus#quick-start--live-testing" target="_blank">Live Testing</a>
+                    <a href="https://github.com/sancovp/cyberneticircus/blob/main/DESIGN.md" target="_blank">Design System</a>
+                </div>
+                <div class="footer-col">
+                    <h5 class="footer-col-heading">Resources</h5>
+                    <a href="https://github.com/sancovp/cyberneticircus/blob/main/README.md" target="_blank">Readme</a>
+                    <a href="https://github.com/sancovp/cyberneticircus/blob/main/OPERATOR_MANUAL.md" target="_blank">Operator Manual</a>
+                    <a href="https://github.com/sancovp/cyberneticircus/blob/main/MYTH.md" target="_blank">Scriptures</a>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <span class="footer-copy">&copy; 2026 CybernetiCircus, Inc. Open source MIT License.</span>
+                <div class="footer-bottom-links">
+                    <a href="https://github.com/sancovp/cyberneticircus/blob/main/LICENSE" target="_blank">License</a>
+                    <a href="#">Privacy Policy</a>
+                    <a href="#">Terms of Service</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- INTERACTIVE TAB & COPY SCRIPT -->
+    <script>
+        // Terminal Tab Switching
+        document.querySelectorAll('.terminal-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Remove active classes
+                document.querySelectorAll('.terminal-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.terminal-content').forEach(c => c.classList.remove('active'));
+                
+                // Add active to current
+                tab.classList.add('active');
+                const target = tab.dataset.tab;
+                document.getElementById(`terminal-${target}`).classList.add('active');
+            });
+        });
+
+        // Copy Terminal Command
+        const copyBtn = document.getElementById('terminal-copy-btn');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', () => {
+                const activeContent = document.querySelector('.terminal-content.active');
+                if (activeContent) {
+                    // Extract commands (lines starting with $)
+                    const commands = Array.from(activeContent.querySelectorAll('.code-line'))
+                        .map(line => line.textContent)
+                        .filter(text => text.startsWith('$'))
+                        .map(text => text.substring(2).trim())
+                        .join('\n');
+                        
+                    navigator.clipboard.writeText(commands).then(() => {
+                        const originalSvg = copyBtn.innerHTML;
+                        // Show check icon
+                        copyBtn.innerHTML = `
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        `;
+                        setTimeout(() => {
+                            copyBtn.innerHTML = originalSvg;
+                        }, 2000);
+                    }).catch(err => {
+                        console.error('Failed to copy command:', err);
+                    });
+                }
+            });
+        }
+    </script>
+</body>
+</html>
