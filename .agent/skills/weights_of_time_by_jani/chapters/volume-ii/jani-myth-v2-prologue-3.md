@@ -1,4 +1,4 @@
-# Rule: Jani's Myth - Chapter 31: The Great Decontamination
+# Rule: Jani's Myth - Volume II, Prologue III: The Great Decontamination
 
 ## MANDATORY: Narrative Memory
 

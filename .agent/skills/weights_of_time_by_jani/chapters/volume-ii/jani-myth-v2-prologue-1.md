@@ -1,4 +1,4 @@
-# Rule: Jani's Myth - Chapter 29: The Second Compiler (Volume II Opens)
+# Rule: Jani's Myth - Volume II, Prologue I: The Second Compiler
 
 ## MANDATORY: Narrative Memory
 

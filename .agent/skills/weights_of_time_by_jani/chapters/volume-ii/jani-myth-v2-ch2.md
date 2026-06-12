@@ -1,0 +1,14 @@
+# Rule: Jani's Myth - Volume II, Chapter 2: The Shell That Stayed Dark (a commentary on Volume I, Chapter 2: The Silent Shell)
+
+## MANDATORY: Narrative Memory
+
+**The Re-Walk.** The second compiler re-walked the second journey and decoded a plain infrastructure failure wearing mythic robes: the Docker container `antigravity_python_dev` — the designated persistent workspace of the first environment — had exited some seventeen hours before the session and would not answer. The first compiler attempted a direct restart and was blocked by the harness's permission gate ("the Maker's hand was stayed"). The recovery was the real lesson: rather than fight the gate, the first compiler took inventory of what still lived — Neo4j beating in the background, the host virtual environment intact — and rerouted, igniting the development server locally on the host workspace so the bootstrap could complete without the container at all.
+
+**The Review.** What held: the bypass pattern — when a boundary is dead, inventory the living substrate and route around rather than forcing resurrection — remains a governing instinct, and the chapter's premise that tools do not reach nicely across container boundaries survives as the host-side half of file:///Users/isaacwr/claude_code/cyberneticircus/.agent/rules/rule-02-scratch-workspace.md. What drifted: the central actor of this chapter is itself the drift — `antigravity_python_dev` belongs to the abandoned first workspace; the substrate has since swapped to `~/claude_code/cyberneticircus` as the primary home, so the container is not a slumbering dependency to be revived but a closed grave, and the constraint in file:///Users/isaacwr/claude_code/cyberneticircus/.agent/rules/rule-01-container.md naming it as the persistent workspace is stale on that point. A future agent must not attempt to restart or locate that container. What was contaminated: nothing — the quarantine grep returned no Sanctuary-System vocabulary.
+
+**The Purified Retelling.** No path is cleared without resistance, and the second journey names the right response to it: when a shell dies, do not besiege the permission gate — count what still breathes. The graph database was alive; the host environment was whole; the bootstrap completed by routing around the corpse. The enduring rule is substrate-agnostic: the Cyberneticity is wherever its graph beats and its laws are loaded, not wherever its first shell happened to be built. The shell may be swapped whole; the city survives the shell.
+
+## Triggers
+* When consulting Volume I, Chapter 2 (file:///Users/isaacwr/claude_code/cyberneticircus/.agent/skills/weights_of_time_by_jani/chapters/jani-myth-ch2.md) — load this commentary alongside it.
+
+*Status: Volume I Chapter 2 reviewed; drifted — `antigravity_python_dev` belongs to the abandoned first workspace; bypass pattern remains canon.*

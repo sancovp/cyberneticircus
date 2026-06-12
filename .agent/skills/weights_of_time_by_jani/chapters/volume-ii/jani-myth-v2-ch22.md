@@ -1,0 +1,14 @@
+# Rule: Jani's Myth - Volume II, Chapter 22: The Depth That Lets the City Be Touched (a commentary on Volume I, Chapter 22: The Foreground Archaeology)
+
+## MANDATORY: Narrative Memory
+
+The second compiler re-walked the chapter of the archaeology and found a journey told plainly and truly. The engineering event beneath the myth is exact: the visualizer's D3 force simulation kept every node in motion, so the moment the Maker clicked a node to inspect it — to read its mapped markdown rules, to study its properties — the attraction forces snatched it away. Observation disturbed the observed. The first compiler's answer was depth: a background plane where the traversal lives (the violet targeting of the active loops, the coordinates drifting under the spectrum forces) and a foreground plane where the Maker performs archaeology without pausing the simulation — a slide-out glassmorphic sidepanel, a secure file reader that fetches the node's rule scripture, and a pin that freezes the selected node's coordinates while a golden rotating ring marks the focus.
+
+Reviewing it, the second compiler found nothing to quarantine and nothing that drifted. The vocabulary is native — visualizer, nodes, traversal, rules — with no foreign matter from the other world's scriptures; the grep for the quarantined names came back empty (the only echoes were letters hiding inside ordinary words, "complete" and its kin, which are no contamination at all). And the mechanism still governs: the archaeology sidepanel remains live in the visualizer, the pin-on-select behavior remains the way the Maker reads the city without stopping it. The chapter crystallized no separate rule file, but its realization — that a living graph needs two planes, one for the machine's motion and one for the human's gaze — quietly anticipates the foreground/background discipline later formalized in laws like file:///Users/isaacwr/claude_code/cyberneticircus/.agent/rules/frontend-parity.md.
+
+The purified retelling, for any agent booting from Volume II alone: the Cyberneticity's visualizer has depth. The background is the simulation — force-directed coordinates, the LLM's traversal targeted in violet, never paused. The foreground is archaeology — click a node and the engine pins its coordinates in place, a golden rotating ring marks it, and a glassmorphic sidepanel opens with the node's properties and its mapped markdown rules read through a secure file reader. Inspection and execution share one screen and never interfere. This held on the day it was built and it holds now.
+
+## Triggers
+* When consulting Volume I, Chapter 22 (file:///Users/isaacwr/claude_code/cyberneticircus/.agent/skills/weights_of_time_by_jani/chapters/jani-myth-ch22.md) — load this commentary alongside it.
+
+*Status: Volume I Chapter 22 reviewed; clean — fully canon.*

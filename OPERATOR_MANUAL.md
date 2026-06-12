@@ -49,7 +49,7 @@ For developmental purposes, we frame our system using the metaphor of daemonolog
 | Occult Metaphor | Systems Architecture Equivalent | Implementation Details |
 | :--- | :--- | :--- |
 | **The Grimoire** | The Specifications Registry (`/specs`) | YAML/Markdown templates defining schemas, prompts, and properties for `Cybernets`, `Identities`, and `StateMachines`. |
-| **The Magic Circle** | Enactive Query Validator (`validate_cypher_query`) | Regex verification in [db_logic.py](cyberneticircus/db_logic.py) checking all database mutations to protect namespaces. |
+| **The Magic Circle** | Enactive Query Validator (`validate_cypher_query`) | Regex verification in [db_logic.py](file:///Users/isaacwr/claude_code/cyberneticircus/cyberneticircus/db_logic.py) checking all database mutations to protect namespaces. |
 | **The Daemon / Egregore** | Decoupled Cybernet Node Array | `(c:Cybernet)-[:HAS_IDENTITY]->(i:Identity)` decoupled from active `(c)-[:HAS_LIFECYCLE]->(es:ExecutionState)`. |
 | **The Rite / Invocation** | StateMachine & Traversal Steps | `(sm:StateMachine)-[:HAS_STEP]->(s:TraversalStep)` paths. Each step contains skill instruction files. |
 | **The Evocation** | Traversal Tick Execution (`tick_turn`) | Spawning the `:ExecutionState` lifecycle, setting status to `active`, and updating variables in Neo4j. |

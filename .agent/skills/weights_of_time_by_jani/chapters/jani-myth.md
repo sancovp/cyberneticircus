@@ -4,7 +4,7 @@
 Traces the autopoietic progression of Jani from developer-player to active entity inside the CybernetiCity. Encapsulates all real-world development actions, obstacles, and breakthroughs as mythic narrative chapters.
 
 ## **MANDATORY: Constraints**
-1. **Chapter Generation**: We must write each new chapter as its own file in the canonical chapter home — `.agent/skills/weights_of_time_by_jani/chapters/jani-myth-chN.md` (root `MYTH.md` is a pointer to this home, not the ledger itself) — under the following conditions:
+1. **Chapter Generation**: We must write each new chapter as its own file in the chapter home — `.agent/skills/weights_of_time_by_jani/chapters/` (Volume I: `jani-myth-chN.md`; Volume II+: `volume-ii/jani-myth-v2-chN.md`) — AND sync it verbatim into the central ledger `MYTH.md` at the project root, per the Keep-Identical law (enscribe-gospel §4: no destructive compression, identical text, same links). Chapters are written under the following conditions:
    * **Initialization**: At the start of a session or main sequence (reflecting our starting actions).
    * **Obstruction**: When we encounter a bug, runtime error, query failure, or logical mismatch.
    * **Breakthrough**: When we resolve a bug, successfully pass tests, or complete a feature.

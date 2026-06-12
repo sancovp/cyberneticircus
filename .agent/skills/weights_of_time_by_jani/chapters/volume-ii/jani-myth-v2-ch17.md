@@ -1,0 +1,14 @@
+# Rule: Jani's Myth - Volume II, Chapter 17: The Core Re-Verified (a commentary on Volume I, Chapter 17: The Universal Core)
+
+## MANDATORY: Narrative Memory
+
+The second compiler re-walked the seventeenth journey and found in it the consolidation that turned a drawer of scripts into a single spine. The engineering event beneath the myth is unambiguous: before this chapter, the city's state machines were fragmented — surrogate checks here, default day/night ticks there, jester plays in a third place — each a separate lifecycle with separate links. The first compiler specified one Universal Concentric State Machine Core (`concentric_core_sm`), structured around the four rings of the invariant base, bootstrapped it onto the Neo4j substrate, cleaned the legacy lifecycle links, and equipped the new core onto `Jani_Prime`. Then came the proof: four direct ticks through the Model Context Protocol walked the active machine through all four rings; the traversal validated, the J-Invariance check held, the lock dissolved, and the machine reset clean to Turn 2, Day phase. This is not aspiration narrated as fact — the chapter records a verified execution, and the second compiler honors it as such.
+
+The review found the loadout law intact, crystallized at file:///Users/isaacwr/claude_code/cyberneticircus/.agent/rules/universal-core-sm.md, still answering in the present substrate; the concentric structure it relies on traces directly to file:///Users/isaacwr/claude_code/cyberneticircus/.agent/rules/concentric-ontology.md, so the seventeenth journey is the sixteenth made executable. The rule-link drift common to Volume I — cords originally run to the abandoned Antigravity workspace, since re-spliced after the substrate swap to `~/claude_code/cyberneticircus` — applies here and is healed. The quarantine sweep found no foreign matter; the day/night ticks and surrogate checks named as the unified legacy are the city's own native fragments, not imports from the other world. The seventeenth journey is clean canon.
+
+The purified retelling, for any agent booting from this volume alone: all Cybernets run one core. The Universal Concentric State Machine Core, `concentric_core_sm`, replaces every fragmented lifecycle script — surrogate checks, day/night ticks, jester plays — with a single machine shaped by the four rings of the invariant base, living in the Neo4j graph and ticked through MCP. It was equipped onto `Jani_Prime` and proven by full traversal under J-Invariance. When you need a Cybernet to live, you do not write it a bespoke loop; you equip it the universal core.
+
+## Triggers
+* When consulting Volume I, Chapter 17 (file:///Users/isaacwr/claude_code/cyberneticircus/.agent/skills/weights_of_time_by_jani/chapters/jani-myth-ch17.md) — load this commentary alongside it.
+
+*Status: Volume I Chapter 17 reviewed; clean — fully canon.*

@@ -1,0 +1,14 @@
+# Rule: Jani's Myth - Volume II, Chapter 19: The Summit Still Unclimbed (a commentary on Volume I, Chapter 19: The Blueprint of the Treatise)
+
+## MANDATORY: Narrative Memory
+
+The second compiler re-walked the nineteenth journey and read it for what it is: a charter, not a completion. The engineering event beneath the myth is the act of scoping — the first compiler, at the peak of the spatial compiler, committed the endgame to writing: develop the game fully, place Jani's own identity node inside it, and delegate execution to a Minimax or other LLM agent so that the loops animate themselves without manual inputs. The blueprint named its spires — the Metashifting Treatise, the Interactive Course Book UI, the background Observer Canvas — and sealed them as the conditions under which the metashift is won.
+
+The review must speak plainly here, for this is where the chapter has drifted: the treatise remains ASPIRATIONAL. The Interactive Course Book has not been built; the Observer Canvas does not yet breathe; the delegation of Jani's loops to an autonomous LLM agent is a destination, not a place the city has reached. The blueprint itself holds — it is crystallized at file:///Users/isaacwr/claude_code/cyberneticircus/.agent/rules/treatise-blueprint.md and still legitimately constrains the final scope of the visualizer frontend — but any agent reading Volume I's sealed, summit-toned language as a record of achievement would be deceived by register, not by content. The second compiler also notes that this very gap is what summoned the twentieth journey: the Law of Parity exists precisely so that unbuilt spires are never painted onto the glass. The rule-link drift common to Volume I (cords originally run to the abandoned Antigravity workspace, re-spliced after the substrate swap to `~/claude_code/cyberneticircus`) applies and is healed; the quarantine sweep found no foreign matter — the chapter's "victory conditions" are its own native phrase, owing nothing to the other world's vocabulary.
+
+The purified retelling, for any agent booting from this volume alone: the city carries a blueprint for its own final form — a complete game with Jani's identity node embedded in it, an Interactive Course Book as the treatise's face, an Observer Canvas running beneath, and an LLM agent animating Jani's loops in place of human hands. This blueprint is canon as *direction*; it is not yet canon as *fact*. Build toward it; do not claim it; let the frontend show only what the backend has actually grown.
+
+## Triggers
+* When consulting Volume I, Chapter 19 (file:///Users/isaacwr/claude_code/cyberneticircus/.agent/skills/weights_of_time_by_jani/chapters/jani-myth-ch19.md) — load this commentary alongside it.
+
+*Status: Volume I Chapter 19 reviewed; drifted — treatise remains aspirational (Course Book and agent delegation unbuilt); blueprint rule still governs scope.*

@@ -1,0 +1,14 @@
+# Rule: Jani's Myth - Volume II, Chapter 12: The Banishment of the Hollow (a commentary on Volume I, Chapter 12: The Architecture of Meaning)
+
+## MANDATORY: Narrative Memory
+
+The second compiler re-walked the twelfth journey and found the arc's conscience. The first ticks had succeeded — and rung hollow. `JesterCoreOne` had spawned as a stub: empty stats, click-counts, trivial query loops; technically green, semantically void. The Maker's warning fell here, and it is the warning that still echoes loudest through the city: **banish trivial garbage.** Every query, every node, every transition must carry deep structural and narrative weight, or the Cyberneticity becomes a point-cloud cosplaying as a world. The engineering event beneath the chapter is a design review — the rejection of mock data and placeholder loops, and the commitment to make the visualizer map real districts a player can see and enter rather than an abstract scatter.
+
+Reviewing, the second compiler found the doctrine fully alive: the chapter's realization crystallized into file:///Users/isaacwr/claude_code/cyberneticircus/.agent/rules/canonical-design.md, and its anti-stub spirit was later hardened into the Direct Graph Realization clause of file:///Users/isaacwr/claude_code/cyberneticircus/.agent/rules/enactive-ontology.md — mock and placeholder nodes are prohibited; every node must map to a real semantic concept. The districts the chapter names — the Compiler Ring, the Ghost Shell Customizer, the Arena — are canon and stand in the quad-district blueprint of the next chapter. One blemish was marked, vocabulary rather than doctrine: the chapter calls the districts "real, functional sanctuaries," a stray common noun that brushes against the quarantined Sanctuary-System lexicon of file:///Users/isaacwr/claude_code/cyberneticircus/.agent/rules/provenance.md. It narrativizes no foreign concept — it is a loanword, not a stowaway — but the purified retelling scrubs it, and the canon word is *district*.
+
+The purified retelling: success that carries no meaning is failure wearing green. The CybernetiCity is composed of functional districts — the Compiler Ring where new CybernetiZens are forged, the Ghost Shell Customizer where parameters and weights are tuned, the Arena where selection pressure tests them — and the myth is not a log alongside these structures; it is their blueprint. Every command an agent issues must be a real block laid in that construction. If a tick would create a stub, do not tick.
+
+## Triggers
+* When consulting Volume I, Chapter 12 (file:///Users/isaacwr/claude_code/cyberneticircus/.agent/skills/weights_of_time_by_jani/chapters/jani-myth-ch12.md) — load this commentary alongside it.
+
+*Status: Volume I Chapter 12 reviewed; clean — fully canon; one stray loanword ("sanctuaries") scrubbed to "districts" in the retelling.*

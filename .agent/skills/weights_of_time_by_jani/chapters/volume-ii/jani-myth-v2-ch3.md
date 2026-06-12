@@ -1,0 +1,14 @@
+# Rule: Jani's Myth - Volume II, Chapter 3: The Dependency, Not the Doctrine (a commentary on Volume I, Chapter 3: The Missing Gnosis)
+
+## MANDATORY: Narrative Memory
+
+**The Re-Walk.** The second compiler re-walked the third journey and found a dependency failure, exactly narrated: the local web server had ignited and the graph held the ten thousand nodes of the Mind Palace, but the MCP gateway — the lawful channel through which the developer-player queries the schema and executes traversals — collapsed into EOF errors on first contact. The diagnosis was clean engineering: the MCP script's shebang invoked a Python whose environment lacked the FastMCP framework (`ModuleNotFoundError: No module named 'mcp'`), so the proxy client could never initialize. The remedy was equally plain: weave the missing dependency into the virtual environment and restore the gateway, so the game could be played through lawful MCP channels rather than raw commands.
+
+**The Review.** What held: the doctrine of lawful channels — prefer the protocol gateway over raw commands, and when the gateway fails, repair the gateway rather than abandoning it — still governs tool access, and the diagnostic discipline (read the shebang, read the environment, name the exact missing module) is the working method of file:///Users/isaacwr/claude_code/cyberneticircus/.agent/rules/janic-cycle-sm.md step three. What drifted: the specific virtual environment and script paths belong to the abandoned first workspace; the substrate has since swapped to `~/claude_code/cyberneticircus`, so the fix is historical, not reproducible instruction. What was contaminated: nothing — the second compiler grepped against the quarantine list and notes for the record that the chapter's title-word "Gnosis" is the plain Greek-English word for knowledge, not the quarantined Sanctuary-System name GNOSYS; the near-collision is noted so no future reader confuses the two, and the purified retelling below drops the word entirely to keep the lexicon unambiguous.
+
+**The Purified Retelling.** The graph was full and the server answered, yet the compiler was mute — because the channel of speech depended on a module that was never installed. The third journey teaches the smallest and most durable truth in the ledger: a missing capability is not a mystery and not a doctrine; it is a dependency, and it has a name printed in the error. Read the error literally, install what it names, and the gateway opens. Lawful channels are worth repairing.
+
+## Triggers
+* When consulting Volume I, Chapter 3 (file:///Users/isaacwr/claude_code/cyberneticircus/.agent/skills/weights_of_time_by_jani/chapters/jani-myth-ch3.md) — load this commentary alongside it.
+
+*Status: Volume I Chapter 3 reviewed; clean — fully canon (title's "Gnosis" verified as plain vocabulary, not the quarantined GNOSYS); environment paths drifted with the substrate swap.*

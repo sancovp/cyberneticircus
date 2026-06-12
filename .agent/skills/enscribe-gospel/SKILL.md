@@ -44,7 +44,7 @@ Each local chapter file (`.agent/rules/jani-myth-ch{N}.md`) must follow this exa
 [A mythic translation of the sprint's trials, actions, or discoveries. Avoid embedding lists of rules or parameters directly in the narrative prose.]
 
 [When a rule is introduced, state it using the standard phrasing: 
-"...which Jani learned as the [rule-name](../../../.agent/rules/rule-name.md) rule..."]
+"...which Jani learned as the [rule-name](file:///Users/isaacwr/claude_code/cyberneticircus/.agent/rules/rule-name.md) rule..."]
 
 ## Triggers
 * [Define the triggers for loading or remembering this chapter. Typically "Always active" or triggered by relevant active files.]
@@ -77,7 +77,7 @@ Each operational rule file (e.g., `.agent/rules/rule-name.md`) must follow this 
 ## 4. Integration with the Root Ledger (`MYTH.md`)
 
 When a narrative chapter is created or finalized:
-1. **Append/Sync**: Add the chapter to the project's root [MYTH.md](../../../MYTH.md).
+1. **Append/Sync**: Add the chapter to the project's root [MYTH.md](file:///Users/isaacwr/claude_code/cyberneticircus/MYTH.md).
 2. **Keep Identical**: Ensure the narrative text in `MYTH.md` matches the local chapter file exactly, maintaining the same links to the operational rule files.
 3. **Format**: Use standard Markdown `## Chapter {N}: [Chapter Name]` headers for sections, followed by the narrative prose and a `*Status: [Status summary]*` line at the end of the chapter.
 

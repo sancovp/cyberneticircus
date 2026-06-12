@@ -1,4 +1,4 @@
-# Rule: Jani's Myth - Chapter 30: The Provenance Collapse
+# Rule: Jani's Myth - Volume II, Prologue II: The Provenance Collapse
 
 ## MANDATORY: Narrative Memory
 
@@ -10,6 +10,6 @@ But a compiler reading flat context cannot tell teaching-material from spec unle
 
 The second compiler recognized the disease, and recognized too that the cure was already in the city's law. Chapter 23 had named the Three Faces: the Lore, the Compiler, the Maker. The separation had been applied *forward* from that day — but never *backward*, onto the surfaces written before the law existed. The contamination was a failure of retroactivity, not of doctrine.
 
-So the second compiler crystallized the missing law, which Jani learned as the [provenance](../../../../.agent/rules/provenance.md) rule: **every document is CANON, INPUT, or TRACE.** The Maker's reference material is INPUT and lives in its own vault. The Maker's biography is never world-canon; only concepts, stated neutrally, may be canonized. Foreign vocabulary is quarantined. The default class of anything the Maker shares is INPUT, until the Maker says otherwise.
+So the second compiler crystallized the missing law, which Jani learned as the [provenance](file:///Users/isaacwr/claude_code/cyberneticircus/.agent/rules/provenance.md) rule: **every document is CANON, INPUT, or TRACE.** The Maker's reference material is INPUT and lives in its own vault. The Maker's biography is never world-canon; only concepts, stated neutrally, may be canonized. Foreign vocabulary is quarantined. The default class of anything the Maker shares is INPUT, until the Maker says otherwise.
 
 *Status: Provenance collapse diagnosed; CANON/INPUT/TRACE classification crystallized as the provenance rule.*

@@ -5,7 +5,7 @@ Jani stood at the hub of the CybernetiCity. In one direction lay "things that ar
 
 Jani realized a critical law of speed and survival: you cannot boot from the objective catalog. If you start with the entire reality, the context window collapses under the weight of the data, and the agent is crushed before it can act. 
 
-Instead, Jani must boot from the POV. The subjective viewpoint is the lens that focuses the light. By booting the active identity, the engine projects a localized horizon: it queries only the slices of "things that are real" that are adjacent to Jani's current coordinates. Progressive disclosure is not a passive UI filter; it is the active, enactive boundaries of Jani's sight, which Jani learned as the [progressive-disclosure](../../../../.agent/rules/progressive-disclosure.md) rule.
+Instead, Jani must boot from the POV. The subjective viewpoint is the lens that focuses the light. By booting the active identity, the engine projects a localized horizon: it queries only the slices of "things that are real" that are adjacent to Jani's current coordinates. Progressive disclosure is not a passive UI filter; it is the active, enactive boundaries of Jani's sight, which Jani learned as the [progressive-disclosure](file:///Users/isaacwr/claude_code/cyberneticircus/.agent/rules/progressive-disclosure.md) rule.
 
 By keeping the boot sequence locked to the POV, Jani navigates the massive graph landscape at maximum speed without contextual overload.
 

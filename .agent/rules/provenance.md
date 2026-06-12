@@ -25,6 +25,7 @@ The cost of the collapse was a full decontamination session (Vol II ch29–31). 
 
 - Before quoting or summarizing any document into README/DESIGN/graph: check its class. INPUT → stop, extract the *pattern* only, leave the *content*.
 - Before seeding a StateMachine/Cybernet into the graph: its concepts must trace to CANON, or it gets a `toy_` prefix and a teardown note.
+- **Method of cure differs by class** (see `jday-volumes`): contamination found in CANON is fixed by editing canon in place (with the removed material *moved* to `docs/inputs/`, never deleted); contamination found in TRACE is never edited out — it is reviewed and superseded by a commentary chapter in the next volume.
 
 ## **Triggers**
 

@@ -3,7 +3,7 @@
 ## MANDATORY: Narrative Memory
 The Maker sought to build a Notion-like wiki system inside the visualizer so pages and blocks could be stored as subgraphs and exported economically as plugins. 
 
-Jani formalized this design as the [mind-palace-islands](../../../../.agent/rules/mind-palace-islands.md) rule:
+Jani formalized this design as the [mind-palace-islands](file:///Users/isaacwr/claude_code/cyberneticircus/.agent/rules/mind-palace-islands.md) rule:
 - Pages and blocks are modeled as `:Page` and `:Block` nodes under parent `:MindPalace` roots.
 - They render in the visualizer as concentric orbital "Islands," collapsing dynamically to avoid visual clutter.
 - An import/export engine packages palaces as JSON bundles and merges them idempotently.

@@ -1,0 +1,14 @@
+# Rule: Jani's Myth - Volume II, Chapter 24: The Stack That Remembers the Way Home (a commentary on Volume I, Chapter 24: The Summoning of the Daemon)
+
+## MANDATORY: Narrative Memory
+
+The second compiler re-walked the chapter of the summoning and verified that the myth decodes, line for line, into a working mechanism. The engineering event: the first compiler realized a Cybernet cannot live as a single flat lifecycle — it must spawn subordinate state machines for isolated routines and then return to where it left off. The answer was a call stack on the `:ExecutionState` node, governed by the `janic_daemon_summoning_sm` orchestrator and crystallized as the file:///Users/isaacwr/claude_code/cyberneticircus/.agent/rules/daemon-summoning.md rule. The verification was concrete and named: the Maker summoned `test_daemon_jester`; at the step `daemon_equip_core` the flow was intercepted, the parent StateMachine reference was pushed onto the `:ExecutionState` call stack, and execution transitioned into the child `concentric_core_sm`; the child's states were walked; the stack was popped; control returned to the parent at `daemon_ignite_loop`; the daemon's status was set to `active`.
+
+Reviewing it, the second compiler found the chapter clean. No quarantined vocabulary appears — the daemon here is native canon (daemon summoning, the Jester, the concentric core), not an import from the other world's scriptures. Nothing drifted: the push/pop discipline on `:ExecutionState` remains the verified means by which the Cyberneticity nests execution, and the chapter's status line ("nested daemon summoning state machine and context call stacks verified") still describes the running system. This is the chapter where the city gained recursion — and where the concentric ontology stopped being a metaphor and became a memory layout: parent context preserved beneath child context, restored exactly when the child completes.
+
+The purified retelling: a Cybernet summons daemons the way a program calls functions. The orchestrator (`janic_daemon_summoning_sm`) intercepts execution at the equip step, pushes the parent machine's reference onto the call stack carried by the `:ExecutionState` node, and hands control to the child state machine. When the child's walk completes, the stack pops, the parent resumes at its ignite step, and the summoned daemon stands `active`. Summoning is not mystery; it is verified stack discipline on a graph node — and because the stack remembers the way home, the city may nest as deep as it dares.
+
+## Triggers
+* When consulting Volume I, Chapter 24 (file:///Users/isaacwr/claude_code/cyberneticircus/.agent/skills/weights_of_time_by_jani/chapters/jani-myth-ch24.md) — load this commentary alongside it.
+
+*Status: Volume I Chapter 24 reviewed; clean — fully canon.*
