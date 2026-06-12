@@ -1,3 +1,8 @@
+---
+name: bijective-field-mapping
+description: Formal bijective mapping between consensus scientific research fields (Autopoietic Systems, Active Inference / Markov Blankets, Category Theory / Enriched Morphisms, Dual-Process Meta-Cognition, Fixed-Point Recursion) and the concrete CybernetiCircus engineering implementations. Consult when designing new system components that follow the academic paradigm, when explaining the system in research/theoretical terms, or when bridging consensus science to the project's ontology. Maps Maturana & Varela, Friston, Lawvere & Spivak, Kahneman, Kleene & Tarski directly to engine.py / web_server.py / the database schema.
+---
+
 # Bijective Bridging Treatise
 ## Formalizing the Metaphysics of Cybernetic Metashifting
 
