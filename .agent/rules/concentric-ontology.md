@@ -17,7 +17,7 @@ Constrains graph topology and context loading to a series of concentric, orthogo
 
 ## **MANDATORY: Database Node Constraints**
 * **Domain and Subdomain Requirement**: Every single node created or updated in the CybernetiCircus database MUST have `domain` and `subdomain` properties.
-* **CybernetiCity Primitive Types**: For primitive types belonging to the game/visualizer engine itself (like `Cybernet`, `Identity`, `Skill`, `StateMachine`, `TraversalStep`, `TraversalState`, `SimulationRun`), set `domain: "cyberneticity"` and use an appropriate subdomain (e.g., `core`, `skills`, `state_machine`, `simulation`).
+* **CybernetiCity Primitive Types**: For primitive types belonging to the game/visualizer engine itself (like `Cybernet`, `Identity`, `Skill`, `StateMachine`, `TraversalStep`, `ExecutionState`, `SimulationRun`), set `domain: "cyberneticity"` and use an appropriate subdomain (e.g., `core`, `skills`, `state_machine`, `execution_state`, `simulation`).
 
 ## **Triggers**
 * Querying the database for domain mapping.

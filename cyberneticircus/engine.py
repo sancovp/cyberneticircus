@@ -1,27 +1,24 @@
 #!/usr/bin/env python3
-"""
-CybernetiCircus RPG Game Compiler
-Handles Cybernet creation, equipping State Machines, Day/Night turn loops, calibration, and evolutionary steps.
-"""
-import os
-import re
-import json
-import math
-import random
-import uuid
-import logging
-from typing import Dict, List, Any, Optional
+"""CybernetiCircus — LLM Runner. Thin facade per `cyberneticircus-architecture.md` §9.1.
+The engine owns only: AgentLLMRunner, CybernetiCircusCompiler (thin facade), per-cybernet
+TraversalState lock acquisition, and tick_turn (read step -> call LLM -> execute cypher
+-> gate -> auto-progress). All real logic lives in lib/."""
+import os, json, logging, random
+from typing import Any, Dict, Optional
 from neo4j import GraphDatabase
+from lib import cybernet as lib_cybernet
+from lib import lifecycle as lib_lifecycle
+from lib import evolution as lib_evolution
 
-# Setup logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("cyberneticircus_compiler")
 
+
 class AgentLLMRunner:
-    """
-    Modular LLM call hook representing the model configuration of a Cybernet.
-    This class is passed to the engine and simulates query output matching the step prompts.
-    """
+    """LLM wrapper. Holds a Cybernet's model config and produces one Cypher
+    query per `call_llm` call. Uses sanctuary-dna + heaven-framework with
+    minimax-M3 when MINIMAX_API_KEY / ANTHROPIC_API_KEY is set; otherwise
+    falls back to deterministic mock queries keyed on step_id."""
     def __init__(self, model_name: str, temperature: float, top_p: float, max_tokens: int):
         self.model_name = model_name
         self.temperature = temperature
@@ -29,73 +26,45 @@ class AgentLLMRunner:
         self.max_tokens = max_tokens
 
     def call_llm(self, system_prompt: str, user_prompt: str, character_name: str, step_id: str) -> str:
-        """
-        Modular LLM call wrapper. Uses sanctuary-dna and heaven-framework with Minimax model
-        if MINIMAX_API_KEY is present in the environment; otherwise falls back to mock queries.
-        """
         logger.info(f"LLM Call [Model: {self.model_name}, Temp: {self.temperature}] - Step: {step_id}")
-        
-        # Check if we should use the actual sanctuary-dna & heaven-framework AI backend
-        import os
         minimax_key = os.environ.get("MINIMAX_API_KEY")
         anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
-        
         if minimax_key or anthropic_key:
             try:
                 from sdna import HermesConfig
                 from sdna.config import HeavenInputs, HeavenAgentArgs
                 from sdna.heaven_runner import heaven_agent_step
                 import asyncio
-                
-                logger.info("Instantiating Sanctuary DNA / HEAVEN runner...")
-                
-                # Build the configuration using the requested minimax model (or fallback if custom)
                 model_to_use = self.model_name
                 if not model_to_use or not model_to_use.lower().startswith("minimax"):
                     model_to_use = "minimax-M3"
-                
-                # Setup Heaven inputs for MiniMax execution
-                heaven_inputs = HeavenInputs(
-                    agent=HeavenAgentArgs(
-                        provider="ANTHROPIC", # MiniMax runs on ANTHROPIC provider inside heaven_runner via proxy URL
-                        temperature=self.temperature,
-                        max_tokens=self.max_tokens or 8000
-                    )
-                )
-                
                 config = HermesConfig(
                     name=character_name,
                     system_prompt=system_prompt + "\nIMPORTANT: You must return a valid Cypher query (and only the query) that resolves the active step goal.",
-                    goal=user_prompt,
-                    model=model_to_use,
-                    max_turns=5,
-                    backend="heaven",
-                    permission_mode="bypassPermissions",
-                    heaven_inputs=heaven_inputs
+                    goal=user_prompt, model=model_to_use, max_turns=5,
+                    backend="heaven", permission_mode="bypassPermissions",
+                    heaven_inputs=HeavenInputs(agent=HeavenAgentArgs(
+                        provider="ANTHROPIC", temperature=self.temperature,
+                        max_tokens=self.max_tokens or 8000,
+                    )),
                 )
-                
-                # Execute asynchronously via an event loop helper
                 async def run_agent():
                     res = await heaven_agent_step(config)
                     if res and res.status.name == "SUCCESS" and "text" in res.output:
                         return res.output["text"].strip()
-                    raise RuntimeError(f"Agent execution status: {res.status.name if res else 'None'}. Error: {res.error if res else 'None'}")
-                
+                    raise RuntimeError(f"Agent status: {res.status.name if res else 'None'}. Error: {res.error if res else 'None'}")
                 try:
                     loop = asyncio.get_event_loop()
                 except RuntimeError:
                     loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(loop)
-                
                 if loop.is_running():
-                    # If running inside uvicorn's event loop, run in thread or executor
                     import nest_asyncio
                     nest_asyncio.apply()
                     query = loop.run_until_complete(run_agent())
                 else:
                     query = loop.run_until_complete(run_agent())
-                
-                # Clean markdown code fences, backticks, and prefix if present
+                # Strip markdown fences / backticks / "cypher" prefix
                 if query:
                     query = query.strip()
                     if query.startswith("```"):
@@ -110,68 +79,55 @@ class AgentLLMRunner:
                         query = query.strip("`").strip()
                     if query.lower().startswith("cypher"):
                         query = query[6:].strip()
-                
-                logger.info(f"AI Agent query generated: {query}")
                 return query
-                
             except Exception as e:
-                logger.warning(f"Failed to execute via Sanctuary DNA/HEAVEN: {e}. Falling back to mock queries.")
-        
-        # Fallback: Generates exact queries to successfully progress the Traversal State Machine
-        if step_id in ("sh8_day_start", "ple_ignite_intent", "concentric_spiritual"):
-            return f"MATCH (m:Cybernet) RETURN m"
-        elif step_id in ("sh8_day_action", "ple_combust_action", "concentric_wealth"):
-            tokens_generated = random.randint(100, 300)
-            return f"MATCH (m:Cybernet {{name: '{character_name}'}}) SET m.total_tokens_consumed = m.total_tokens_consumed + {tokens_generated}"
-        elif step_id == "sh8_night_calibrate":
-            return "MATCH (sim:SimulationRun) RETURN sim"
-        elif step_id in ("ple_align_collaboration", "concentric_social"):
-            return f"MATCH (m:Cybernet {{name: '{character_name}'}})-[:HAS_IDENTITY]->(i:Identity) RETURN i"
-        elif step_id in ("sh8_night_evolve", "ple_output_promise", "concentric_health"):
-            return "MATCH (m:Cybernet) WHERE m.fitness_score >= 0.8 RETURN m"
-        elif step_id == "sub_step_1":
-            return "MATCH (s:SubNode) RETURN s"
-        elif step_id == "sub_step_2":
-            return "MATCH (s:SubNode {done: true}) RETURN s"
-        elif step_id == "jester_boot":
-            return f"CREATE (c:Cybernet {{name: 'JesterCoreOne', status: 'initialized'}})"
-        elif step_id == "jester_play":
-            return f"MATCH (c:Cybernet {{name: 'JesterCoreOne'}}) SET c.persona = 'Jester'"
-        elif step_id == "jester_verify":
-            return f"MATCH (c:Cybernet {{name: 'JesterCoreOne'}}) RETURN c.fitness_score"
-        elif step_id == "janic_read_designs":
-            return f"MATCH (arch:Concept {{name: 'CybernetiCircus_Architecture'}}) RETURN arch"
-        elif step_id == "janic_check_state":
-            return f"MATCH (c:Cybernet {{name: '{character_name}'}})-[:USES]->(arch:Concept) RETURN arch"
-        elif step_id == "janic_engineer":
-            return f"MATCH (d:Concept {{is_a: 'Domain'}}) RETURN d.name"
-        elif step_id == "janic_preservation":
-            return f"MATCH (c:Cybernet {{name: '{character_name}'}})-[:HAS_TASK]->(t:Task) RETURN t"
-        elif step_id == "janic_autocommentary":
-            return f"MATCH (c:Cybernet {{name: '{character_name}'}}) RETURN c"
-        elif step_id == "daemon_verify_identity":
-            return f"MATCH (i:Identity) RETURN i"
-        elif step_id == "daemon_allocate_lifecycle":
-            return f"CREATE (s:ExecutionState {{status: 'locked', domain: 'cyberneticity', subdomain: 'lifecycle'}})"
-        elif step_id == "daemon_equip_core":
-            return f"MATCH (s:ExecutionState {{equipped_sm_id: 'concentric_core_sm'}}) RETURN s"
-        elif step_id == "daemon_ignite_loop":
-            return f"MATCH (c:Cybernet {{name: '{character_name}'}})-[:HAS_LIFECYCLE]->(s:ExecutionState) SET s.status = 'active' RETURN s"
-        elif step_id == "layer1_primitive_boot":
-            return f"MATCH (c:Cybernet {{name: 'Jani_Prime'}}) RETURN c"
-        elif step_id == "layer2_meta_compile":
-            return f"MATCH (sm:StateMachine) RETURN sm"
-        elif step_id == "layer3_sdlc_ignite":
-            return f"CREATE (c:Cybernet {{name: 'Child_Daemon_Jester', domain: 'cyberneticity', subdomain: 'cybernet'}})"
-        
-        return "MATCH (n) RETURN n"
+                logger.warning(f"SDNA/HEAVEN failed: {e}. Falling back to mock queries.")
+        return _mock_query_for_step(step_id, character_name)
+
+
+_MOCK_QUERIES = {
+    "sh8_day_start": "MATCH (m:Cybernet) RETURN m",
+    "ple_ignite_intent": "MATCH (m:Cybernet) RETURN m",
+    "concentric_spiritual": "MATCH (m:Cybernet) RETURN m",
+    "sh8_night_calibrate": "MATCH (sim:SimulationRun) RETURN sim",
+    "ple_align_collaboration": "MATCH (m:Cybernet {name: '$c'})-[:HAS_IDENTITY]->(i:Identity) RETURN i",
+    "concentric_social": "MATCH (m:Cybernet {name: '$c'})-[:HAS_IDENTITY]->(i:Identity) RETURN i",
+    "sh8_night_evolve": "MATCH (m:Cybernet) WHERE m.fitness_score >= 0.8 RETURN m",
+    "ple_output_promise": "MATCH (m:Cybernet) WHERE m.fitness_score >= 0.8 RETURN m",
+    "concentric_health": "MATCH (m:Cybernet) WHERE m.fitness_score >= 0.8 RETURN m",
+    "sub_step_1": "MATCH (s:SubNode) RETURN s",
+    "sub_step_2": "MATCH (s:SubNode {done: true}) RETURN s",
+    "jester_boot": "CREATE (c:Cybernet {name: 'JesterCoreOne', status: 'initialized'})",
+    "jester_play": "MATCH (c:Cybernet {name: 'JesterCoreOne'}) SET c.persona = 'Jester'",
+    "jester_verify": "MATCH (c:Cybernet {name: 'JesterCoreOne'}) RETURN c.fitness_score",
+    "janic_read_designs": "MATCH (arch:Concept {name: 'CybernetiCircus_Architecture'}) RETURN arch",
+    "janic_check_state": "MATCH (c:Cybernet {name: '$c'})-[:USES]->(arch:Concept) RETURN arch",
+    "janic_engineer": "MATCH (d:Concept {is_a: 'Domain'}) RETURN d.name",
+    "janic_preservation": "MATCH (c:Cybernet {name: '$c'})-[:HAS_TASK]->(t:Task) RETURN t",
+    "janic_autocommentary": "MATCH (c:Cybernet {name: '$c'}) RETURN c",
+    "daemon_verify_identity": "MATCH (i:Identity) RETURN i",
+    "daemon_allocate_lifecycle": "CREATE (s:ExecutionState {status: 'locked', domain: 'cyberneticity', subdomain: 'lifecycle'})",
+    "daemon_equip_core": "MATCH (s:ExecutionState {equipped_sm_id: 'concentric_core_sm'}) RETURN s",
+    "daemon_ignite_loop": "MATCH (c:Cybernet {name: '$c'})-[:HAS_LIFECYCLE]->(s:ExecutionState) SET s.status = 'active' RETURN s",
+    "layer1_primitive_boot": "MATCH (c:Cybernet {name: 'Jani_Prime'}) RETURN c",
+    "layer2_meta_compile": "MATCH (sm:StateMachine) RETURN sm",
+    "layer3_sdlc_ignite": "CREATE (c:Cybernet {name: 'Child_Daemon_Jester', domain: 'cyberneticity', subdomain: 'cybernet'})",
+}
+_MOCK_TOKEN_STEPS = {"sh8_day_action", "ple_combust_action", "concentric_wealth"}
+
+
+def _mock_query_for_step(step_id: str, character_name: str) -> str:
+    """Deterministic mock query that matches the active step's required_pattern."""
+    if step_id in _MOCK_TOKEN_STEPS:
+        return f"MATCH (m:Cybernet {{name: '{character_name}'}}) SET m.total_tokens_consumed = m.total_tokens_consumed + {random.randint(100, 300)}"
+    if step_id in _MOCK_QUERIES:
+        return _MOCK_QUERIES[step_id].replace("$c", character_name)
+    return "MATCH (n) RETURN n"
 
 
 class CybernetiCircusCompiler:
-    """
-    The CybernetiCircus compiler managing Cybernet Identities, State Machines (Equipment),
-    turn loops, and evolutionary cycles.
-    """
+    """The LLM-loop compiler. `tick_turn` is the only LLM-loop method; the
+    rest are thin facades over `lib/cybernet` and `lib/evolution` per §9.1."""
     def __init__(self, uri: str = None, user: str = None, password: str = None):
         self.uri = uri or os.getenv("NEO4J_URI", "bolt://localhost:7687")
         self.user = user or os.getenv("NEO4J_USER", "neo4j")
@@ -183,818 +139,155 @@ class CybernetiCircusCompiler:
     def close(self):
         self.driver.close()
 
-    def create_cybernet(
-        self,
-        name: str,
-        description: str,
-        model_name: str = "gemini-1.5-pro",
-        parameters_count: float = 70.0,
-        temperature: float = 0.7,
-        top_p: float = 0.9,
-        max_tokens: int = 2048,
-        mutation_rate: float = 0.1,
-        selection_pressure: float = 1.0
-    ) -> str:
-        """
-        Create a new Cybernet (Identity) node in the graph.
-        """
-        with self.driver.session() as session:
-            # Check if Cybernet already exists
-            check_res = session.run("MATCH (m:Cybernet {name: $name}) RETURN count(m) as count", {"name": name})
-            if check_res.single()["count"] > 0:
-                raise ValueError(f"Cybernet character '{name}' already exists.")
-                
-            # Create the character graph identity and its manifest persona
-            session.run(
-                """
-                CREATE (m:Cybernet {
-                    name: $name,
-                    description: $description,
-                    model_name: $model_name,
-                    parameters_count: $parameters_count,
-                    temperature: $temperature,
-                    top_p: $top_p,
-                    max_tokens: $max_tokens,
-                    mutation_rate: $mutation_rate,
-                    selection_pressure: $selection_pressure,
-                    task_success_rate: 1.0,
-                    tool_call_frequency: 0.0,
-                    avg_latency_ms: 0.0,
-                    total_tokens_consumed: 0,
-                    accumulated_cost: 0.0,
-                    fitness_score: 1.0,
-                    domain: 'cyberneticity',
-                    subdomain: 'cybernet'
-                })
-                CREATE (i:Identity {
-                    name: $name,
-                    description: $description,
-                    persona_prompt: 'You are the Cybernet persona ' + $name + '. Guidelines: ' + $description,
-                    world_prompt: 'State of the Cyberneticity: You are inside the sandbox execution grid of the CybernetiCircus.',
-                    core_loop_prompt: '1. Observe traversal state. 2. Formulate Cypher command. 3. Execute progress.',
-                    domain: 'cyberneticity',
-                    subdomain: 'identity'
-                })
-                CREATE (m)-[:HAS_IDENTITY]->(i)
-                """,
-                {
-                    "name": name,
-                    "description": description,
-                    "model_name": model_name,
-                    "parameters_count": float(parameters_count),
-                    "temperature": float(temperature),
-                    "top_p": float(top_p),
-                    "max_tokens": int(max_tokens),
-                    "mutation_rate": float(mutation_rate),
-                    "selection_pressure": float(selection_pressure)
-                }
-            )
-            return f"Successfully created Cybernet '{name}' identity graph."
+    # --- Thin facades over lib.cybernet (preserved for callers like runner.py) ---
+    def create_cybernet(self, name, description, model_name="gemini-1.5-pro",
+                        parameters_count=70.0, temperature=0.7, top_p=0.9,
+                        max_tokens=2048, mutation_rate=0.1, selection_pressure=1.0):
+        return lib_cybernet.create(self.driver, name=name, description=description,
+            model_name=model_name, parameters_count=parameters_count,
+            temperature=temperature, top_p=top_p, max_tokens=max_tokens,
+            mutation_rate=mutation_rate, selection_pressure=selection_pressure)
 
-    def equip_state_machine(self, cybernet_name: str, state_machine_id: str) -> str:
-        """
-        Equip a State Machine onto a Cybernet (creates :EQUIPS relationship and starts :HAS_LIFECYCLE execution state).
-        """
-        with self.driver.session() as session:
-            # Check if Cybernet exists
-            ms_check = session.run("MATCH (m:Cybernet {name: $name}) RETURN m", {"name": cybernet_name})
-            if not ms_check.peek():
-                raise ValueError(f"Cybernet '{cybernet_name}' does not exist.")
-                
-            # Check if State Machine exists
-            sm_check = session.run("MATCH (sm:StateMachine {id: $sm_id}) RETURN sm", {"sm_id": state_machine_id})
-            if not sm_check.peek():
-                raise ValueError(f"StateMachine '{state_machine_id}' does not exist.")
-                
-            # Equips State Machine and creates an execution lifecycle linked to the entry step
-            # Entry step has no incoming NEXT_STEP relationship
-            session.run(
-                """
-                MATCH (m:Cybernet {name: $name})
-                MATCH (sm:StateMachine {id: $sm_id})
-                MERGE (m)-[:EQUIPS]->(sm)
-                
-                // Clear any existing lifecycle state for this state machine
-                WITH m, sm
-                OPTIONAL MATCH (m)-[r:HAS_LIFECYCLE]->(s:ExecutionState {equipped_sm_id: $sm_id})
-                DETACH DELETE s
-                DELETE r
-                
-                // Create new lifecycle state
-                WITH m, sm
-                CREATE (s:ExecutionState {
-                    status: 'locked',
-                    turn_number: 1,
-                    phase: 'day',
-                    lifetime_limit: 5,
-                    tokens_consumed_this_turn: 0,
-                    cost_this_turn: 0.0,
-                    equipped_sm_id: $sm_id,
-                    call_stack: '[]',
-                    current_layer: 'none',
-                    completed_layers: [],
-                    domain: 'cyberneticity',
-                    subdomain: 'execution_state'
-                })
-                CREATE (m)-[:HAS_LIFECYCLE]->(s)
-                
-                // Find entry step of the StateMachine (robust to closed loops) and link s to it
-                WITH s, sm
-                MATCH (sm)-[:HAS_STEP]->(entry:TraversalStep)
-                WITH s, sm, collect(entry) as entries
-                UNWIND entries as entry
-                OPTIONAL MATCH (prev:TraversalStep)-[:NEXT_STEP]->(entry)
-                WITH s, sm, entry, count(prev) as incoming
-                ORDER BY incoming ASC, entry.id ASC
-                WITH s, sm, collect(entry) as sorted_entries
-                WITH s, sm, sorted_entries[0] as entry
-                CREATE (s)-[:CURRENT_STEP]->(entry)
-                """,
-                {"name": cybernet_name, "sm_id": state_machine_id}
-            )
-            return f"Successfully equipped StateMachine '{state_machine_id}' onto '{cybernet_name}'."
+    def equip_state_machine(self, cybernet_name, state_machine_id):
+        return lib_cybernet.equip_state_machine(
+            self.driver, cybernet_name=cybernet_name, state_machine_id=state_machine_id)
 
-    def get_character_status(self, name: str) -> Optional[Dict[str, Any]]:
-        """
-        Fetch status and metrics of a Cybernet and its equipped state machine lifecycle.
-        """
-        with self.driver.session() as session:
-            res = session.run(
-                """
-                MATCH (m:Cybernet {name: $name})
-                OPTIONAL MATCH (m)-[:EQUIPS]->(sm:StateMachine)
-                OPTIONAL MATCH (m)-[:HAS_IDENTITY]->(i:Identity)
-                OPTIONAL MATCH (m)-[:HAS_LIFECYCLE]->(s:ExecutionState)
-                OPTIONAL MATCH (s)-[:CURRENT_STEP]->(curr:TraversalStep)
-                RETURN m, sm.id as equipped_sm_id, sm.name as equipped_sm_name, s, i,
-                       curr.id as current_step_id, curr.text as current_step_text,
-                       curr.instruction_file_path as current_step_file_path,
-                       curr.pattern_description as pattern_description,
-                       curr.required_pattern as required_pattern,
-                       s.call_stack as call_stack
-                """,
-                {"name": name}
-            )
-            rec = res.single()
-            if not rec:
-                return None
-                
-            status_data = {
-                "name": rec["m"]["name"],
-                "description": rec["i"]["description"] if rec["i"] else rec["m"]["description"],
-                "model_name": rec["m"]["model_name"],
-                "temperature": rec["m"]["temperature"],
-                "top_p": rec["m"]["top_p"],
-                "mutation_rate": rec["m"]["mutation_rate"],
-                "selection_pressure": rec["m"]["selection_pressure"],
-                "total_tokens": rec["m"]["total_tokens_consumed"],
-                "accumulated_cost": rec["m"]["accumulated_cost"],
-                "fitness_score": rec["m"]["fitness_score"],
-                "equipped_sm_id": rec["equipped_sm_id"],
-                "equipped_sm_name": rec["equipped_sm_name"],
-                "turn_number": None,
-                "phase": None,
-                "current_step_id": None,
-                "current_step_text": None,
-                "current_step_file_path": None,
-                "pattern_description": None,
-                "required_pattern": None,
-                "call_stack": "[]",
-                "current_layer": None,
-                "completed_layers": [],
-                "identity_name": rec["i"]["name"] if rec["i"] else rec["m"]["name"],
-                "persona_prompt": rec["i"]["persona_prompt"] if rec["i"] else "",
-                "world_prompt": rec["i"]["world_prompt"] if rec["i"] else "",
-                "core_loop_prompt": rec["i"]["core_loop_prompt"] if rec["i"] else ""
-            }
-            
-            if rec["s"]:
-                step_text = rec["current_step_text"]
-                file_path = rec["current_step_file_path"]
-                if file_path and os.path.exists(file_path):
-                    try:
-                        with open(file_path, "r", encoding="utf-8") as f:
-                            file_content = f.read()
-                        if step_text:
-                            step_text = f"{step_text}\n\n=== INSTRUCTION FILE CONTENT ===\n{file_content}"
-                        else:
-                            step_text = file_content
-                    except Exception as e:
-                        logger.error(f"Error reading instruction file {file_path}: {e}")
-                
-                status_data.update({
-                    "turn_number": rec["s"]["turn_number"],
-                    "phase": rec["s"]["phase"],
-                    "current_step_id": rec["current_step_id"],
-                    "current_step_text": step_text,
-                    "current_step_file_path": file_path,
-                    "pattern_description": rec["pattern_description"],
-                    "required_pattern": rec["required_pattern"],
-                    "equipped_sm_id": rec["s"]["equipped_sm_id"] or rec["equipped_sm_id"],
-                    "call_stack": rec["call_stack"] or "[]",
-                    "current_layer": rec["s"].get("current_layer", "none"),
-                    "completed_layers": rec["s"].get("completed_layers", [])
-                })
-                
-            return status_data
+    def get_character_status(self, name):
+        return lib_cybernet.get_status(self.driver, name=name)
 
+    # --- The LLM loop: tick_turn ---
     def tick_turn(self, name: str, runner: AgentLLMRunner) -> Dict[str, Any]:
-        """
-        Tick one step/phase of the Day/Night cycle.
-        Returns the action taken and new status.
-        """
+        """One step of the Day/Night cycle. Reads active step, gates via
+        per-cybernet TraversalState lock, calls the LLM, executes the query,
+        and auto-progresses (or pops the call stack on child-SM completion,
+        or evaluates evolution at lifetime end)."""
         status = self.get_character_status(name)
         if not status:
             raise ValueError(f"Character '{name}' not found.")
-            
         if not status["equipped_sm_id"]:
             raise ValueError(f"Cybernet '{name}' does not have any State Machine equipped.")
-            
-        phase = status["phase"]
-        step_id = status["current_step_id"]
-        turn_number = status["turn_number"]
-        sm_id = status["equipped_sm_id"]
-        call_stack = json.loads(status.get("call_stack", "[]"))
-        
-        output_data = {
-            "name": name,
-            "turn": turn_number,
-            "previous_phase": phase,
-            "action_taken": "",
-            "event_message": ""
-        }
-        
-        # Load db_logic module to run queries securely
-        from db_logic import query_database, is_traversal_locked, progress_traversal
-        
-        # 0. Check if the active step triggers a compiler call to a sub-state machine
-        with self.driver.session() as session:
-            sub_res = session.run(
-                """
-                MATCH (curr:TraversalStep {id: $step_id})-[:CALLS_SM]->(child_sm:StateMachine)
-                RETURN child_sm.id as child_sm_id
-                """,
-                {"step_id": step_id}
-            )
-            sub_record = sub_res.single()
-            child_sm_id = sub_record["child_sm_id"] if sub_record else None
 
-        if child_sm_id:
-            # Push parent frame onto call stack
-            call_stack.append({"sm_id": sm_id, "step_id": step_id})
-            
-            # Find entry step of the child StateMachine (robust to closed loops)
-            with self.driver.session() as session:
-                entry_res = session.run(
-                    """
-                    MATCH (sm:StateMachine {id: $child_sm_id})-[:HAS_STEP]->(entry:TraversalStep)
-                    WITH collect(entry) as entries
-                    UNWIND entries as entry
-                    OPTIONAL MATCH (prev:TraversalStep)-[:NEXT_STEP]->(entry)
-                    WITH entry, count(prev) as incoming
-                    ORDER BY incoming ASC, entry.id ASC
-                    WITH collect(entry) as sorted_entries
-                    RETURN sorted_entries[0].id as entry_id
-                    """,
-                    {"child_sm_id": child_sm_id}
-                )
-                entry_rec = entry_res.single()
-                if not entry_rec or not entry_rec["entry_id"]:
-                    raise ValueError(f"StateMachine '{child_sm_id}' does not have a valid entry step.")
-                child_entry_id = entry_rec["entry_id"]
-                
-                # Update ExecutionState in database
-                session.run(
-                    """
-                    MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:ExecutionState)
-                    MATCH (entry:TraversalStep {id: $entry_id})
-                    MATCH (s)-[r:CURRENT_STEP]->()
-                    DELETE r
-                    CREATE (s)-[:CURRENT_STEP]->(entry)
-                    SET s.equipped_sm_id = $child_sm_id,
-                        s.call_stack = $call_stack
-                    """,
-                    {
-                        "name": name,
-                        "child_sm_id": child_sm_id,
-                        "entry_id": child_entry_id,
-                        "call_stack": json.dumps(call_stack)
-                    }
-                )
-            output_data["action_taken"] = f"Compiler call to sub-state machine '{child_sm_id}'."
-            output_data["event_message"] = f"Saved parent step '{step_id}' to call stack. Transitioned loadout to child state machine '{child_sm_id}'."
-            return output_data
-        
-        # 1. Run step-specific side effects before executing the query
-        if step_id == "sh8_night_calibrate":
-            # Save simulation result linked to Cybernet in Neo4j
-            accuracy = round(random.uniform(0.5, 1.0), 2)
-            run_id = str(uuid.uuid4())
-            with self.driver.session() as session:
-                session.run(
-                    """
-                    MATCH (m:Cybernet {name: $name})
-                    CREATE (sim:SimulationRun {
-                        run_id: $run_id,
-                        created_at: timestamp(),
-                        accuracy: $accuracy,
-                        fitness_score: $accuracy,
-                        calibrated: true,
-                        domain: 'cyberneticity',
-                        subdomain: 'simulation'
-                    })
-                    CREATE (m)-[:HAS_SIMULATION]->(sim)
-                    """,
-                    {"name": name, "run_id": run_id, "accuracy": accuracy}
-                )
-            output_data["event_message"] = f"Calibration triggered. Accuracy recorded: {accuracy}."
-            
-        elif step_id == "sh8_night_evolve":
-            # Update fitness score by averaging all simulation runs
-            with self.driver.session() as session:
-                fit_res = session.run(
-                    """
-                    MATCH (m:Cybernet {name: $name})-[:HAS_SIMULATION]->(sim:SimulationRun)
-                    RETURN avg(sim.accuracy) as avg_fitness
-                    """,
-                    {"name": name}
-                )
-                avg_fit = fit_res.single()["avg_fitness"] or 1.0
-                session.run(
-                    "MATCH (m:Cybernet {name: $name}) SET m.fitness_score = $avg_fitness",
-                    {"name": name, "avg_fitness": avg_fit}
-                )
-            
-        # 2. Lock traversal database state if not already locked
-        if not is_traversal_locked():
-            with self.driver.session() as session:
-                session.run(
-                    """
-                    MATCH (step:TraversalStep {id: $step_id})
-                    CREATE (s:TraversalState {
-                        status: 'locked',
-                        created_at: timestamp(),
-                        domain: 'cyberneticity',
-                        subdomain: 'traversal_state'
-                    })-[:CURRENT_STEP]->(step)
-                    """,
-                    {"step_id": step_id}
-                )
-        else:
-            # Force-align TraversalState's CURRENT_STEP with Identity's CURRENT_STEP
-            with self.driver.session() as session:
-                session.run(
-                    """
-                    MATCH (s:TraversalState {status: 'locked'})-[r:CURRENT_STEP]->()
-                    DELETE r
-                    WITH s
-                    MATCH (step:TraversalStep {id: $step_id})
-                    CREATE (s)-[:CURRENT_STEP]->(step)
-                    """,
-                    {"step_id": step_id}
-                )
-        
-        # 3. Call the LLM runner to fetch the query/action
-        system_prompt = (
-            f"You are the Cybernet persona '{name}' with behavior guidelines: {status['description']}. "
-            f"Your active model configuration has temperature={runner.temperature}, top_p={runner.top_p}."
-        )
-        # Inject the active step's required Cypher query pattern into the prompt context
-        pattern_hint = ""
-        if status.get("pattern_description") or status.get("required_pattern"):
-            desc = status.get("pattern_description") or status.get("required_pattern")
-            pattern_hint = (
-                f"\n\n[TRANSACTION GUARD WARNING]\n"
-                f"To complete this step, the Neo4j database transaction guard requires that the Cypher query "
-                f"you output MUST match the following pattern/concept: '{desc}'."
-            )
-            
-        user_prompt = f"Active step prompt: {status['current_step_text']}{pattern_hint}"
-        query_action = runner.call_llm(system_prompt, user_prompt, name, step_id)
-        output_data["action_taken"] = query_action
-        
-        # 4. Execute the generated query via query_database
-        tokens_used = random.randint(100, 400)
-        cost_increase = round(tokens_used * 0.000015, 6)
-        
-        try:
-            results = query_database(query_action)
-            
-            event_msg = ""
-            for record in results:
-                if "_state_machine_event" in record:
-                    event_msg = record["_state_machine_event"]
-                    break
-            
-            if event_msg:
-                if output_data["event_message"]:
-                    output_data["event_message"] += " " + event_msg
-                else:
-                    output_data["event_message"] = event_msg
-            elif not output_data["event_message"]:
-                output_data["event_message"] = "Action query executed successfully."
-                
-            # Accumulate tokens and cost
-            with self.driver.session() as session:
-                session.run(
-                    """
-                    MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:ExecutionState {equipped_sm_id: $sm_id})
-                    SET s.tokens_consumed_this_turn = s.tokens_consumed_this_turn + $tokens,
-                        s.cost_this_turn = s.cost_this_turn + $cost,
-                        m.total_tokens_consumed = m.total_tokens_consumed + $tokens,
-                        m.accumulated_cost = m.accumulated_cost + $cost
-                    """,
-                    {"name": name, "sm_id": sm_id, "tokens": tokens_used, "cost": cost_increase}
-                )
-                
-                # Jani Domain Expansion progression tracking side effects
-                if step_id == "layer1_primitive_boot":
-                    session.run(
-                        """
-                        MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:ExecutionState {equipped_sm_id: $sm_id})
-                        SET s.current_layer = 'Layer 1',
-                            s.completed_layers = ['Layer 1']
-                        """,
-                        {"name": name, "sm_id": sm_id}
-                    )
-                elif step_id == "layer2_meta_compile":
-                    session.run(
-                        """
-                        MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:ExecutionState {equipped_sm_id: $sm_id})
-                        SET s.current_layer = 'Layer 2',
-                            s.completed_layers = s.completed_layers + ['Layer 2']
-                        """,
-                        {"name": name, "sm_id": sm_id}
-                    )
-                elif step_id == "layer3_sdlc_ignite":
-                    session.run(
-                        """
-                        MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:ExecutionState {equipped_sm_id: $sm_id})
-                        SET s.current_layer = 'Layer 3',
-                            s.completed_layers = s.completed_layers + ['Layer 3']
-                        """,
-                        {"name": name, "sm_id": sm_id}
-                    )
-                
-            # Now we must update the ExecutionState's CURRENT_STEP to match the TraversalState's new step.
-            with self.driver.session() as session:
-                step_res = session.run(
-                    """
-                    MATCH (s:TraversalState {status: 'locked'})-[:CURRENT_STEP]->(curr:TraversalStep)
-                    RETURN curr.id as current_step_id
-                    """
-                )
-                rec = step_res.single()
-                if rec:
-                    new_step_id = rec["current_step_id"]
-                    # Update ExecutionState to point to new_step_id
-                    session.run(
-                        """
-                        MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:ExecutionState {equipped_sm_id: $sm_id})
-                        MATCH (next:TraversalStep {id: $new_step_id})
-                        MATCH (s)-[r:CURRENT_STEP]->()
-                        DELETE r
-                        CREATE (s)-[:CURRENT_STEP]->(next)
-                        """,
-                        {"name": name, "sm_id": sm_id, "new_step_id": new_step_id}
-                    )
-                    
-                    # Update phase: if new_step_id contains 'night', transition phase to 'night'
-                    if "night" in new_step_id.lower():
-                        session.run(
-                            """
-                            MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:ExecutionState {equipped_sm_id: $sm_id})
-                            SET s.phase = 'night'
-                            """,
-                            {"name": name, "sm_id": sm_id}
-                        )
-                    
-                    # Check if we looped back to the entry step of the StateMachine
-                    entry_res = session.run(
-                        """
-                        MATCH (sm:StateMachine {id: $sm_id})-[:HAS_STEP]->(entry:TraversalStep)
-                        WITH collect(entry) as entries
-                        UNWIND entries as entry
-                        OPTIONAL MATCH (prev:TraversalStep)-[:NEXT_STEP]->(entry)
-                        WITH entry, count(prev) as incoming
-                        ORDER BY incoming ASC, entry.id ASC
-                        WITH collect(entry) as sorted_entries
-                        RETURN sorted_entries[0].id as entry_id
-                        """,
-                        {"sm_id": sm_id}
-                    )
-                    entry_rec = entry_res.single()
-                    entry_step_id = entry_rec["entry_id"] if entry_rec else None
-                    
-                    if new_step_id == entry_step_id:
-                        if turn_number >= 5:
-                            evolve_msg = self.evaluate_evolution(name)
-                            output_data["event_message"] += f" [LIFETIME COMPLETED] {evolve_msg}"
+        step_id, sm_id = status["current_step_id"], status["equipped_sm_id"]
+        call_stack = json.loads(status.get("call_stack", "[]"))
+        output = {"name": name, "turn": status["turn_number"],
+                  "previous_phase": status["phase"], "action_taken": "", "event_message": ""}
+
+        with self.driver.session() as session:
+            # 0. CALLS_SM intercept — push parent frame, switch to child SM
+            child_sm_id = lib_lifecycle.find_calls_sm(session, step_id=step_id)
+            if child_sm_id:
+                entry_id = lib_lifecycle.enter_child_state_machine(
+                    session, name=name, child_sm_id=child_sm_id,
+                    parent_sm_id=sm_id, parent_step_id=step_id)
+                if not entry_id:
+                    raise ValueError(f"StateMachine '{child_sm_id}' has no valid entry step.")
+                output["action_taken"] = f"Compiler call to sub-state machine '{child_sm_id}'."
+                output["event_message"] = (
+                    f"Saved parent step '{step_id}' to call stack. "
+                    f"Transitioned loadout to child state machine '{child_sm_id}'.")
+                return output
+
+            # 1. Step-driven side effects (calibration, fitness, domain expansion)
+            output["event_message"] = lib_lifecycle.run_step_side_effects(
+                session, name=name, step_id=step_id)
+
+            # 2. Per-cybernet TraversalState lock (gate)
+            from db_logic import is_traversal_locked, query_database
+            lib_lifecycle.ensure_lock(session, name=name, step_id=step_id,
+                                      is_locked=is_traversal_locked(name))
+
+            # 3. Build prompt + call LLM
+            system_prompt = (
+                f"You are the Cybernet persona '{name}' with behavior guidelines: "
+                f"{status['description']}. Your active model configuration has "
+                f"temperature={runner.temperature}, top_p={runner.top_p}.")
+            pattern_hint = ""
+            if status.get("pattern_description") or status.get("required_pattern"):
+                desc = status.get("pattern_description") or status.get("required_pattern")
+                pattern_hint = (f"\n\n[TRANSACTION GUARD WARNING]\n"
+                                f"To complete this step, the Neo4j transaction guard requires "
+                                f"the Cypher query to match: '{desc}'.")
+            user_prompt = f"Active step prompt: {status['current_step_text']}{pattern_hint}"
+            output["action_taken"] = runner.call_llm(system_prompt, user_prompt, name, step_id)
+
+            # 4. Execute cypher (gated write — auto-progresses on pattern match)
+            try:
+                results = query_database(output["action_taken"], name)
+                event_msg = next((r["_state_machine_event"] for r in results
+                                  if "_state_machine_event" in r), "")
+                if event_msg:
+                    output["event_message"] = (f"{output['event_message']} {event_msg}"
+                                                if output["event_message"] else event_msg)
+                elif not output["event_message"]:
+                    output["event_message"] = "Action query executed successfully."
+
+                # 5. Token + cost accounting
+                lib_lifecycle.accumulate_token_cost(session, name=name, sm_id=sm_id)
+
+                # 6. Sync ExecutionState.CURRENT_STEP from TraversalState
+                new_step_id = lib_lifecycle.sync_execution_state_from_traversal(
+                    session, name=name, sm_id=sm_id)
+                if new_step_id is not None:
+                    entry_id = lib_lifecycle.find_entry_step_id(session, sm_id)
+                    if new_step_id == entry_id:
+                        if status["turn_number"] >= 5:
+                            output["event_message"] += (
+                                f" [LIFETIME COMPLETED] {self.evaluate_evolution(name)}")
                         else:
-                            session.run(
-                                """
-                                MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:ExecutionState {equipped_sm_id: $sm_id})
-                                SET s.turn_number = s.turn_number + 1,
-                                    s.phase = 'day',
-                                    s.tokens_consumed_this_turn = 0,
-                                    s.cost_this_turn = 0.0,
-                                    s.call_stack = '[]'
-                                """,
-                                {"name": name, "sm_id": sm_id}
-                            )
-                            output_data["event_message"] += " State machine completed. Resetting for next Day cycle."
+                            lib_lifecycle.advance_turn(session, name=name, sm_id=sm_id)
+                            output["event_message"] += " State machine completed. Resetting for next Day cycle."
                 else:
-                    # TraversalState was completed/deleted!
-                    # Check if inside a sub-state machine (call stack is not empty)
-                    if call_stack:
-                        next_step_id = None
-                        parent_sm_id = None
-                        
-                        while call_stack and not next_step_id:
-                            parent_frame = call_stack.pop()
-                            parent_sm_id = parent_frame["sm_id"]
-                            parent_step_id = parent_frame["step_id"]
-                            
-                            with self.driver.session() as session:
-                                next_res = session.run(
-                                    """
-                                    MATCH (curr:TraversalStep {id: $parent_step_id})-[:NEXT_STEP]->(next:TraversalStep)
-                                    RETURN next.id as next_id
-                                    """,
-                                    {"parent_step_id": parent_step_id}
-                                )
-                                next_rec = next_res.single()
-                                next_step_id = next_rec["next_id"] if next_rec else None
-                                
-                        if next_step_id and parent_sm_id:
-                            with self.driver.session() as session:
-                                session.run(
-                                    """
-                                    MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:ExecutionState)
-                                    MATCH (next:TraversalStep {id: $next_step_id})
-                                    MATCH (s)-[r:CURRENT_STEP]->()
-                                    DELETE r
-                                    CREATE (s)-[:CURRENT_STEP]->(next)
-                                    SET s.equipped_sm_id = $parent_sm_id,
-                                        s.call_stack = $call_stack
-                                    """,
-                                    {
-                                        "name": name,
-                                        "parent_sm_id": parent_sm_id,
-                                        "next_step_id": next_step_id,
-                                        "call_stack": json.dumps(call_stack)
-                                    }
-                                )
-                                # Align phase
-                                if "night" in next_step_id.lower():
-                                    session.run(
-                                        "MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:ExecutionState) SET s.phase = 'night'",
-                                        {"name": name}
-                                    )
-                                else:
-                                    session.run(
-                                        "MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:ExecutionState) SET s.phase = 'day'",
-                                        {"name": name}
-                                    )
-                            output_data["event_message"] += f" Sub-state machine completed. Popped call stack. Returned to parent step '{next_step_id}'."
-                        else:
-                            # Popped all frames, no next step found. Reset top-level.
-                            self._trigger_turn_completion(name, sm_id, output_data)
-                    else:
-                        # Top-level state machine completed.
-                        self._trigger_turn_completion(name, sm_id, output_data)
-                        
-        except Exception as e:
-            output_data["event_message"] = f"Failed to execute query: {e}"
-                
-        return output_data
- 
-    def _trigger_turn_completion(self, name: str, sm_id: str, output_data: Dict[str, Any]):
-        """Helper to handle turn cycle completion (lifetime evaluation or turn reset)."""
-        updated_status = self.get_character_status(name)
-        if updated_status["turn_number"] >= 5:
-            evolve_msg = self.evaluate_evolution(name)
-            output_data["event_message"] += f" [LIFETIME COMPLETED] {evolve_msg}"
+                    self._handle_call_stack_pop(name, sm_id, call_stack, output)
+            except Exception as e:
+                output["event_message"] = f"Failed to execute query: {e}"
+        return output
+
+    def _handle_call_stack_pop(self, name, sm_id, call_stack, output):
+        with self.driver.session() as session:
+            if call_stack:
+                parent_sm_id, next_step_id = lib_lifecycle.pop_call_stack_until_resolved(
+                    session, name=name, call_stack=call_stack)
+                if next_step_id and parent_sm_id:
+                    lib_lifecycle.return_to_parent(
+                        session, name=name, parent_sm_id=parent_sm_id,
+                        next_step_id=next_step_id, call_stack=call_stack)
+                    output["event_message"] += (
+                        f" Sub-state machine completed. Popped call stack. "
+                        f"Returned to parent step '{next_step_id}'.")
+                    return
+        self._trigger_turn_completion(name, sm_id, output)
+
+    def _trigger_turn_completion(self, name, sm_id, output):
+        status = self.get_character_status(name)
+        if not status:
+            return
+        if status["turn_number"] >= 5:
+            output["event_message"] += f" [LIFETIME COMPLETED] {self.evaluate_evolution(name)}"
         else:
             with self.driver.session() as session:
-                session.run(
-                    """
-                    MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:ExecutionState {equipped_sm_id: $sm_id})
-                    MATCH (sm:StateMachine {id: $sm_id})-[:HAS_STEP]->(entry:TraversalStep)
-                    WITH s, collect(entry) as entries
-                    UNWIND entries as entry
-                    OPTIONAL MATCH (prev:TraversalStep)-[:NEXT_STEP]->(entry)
-                    WITH s, entry, count(prev) as incoming
-                    ORDER BY incoming ASC, entry.id ASC
-                    WITH s, collect(entry) as sorted_entries
-                    WITH s, sorted_entries[0] as entry
-                    MATCH (s)-[r:CURRENT_STEP]->()
-                    DELETE r
-                    CREATE (s)-[:CURRENT_STEP]->(entry)
-                    SET s.turn_number = s.turn_number + 1,
-                        s.phase = 'day',
-                        s.tokens_consumed_this_turn = 0,
-                        s.cost_this_turn = 0.0,
-                        s.call_stack = '[]'
-                    """,
-                    {"name": name, "sm_id": sm_id}
-                )
-                output_data["event_message"] += " State machine completed. Resetting for next Day cycle."
+                entry_id = lib_lifecycle.find_entry_step_id(session, sm_id)
+                if not entry_id:
+                    return
+                lib_lifecycle.reset_turn_to_entry(
+                    session, name=name, sm_id=sm_id, entry_id=entry_id)
+            output["event_message"] += " State machine completed. Resetting for next Day cycle."
 
     def evaluate_evolution(self, name: str) -> str:
-        """
-        Evaluate selection pressure at the end of a Cybernet's lifetime.
-        """
         status = self.get_character_status(name)
         if not status:
             return "No status found for evolution evaluation."
-            
-        fitness = status["fitness_score"]
-        mutation_rate = status["mutation_rate"]
-        selection_pressure = status["selection_pressure"]
-        sm_id = status["equipped_sm_id"]
-        
         with self.driver.session() as session:
-            if fitness < 0.4:
-                # 1. REAPING (Pruning)
-                session.run(
-                    """
-                    MATCH (m:Cybernet {name: $name})
-                    OPTIONAL MATCH (m)-[:HAS_LIFECYCLE]->(s:ExecutionState)
-                    OPTIONAL MATCH (m)-[:HAS_IDENTITY]->(i:Identity)
-                    OPTIONAL MATCH (m)-[:HAS_SIMULATION]->(sim:SimulationRun)
-                    DETACH DELETE m, s, i, sim
-                    """,
-                    {"name": name}
-                )
-                session.run("MATCH (s:TraversalState) DETACH DELETE s")
-                return f"Identity graph '{name}' fitness ({fitness}) fell below selection threshold. Reaped from DB."
-                
-            elif fitness >= 0.8:
-                # 2. REPRODUCTION (Cloning and Mutating AI stats + cloning equipped state machines)
-                child_name = f"{name}_V{random.randint(2, 99)}"
-                
-                # Calculate mutated stats
-                mutated_temp = max(0.0, min(2.0, round(status["temperature"] + random.uniform(-0.1, 0.1) * mutation_rate, 2)))
-                mutated_top_p = max(0.0, min(1.0, round(status["top_p"] + random.uniform(-0.05, 0.05) * mutation_rate, 2)))
-                mutated_mutation_rate = max(0.01, min(1.0, round(mutation_rate + random.uniform(-0.02, 0.02), 2)))
-                mutated_selection_pressure = max(0.1, round(selection_pressure + random.uniform(-0.1, 0.1), 2))
-                
-                # Create clone Cybernet (clones all equipped StateMachines)
-                session.run(
-                    """
-                    CREATE (m:Cybernet {
-                        name: $child_name,
-                        description: $description,
-                        model_name: $model_name,
-                        parameters_count: $parameters_count,
-                        temperature: $temperature,
-                        top_p: $top_p,
-                        max_tokens: $max_tokens,
-                        mutation_rate: $mutation_rate,
-                        selection_pressure: $selection_pressure,
-                        task_success_rate: 1.0,
-                        tool_call_frequency: 0.0,
-                        avg_latency_ms: 0.0,
-                        total_tokens_consumed: 0,
-                        accumulated_cost: 0.0,
-                        fitness_score: 1.0,
-                        domain: 'cyberneticity',
-                        subdomain: 'cybernet'
-                    })
-                    """,
-                    {
-                        "child_name": child_name,
-                        "description": status["description"],
-                        "model_name": status["model_name"],
-                        "parameters_count": status["parameters_count"] if "parameters_count" in status else 70.0,
-                        "temperature": mutated_temp,
-                        "top_p": mutated_top_p,
-                        "max_tokens": 2048,
-                        "mutation_rate": mutated_mutation_rate,
-                        "selection_pressure": mutated_selection_pressure
-                    }
-                )
-                
-                # Clone the parent's Identity node
-                session.run(
-                    """
-                    MATCH (parent:Cybernet {name: $name})-[:HAS_IDENTITY]->(parent_i:Identity)
-                    MATCH (child:Cybernet {name: $child_name})
-                    CREATE (child_i:Identity {
-                        name: $child_name,
-                        description: parent_i.description,
-                        persona_prompt: parent_i.persona_prompt,
-                        world_prompt: parent_i.world_prompt,
-                        core_loop_prompt: parent_i.core_loop_prompt,
-                        domain: parent_i.domain,
-                        subdomain: parent_i.subdomain
-                    })
-                    CREATE (child)-[:HAS_IDENTITY]->(child_i)
-                    """,
-                    {"name": name, "child_name": child_name}
-                )
+            return lib_evolution.evaluate_evolution(session, name=name, status=status)
 
-                # Clone equipped state machines and recreate lifecycles
-                session.run(
-                    """
-                    MATCH (parent:Cybernet {name: $name})-[:EQUIPS]->(sm:StateMachine)
-                    MATCH (child:Cybernet {name: $child_name})
-                    CREATE (child)-[:EQUIPS]->(sm)
-                    
-                    WITH child, sm
-                    CREATE (s:ExecutionState {
-                        status: 'locked',
-                        turn_number: 1,
-                        phase: 'day',
-                        lifetime_limit: 5,
-                        tokens_consumed_this_turn: 0,
-                        cost_this_turn: 0.0,
-                        equipped_sm_id: sm.id,
-                        call_stack: '[]',
-                        domain: 'cyberneticity',
-                        subdomain: 'execution_state'
-                    })
-                    CREATE (child)-[:HAS_LIFECYCLE]->(s)
-                    
-                    WITH s, sm
-                    MATCH (sm)-[:HAS_STEP]->(entry:TraversalStep)
-                    WITH s, sm, collect(entry) as entries
-                    UNWIND entries as entry
-                    OPTIONAL MATCH (prev:TraversalStep)-[:NEXT_STEP]->(entry)
-                    WITH s, sm, entry, count(prev) as incoming
-                    ORDER BY incoming ASC, entry.id ASC
-                    WITH s, sm, collect(entry) as sorted_entries
-                    WITH s, sm, sorted_entries[0] as entry
-                    CREATE (s)-[:CURRENT_STEP]->(entry)
-                    """,
-                    {"name": name, "child_name": child_name}
-                )
-                
-                # Reset parent turn/lifetime stats to start a new cycle
-                session.run(
-                    """
-                    MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:ExecutionState {equipped_sm_id: $sm_id})
-                    MATCH (sm:StateMachine {id: $sm_id})-[:HAS_STEP]->(entry:TraversalStep)
-                    WITH s, collect(entry) as entries
-                    UNWIND entries as entry
-                    OPTIONAL MATCH (prev:TraversalStep)-[:NEXT_STEP]->(entry)
-                    WITH s, entry, count(prev) as incoming
-                    ORDER BY incoming ASC, entry.id ASC
-                    WITH s, collect(entry) as sorted_entries
-                    WITH s, sorted_entries[0] as entry
-                    MATCH (s)-[r:CURRENT_STEP]->()
-                    DELETE r
-                    CREATE (s)-[:CURRENT_STEP]->(entry)
-                    SET s.turn_number = 1,
-                        s.phase = 'day',
-                        s.tokens_consumed_this_turn = 0,
-                        s.cost_this_turn = 0.0,
-                        s.call_stack = '[]'
-                    """,
-                    {"name": name, "sm_id": sm_id}
-                )
-                session.run("MATCH (s:TraversalState) DETACH DELETE s")
-                
-                return (
-                    f"Identity '{name}' achieved outstanding fitness ({fitness}) and REPRODUCED! "
-                    f"Clone '{child_name}' spawned with mutated stats (temp={mutated_temp}, top_p={mutated_top_p}) inheriting equipped StateMachines."
-                )
-                
-            else:
-                # 3. SURVIVAL (Reset turn stats to start next lifetime cycle)
-                session.run(
-                    """
-                    MATCH (m:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:ExecutionState {equipped_sm_id: $sm_id})
-                    MATCH (sm:StateMachine {id: $sm_id})-[:HAS_STEP]->(entry:TraversalStep)
-                    WITH s, collect(entry) as entries
-                    UNWIND entries as entry
-                    OPTIONAL MATCH (prev:TraversalStep)-[:NEXT_STEP]->(entry)
-                    WITH s, entry, count(prev) as incoming
-                    ORDER BY incoming ASC, entry.id ASC
-                    WITH s, collect(entry) as sorted_entries
-                    WITH s, sorted_entries[0] as entry
-                    MATCH (s)-[r:CURRENT_STEP]->()
-                    DELETE r
-                    CREATE (s)-[:CURRENT_STEP]->(entry)
-                    SET s.turn_number = 1,
-                        s.phase = 'day',
-                        s.tokens_consumed_this_turn = 0,
-                        s.cost_this_turn = 0.0,
-                        s.call_stack = '[]'
-                    """,
-                    {"name": name, "sm_id": sm_id}
-                )
-                session.run("MATCH (s:TraversalState) DETACH DELETE s")
-                return f"Identity '{name}' fitness ({fitness}) met survival standards. Lifetime reset for another cycle."
 
-# Alias for backward compatibility
+# Backward-compat alias (was the original module name)
 Sh8peshiftEngine = CybernetiCircusCompiler
+
 
 if __name__ == "__main__":
     try:
-        engine = CybernetiCircusCompiler()
+        _e = CybernetiCircusCompiler()
         print("Compiler connected successfully to Cyberneticity.")
-        engine.close()
+        _e.close()
     except Exception as e:
         print(f"Compiler connection failed: {e}")
