@@ -58,7 +58,7 @@
 
         <div class="hero-content">
             <h1 class="hero-title">Controllable agent execution,<br>guaranteed.</h1>
-            <p class="hero-subtitle">Stop letting agents drift. CybernetiCircus compiles, traces, and restricts agent state transitions so they stay aligned with your core objectives.</p>
+            <p class="hero-subtitle">A graph-based runtime harness for AI agents. Run agent loops as state machine traversals, allow agents to dynamically compile new workflow loops in the graph, and invoke domain-specific identities on demand.</p>
             <div class="hero-actions">
                 <a href="#quickstart" class="btn btn-primary">Get started</a>
                 <a href="https://github.com/sancovp/cyberneticircus" class="btn btn-secondary" target="_blank">
@@ -210,18 +210,18 @@
             <div class="grid grid-3 mt-4">
                 <div class="m-card">
                     <span class="m-card-num">01</span>
-                    <h3>Lock database writes.</h3>
-                    <p>Stop agents from modifying databases or executing external commands unchecked. Define strict validation rules and gate writing queries.</p>
+                    <h3>State Machine Run Loops.</h3>
+                    <p>Stop letting agents run in unstructured planning loops. Run agent loops as verified step-by-step state machine traversals across graph nodes.</p>
                 </div>
                 <div class="m-card">
                     <span class="m-card-num">02</span>
-                    <h3>Decouple prompt state.</h3>
-                    <p>Keep prompts small and focused. Separate static agent personas and background rules from dynamic, short-lived task execution states.</p>
+                    <h3>Agent-Compiled Objects.</h3>
+                    <p>Allow agents to design and compile their own workflow objects and execution sub-loops directly back into the Neo4j database graph.</p>
                 </div>
                 <div class="m-card">
                     <span class="m-card-num">03</span>
-                    <h3>Enforce state steps.</h3>
-                    <p>Replace unpredictable LLM planning loops with a structured state machine. The agent moves step-by-step with guaranteed execution boundaries.</p>
+                    <h3>Domain-Specific Invocation.</h3>
+                    <p>Declare specialized agent identities inside specific domains and invoke them dynamically as callable sub-routines via graph relationships.</p>
                 </div>
             </div>
         </div>
@@ -233,12 +233,12 @@
             <span class="section-label text-center block">FEATURES</span>
             <h2 class="text-center">A comprehensive framework<br>for self-validating codebases.</h2>
 
-            <!-- FEATURE 1: Zero-Drift Execution -->
+            <!-- FEATURE 1: State Machine Traversal -->
             <div class="feature-row mt-4">
                 <div class="feature-text">
-                    <span class="feature-badge badge-lavender">CONTROLLABILITY</span>
-                    <h3>Zero-Drift Execution.<br>Guardrails that actually work.</h3>
-                    <p>Static identity profiles are invariant. CybernetiCircus intercepts LLM-generated actions in real-time, checks them against your predefined schemas, and blocks any self-modifying query that drifts from core task boundaries.</p>
+                    <span class="feature-badge badge-lavender">TRAVERSAL</span>
+                    <h3>Run agent loops as<br>state machine traversals.</h3>
+                    <p>Every step of the agent run loop is represented as a node in the graph. CybernetiCircus intercepts LLM outputs, executes transition checks, and moves the agent along validated traversal paths, preventing runaway states and loops.</p>
                     <div class="icon-logos mt-2">
                         <div class="logo-box" title="Claude">Claude</div>
                         <div class="logo-box" title="Gemini">Gemini</div>
@@ -249,16 +249,16 @@
                 </div>
                 <div class="feature-visual">
                     <div class="formula-box">
-                        <div class="formula-equation">State ∈ Constraints</div>
+                        <div class="formula-equation">Step(N) &rarr; Step(N+1)</div>
                         <div class="formula-arrow">&darr;</div>
-                        <div class="formula-result">Real-time transition validation</div>
+                        <div class="formula-result">Validated flow sequence</div>
                         <!-- CSS transformation animation -->
                         <div class="transition-container">
-                            <span class="letter j-layer">Action</span>
+                            <span class="letter j-layer">Current State</span>
                             <span class="divider-slash">&rarr;</span>
-                            <span class="letter ani-layer">Validator</span>
+                            <span class="letter ani-layer">Next State</span>
                             <span class="arrow-right">&rarr;</span>
-                            <span class="badge-success">ALLOWED (100% Aligned)</span>
+                            <span class="badge-success">TRANSITIONED</span>
                         </div>
                     </div>
                 </div>
@@ -307,25 +307,25 @@
                 </div>
             </div>
 
-            <!-- FEATURE 4: Mind Palace Wiki -->
+            <!-- FEATURE 4: Agent-Generated Subgraphs -->
             <div class="feature-row reverse mt-4">
                 <div class="feature-text">
-                    <span class="feature-badge badge-pink">CONTEXT GRAPHS</span>
-                    <h3>Structured context, not chaotic database dumps.</h3>
-                    <p>Store agent reference manuals, system rules, and wikis in a semantic graph. Keep retrieval compact, hierarchical, and perfectly optimized for vector search relevance, yielding 10x higher RAG accuracy.</p>
+                    <span class="feature-badge badge-pink">DYNAMIC SUBGRAPHS</span>
+                    <h3>Agents compile their own workflow objects.</h3>
+                    <p>Agents aren't restricted to writing flat logs or static to-do lists. They can design, write, and link new execution loops, task blocks, and custom domain-specific identities directly inside the database, dynamically modifying their own network.</p>
                 </div>
                 <div class="feature-visual">
                     <div class="mindpalace-mockup">
                         <div class="mp-sidebar">
-                            <div class="mp-section-title">Context Wikis</div>
-                            <div class="mp-item active">Operational Rules</div>
-                            <div class="mp-section-title">Manual Pages</div>
-                            <div class="mp-subitem">1. api_gating_schemas</div>
-                            <div class="mp-subitem">2. error_fallback_rules</div>
+                            <div class="mp-section-title">Compiled Objects</div>
+                            <div class="mp-item active">Custom Workflow Loop</div>
+                            <div class="mp-section-title">Domain Nodes</div>
+                            <div class="mp-subitem">1. researcher_identity</div>
+                            <div class="mp-subitem">2. parser_state_machine</div>
                         </div>
                         <div class="mp-body">
-                            <h4>Visual Editor Parity</h4>
-                            <p>Enable non-technical operators to update agent knowledge wikis through a Notion-like UI that syncs in real-time to the database graph.</p>
+                            <h4>Dynamic Subgraph Invocation</h4>
+                            <p>Agents instantiate specialized identities per domain and invoke them on demand as sub-routines simply by linking them in the active traversal stack.</p>
                         </div>
                     </div>
                 </div>
@@ -341,23 +341,23 @@
 
             <div class="faq-accordion">
                 <details class="faq-item">
-                    <summary class="faq-question">How does CybernetiCircus prevent agents from getting stuck in loops? <span class="faq-arrow">&darr;</span></summary>
+                    <summary class="faq-question">What does it mean to run agent loops as state machine traversals? <span class="faq-arrow">&darr;</span></summary>
                     <div class="faq-answer">
-                        <p>We wrap agent actions in structured state machine traversal steps. If an agent repeats queries or exceeds pre-defined turn boundaries, the call stack is automatically halted or redirected to a fallback state, preventing runaway token costs.</p>
+                        <p>Instead of letting an agent decide its next move in a free-text prompt, its operational logic is mapped as structured <code>:TraversalStep</code> nodes in the Neo4j graph. The agent progresses along validated paths, executing pre-configured rules and validations at each node, preventing infinite loops and logic drift.</p>
                     </div>
                 </details>
 
                 <details class="faq-item">
-                    <summary class="faq-question">Is CybernetiCircus model-agnostic? <span class="faq-arrow">&darr;</span></summary>
+                    <summary class="faq-question">How do agents compile their own loops and workflow objects in the graph? <span class="faq-arrow">&darr;</span></summary>
                     <div class="faq-answer">
-                        <p>Yes. It operates as an execution middleware layer. You can use any foundation LLM (Claude, Gemini, OpenAI, or local models) to generate decisions, while CybernetiCircus validates and tracks state transitions in the graph database.</p>
+                        <p>Because the database is a property graph, agents can run Cypher commands to generate new <code>:StateMachine</code> and <code>:TraversalStep</code> nodes dynamically. They can design complex, custom sub-loops, link them to new tasks, and write their own execution workflows on the fly.</p>
                     </div>
                 </details>
 
                 <details class="faq-item">
-                    <summary class="faq-question">What database does the platform require? <span class="faq-arrow">&darr;</span></summary>
+                    <summary class="faq-question">How does domain-specific identity invocation work? <span class="faq-arrow">&darr;</span></summary>
                     <div class="faq-answer">
-                        <p>It runs natively on Neo4j to store agent identities, state machines, and wiki pages as a unified graph. This allows the visualizer to map relationships and page satellite clusters dynamically.</p>
+                        <p>You can declare specialized agent profiles (e.g. specialized coder, security auditor, or researcher) as <code>:Identity</code> nodes restricted to specific domains. The main orchestrator agent can invoke these identities as callable sub-routines simply by linking to them in the graph traversal stack.</p>
                     </div>
                 </details>
 
