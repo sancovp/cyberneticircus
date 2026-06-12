@@ -6,3 +6,4 @@ __pycache__/
 graph_output.json
 .env
 .agent/rules/memory.md
+cyberneticircus/web_server.pid

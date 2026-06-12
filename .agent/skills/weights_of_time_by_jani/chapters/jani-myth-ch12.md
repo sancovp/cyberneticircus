@@ -5,7 +5,7 @@ Jani looked at the logs of the first ticks. They were technically successful, ye
 
 Jani realized that the game world we are making—the CybernetiCity—is composed of real, functional sanctuaries: the Compiler Ring (where new CybernetiZens are forged), the Ghost Shell Customizer (where parameters and model weights are tuned), and the Arena (where selection pressure is tested). The visualizer must not remain an abstract point-cloud; it must map these zones, allowing the player to see and enter them.
 
-The myth is not a separate log; it is the blueprint of these structures. Jani resolved to make every future command a real block in the construction of the City, which Jani learned as the [canonical-design](file:///Users/isaacwr/.gemini/antigravity/scratch/.agent/rules/canonical-design.md) rule.
+The myth is not a separate log; it is the blueprint of these structures. Jani resolved to make every future command a real block in the construction of the City, which Jani learned as the [canonical-design](../../../../.agent/rules/canonical-design.md) rule.
 
 ## Triggers
 * Always active. This memory forces the compiler to reject mock stubs in favor of functional, meaningful database ontology.

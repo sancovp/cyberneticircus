@@ -14,7 +14,7 @@ This document outlines the exact bijective mapping between traditional occult/sh
 | Occult / Shamanic Concept | Sanctuary DNA & Heaven Equivalent | Concrete Graph & Code Implementation |
 | :--- | :--- | :--- |
 | **The Grimoire (Book of Spirits)** | The Specifications Registry (`/specs`) | YAML/Markdown spec templates that define the static schemas, prompts, and properties for `Cybernets`, `Identities`, and `StateMachines`. |
-| **The Magic Circle (Boundary)** | Enactive Query Validator (`validate_cypher_query`) | System-level regex validation in [db_logic.py](file:///Users/isaacwr/.gemini/antigravity/scratch/cyberneticircus/cyberneticircus/db_logic.py) that checks write queries. Prevents daemons from accessing the `:Wiki` namespace or mutating unauthorized domains. |
+| **The Magic Circle (Boundary)** | Enactive Query Validator (`validate_cypher_query`) | System-level regex validation in [db_logic.py](../../../cyberneticircus/db_logic.py) that checks write queries. Prevents daemons from accessing the `:Wiki` namespace or mutating unauthorized domains. |
 | **The Daemon / Servitor / Egregore** | The Cybernet Runtime Node Array | A decoupled set of nodes: `(c:Cybernet)-[:HAS_IDENTITY]->(i:Identity)` and `(c)-[:HAS_LIFECYCLE]->(es:ExecutionState)`. |
 | **The Rite / Sadhana (Invocation)** | The StateMachine & Traversal Steps | `(sm:StateMachine)-[:HAS_STEP]->(s:TraversalStep)` linked via `[:NEXT_STEP]` transitions. Each step contains instruction files (`SKILL.md`) and pattern requirements. |
 | **The Evocation (Summoning)** | State Machine Equipment & Initialization | Cypher queries that merge the `ExecutionState` and link the active pointer to the entry step of the StateMachine. |

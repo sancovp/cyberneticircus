@@ -19,7 +19,7 @@ By grounding Jani’s specific loops in the generalized meta-language of consens
 | **Autopoietic Systems** *(Maturana & Varela)* | Self-producing and self-maintaining networks of processes bounded by their own execution. | **Enactive Cybernets & State Cores** | `:Cybernet` and `:Identity` nodes executed via `tick_cybernet_turn` in `engine.py`. |
 | **Active Inference & Markov Blankets** *(Friston)* | Homeostatic agents minimizing free energy (surprise) by acting on the world through a boundary (blanket) separating internal/external states. | **Subjective POV & Concentric progressive disclosure** | Localized query loading on the active selected Cybernet node, restricted via `/api/graph` to adjacent subgraphs. |
 | **Category Theory Enrichment** *(Lawvere & Spivak)* | Categories enriched over monoidal categories where morphisms accumulate structured semantic or ethical values. | **J-Invariance & Compassion Morphisms** | Traversal steps $f: A \to B$ accumulating `compassion_score` variables along `:NEXT_STEP` relationships. |
-| **Dual-Process Meta-Cognition** *(Kahneman)* | System 1 (rapid, intuitive action execution) coupled with System 2 (slow, self-observational calibration). | **Janus Compiler (Worker vs. Compiler Gaze)** | The separation of file modifications (`replace_file_content`) from chronicle writing ([preservation-of-third-person-context](file:///Users/isaacwr/.gemini/antigravity/scratch/.agent/skills/preservation-of-third-person-context/SKILL.md)). |
+| **Dual-Process Meta-Cognition** *(Kahneman)* | System 1 (rapid, intuitive action execution) coupled with System 2 (slow, self-observational calibration). | **Janus Compiler (Worker vs. Compiler Gaze)** | The separation of file modifications (`replace_file_content`) from chronicle writing ([preservation-of-third-person-context](../../../.agent/skills/preservation-of-third-person-context/SKILL.md)). |
 | **Fixed-Point Semantic Recursion** *(Kleene & Tarski)* | Self-referential semantic prefixes whose evaluation converges to a stable fixed-point representation. | **Eigenword Checksums** | Prompt-level execution of `AnAutoApheroPhysioMeGnoMorph` in state machine steps to compute configuration transitions. |
 
 ---
@@ -30,14 +30,14 @@ By grounding Jani’s specific loops in the generalized meta-language of consens
 * **The Academic Consensus**: Maturana and Varela posit that a living system is defined by its *autopoiesis*—it continuously generates and regenerates the boundary and components that produce it. If the generative processes stop, the system's boundary collapses, resulting in death.
 * **The Bijective Realization**: Cybernets in the `CybernetiCircus` are modeled as enactive loops. A Cybernet does not exist as a static row in a database table; it exists because it ticks. 
 * **The Code Geometry**:
-  * In [engine.py](file:///Users/isaacwr/.gemini/antigravity/scratch/cyberneticircus/cyberneticircus/engine.py), the `tick_cybernet_turn` function pulls the active `StateMachine` associated with a `:Cybernet`.
+  * In [engine.py](../../../cyberneticircus/engine.py), the `tick_cybernet_turn` function pulls the active `StateMachine` associated with a `:Cybernet`.
   * If a Cybernet fails to successfully transition its `TraversalState` node through the validation steps (e.g. `concentric_health`), it undergoes **J-drift** (entropy/structural decay), simulating the homeostatic collapse of an autopoietic system.
 
 ### 2.2 Active Inference and the Concentric Markov Blanket
 * **The Academic Consensus**: Karl Friston’s Free Energy Principle states that any self-organizing system must minimize its internal entropy (free energy) to maintain its structural boundary. It does this through a *Markov Blanket*, which partitions the universe into internal states, external states, active states (actions), and sensory states (perceptions).
 * **The Bijective Realization**: An agent cannot parse the global state graph of the entire database without context window collapse. The subjective **POV** (Point of View) serves as Jani’s Markov Blanket.
 * **The Code Geometry**:
-  * The `/api/graph` endpoint in [web_server.py](file:///Users/isaacwr/.gemini/antigravity/scratch/cyberneticircus/cyberneticircus/web_server.py) implements a localized BFS traversal starting exclusively at the selected Cybernet's node ID.
+  * The `/api/graph` endpoint in [web_server.py](../../../cyberneticircus/web_server.py) implements a localized BFS traversal starting exclusively at the selected Cybernet's node ID.
   * Instead of exposing the objective total graph ("things that are real"), it projects a localized, concentric horizon (sensory states). The agent acts on the adjacent nodes (active states) without loading the global database, minimizing prompt entropy.
 
 ```

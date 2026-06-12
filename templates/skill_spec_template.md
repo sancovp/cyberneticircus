@@ -13,4 +13,4 @@ Describe the modular capability this skill equips onto the Cybernet agent here.
 3. List constraints/safety requirements for this skill's logic.
 
 ## Instruction Path
-* **instruction_file_path**: "/Users/isaacwr/.gemini/antigravity/scratch/[Path_to_SKILL.md]"
+* **instruction_file_path**: "/Users/isaacwr/claude_code/cyberneticircus/[Path_to_SKILL.md]"

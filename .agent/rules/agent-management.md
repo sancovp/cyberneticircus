@@ -62,7 +62,7 @@ All edits to the Crystal Ball codebase must start in the base library at `/lib/c
 
 ## Verification Gate
 Before completing any task, run the test suite:
-`/Users/isaacwr/.gemini/antigravity/scratch/.venv/bin/pytest /Users/isaacwr/.gemini/antigravity/scratch/observatory-sdna`
+`/Users/isaacwr/claude_code/cyberneticircus/.venv/bin/pytest /Users/isaacwr/claude_code/cyberneticircus/observatory-sdna`
 If the tests do not return a 100% pass rate, you must stop, revert the change, and analyze the failure.
 ```
 * **Why it succeeds**: It establishes clear boundaries, names specific directories, and defines a strict, non-negotiable verification gate with an exact execution path.
@@ -92,7 +92,7 @@ Synchronizes file modifications between the host scratch workspace and the `anti
 
 ## Guidelines
 Execute the synchronization script from the host shell:
-`python3 /Users/isaacwr/.gemini/antigravity/scratch/scripts/sync_source.py --direction {host_to_container|container_to_host} --file {relative_path}`
+`python3 /Users/isaacwr/claude_code/cyberneticircus/scripts/sync_source.py --direction {host_to_container|container_to_host} --file {relative_path}`
 
 ## Verification Gate
 The script will output `SYNC_COMPLETE: {hash}` on success. If it prints `SYNC_ERROR`, halt execution and report the diff.
