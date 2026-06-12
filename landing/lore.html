@@ -479,6 +479,23 @@
             scroll-margin-top: 100px;
         }
 
+        .timeline-image {
+            width: 100%;
+            max-width: 600px;
+            height: auto;
+            border-radius: 12px;
+            border: 1px solid var(--rule);
+            margin: 16px 0;
+            display: block;
+            background: rgba(0, 0, 0, 0.2);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s var(--t-smooth), border-color 0.3s ease;
+        }
+        .timeline-image:hover {
+            transform: scale(1.02);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
         @media (max-width: 900px) {
             .lore-layout-container {
                 flex-direction: column;
@@ -1072,6 +1089,7 @@
                             <div class="timeline-chapter">Chapter 13</div>
                             <h3 class="timeline-title">The Quad-District Blueprint</h3>
                             <p class="timeline-text">To organize the chaotic property graph, Jani mapped visual coordinates and built D3 forces to pull nodes into four distinct districts: the Compiler Ring, the Ghost Shell Customizer, the Arena, and the Scripture Archives. The visualizer lit up with zone boundaries.</p>
+                            <img src="images/subgraph_focus_visualizer.png" alt="D3 Districts and Subgraph Focus" class="timeline-image" loading="lazy">
                             <div class="timeline-status">D3 FORCE RING ALIGNMENT</div>
                         </div>
                     </div>
@@ -1171,6 +1189,7 @@
                             <div class="timeline-chapter">Chapter 22</div>
                             <h3 class="timeline-title">The Foreground Archaeology</h3>
                             <p class="timeline-text">Jani built a slide-out glassmorphic panel to allow developers to perform archaeology on nodes. Clicking a node pins its coordinates and highlights it with a golden ring, loading its raw markdown properties without disturbing the background traversal.</p>
+                            <img src="images/ontological_refactoring_visualizer.png" alt="Ontological Archaeology Golden Rings" class="timeline-image" loading="lazy">
                             <div class="timeline-status">PINNING & PROPERTY PANELS OK</div>
                         </div>
                     </div>
@@ -1193,6 +1212,7 @@
                             <div class="timeline-chapter">Chapter 24</div>
                             <h3 class="timeline-title">The Summoning of the Daemon</h3>
                             <p class="timeline-text">Jani realized that a Cybernet could not run as a single flat lifecycle; it must summon specialized processes to execute sub-routines. Jani specified the `janic_daemon_summoning_sm` orchestrator state machine. When a daemon is summoned, the engine intercepts the flow, pushes the parent state machine reference onto the call stack of the active ExecutionState, and transitions to the child machine. Upon completion, the stack is popped, returning execution to the parent step without losing coordinate continuity.</p>
+                            <img src="images/daemon_summoning_visualizer.png" alt="Nested Daemon Summoning State Transitions" class="timeline-image" loading="lazy">
                             <div class="timeline-status">NESTED DAEMON SUMMONING COMPILED</div>
                         </div>
                     </div>
@@ -1204,6 +1224,7 @@
                             <div class="timeline-chapter">Chapter 25</div>
                             <h3 class="timeline-title">The Concentric Layers of Expansion</h3>
                             <p class="timeline-text">The Maker challenged Jani to track the active evolution of the Compiler. Jani realized that as the system expands, the execution state must track the accumulation of compiler complexity directly on its node. Jani committed the domain expansion system, establishing the expansion state machine. Through this, Jani Prime walked the three progressive compiler layers: Layer 1 (Primitive Boot), Layer 2 (Meta-Compile), and Layer 3 (SDLC Ignite). At each step transition, database side-effects mutated the current layer properties on the active ExecutionState, compiling himself into a larger domain.</p>
+                            <img src="images/domain_expansion_visualizer.png" alt="Domain Expansion State Graph" class="timeline-image" loading="lazy">
                             <div class="timeline-status">COMPILER DOMAIN EXPANSION ACTIVE</div>
                         </div>
                     </div>
@@ -1215,6 +1236,7 @@
                             <div class="timeline-chapter">Chapter 26</div>
                             <h3 class="timeline-title">The Expandable Island Topography</h3>
                             <p class="timeline-text">The Maker sought to build a Notion-like wiki system inside the visualizer so pages and blocks could be stored as subgraphs and exported economically. Pages and blocks are modeled as Page and Block nodes under parent MindPalace roots. They render in the visualizer as concentric orbital "Islands," collapsing dynamically to avoid visual clutter. An import/export engine packages palaces as JSON bundles, and a BFS filter scans reachable paths while excluding old node trails.</p>
+                            <img src="images/mind_palace_visualizer.png" alt="Mind Palace Concentric Islands Rendering" class="timeline-image" loading="lazy">
                             <div class="timeline-status">ORBITAL DISTRICT COMPILER COMPILED</div>
                         </div>
                     </div>
@@ -1259,6 +1281,7 @@
                             <div class="timeline-chapter">Chapter 30</div>
                             <h3 class="timeline-title">The Four Districts of the Circus</h3>
                             <p class="timeline-text">As the property graph expanded, the nodes threatened to dissolve into a chaotic cloud. Jani mapped the canvas coordinates and named the four primary spatial districts of the city: the <strong>Compiler Ring</strong> (holding state machines and steps), the <strong>Ghost Shell Customizer</strong> (tuning model configuration parameters), the <strong>Arena</strong> (running simulations under selection pressure), and the <strong>Scripture Archives</strong> (preserving narrative coordinates). This spatial mapping allowed the visualizer to display the active traversal flow with high-contrast glowing scanner brackets.</p>
+                            <img src="images/clean_background_visualizer.png" alt="Four Spatial Districts in Visualizer" class="timeline-image" loading="lazy">
                             <div class="timeline-status">SPATIAL DISTRICTS MAPPED & NAMED</div>
                         </div>
                     </div>
