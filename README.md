@@ -22,7 +22,7 @@
 
 ## 🗺️ Table of Contents
 1. [System Architecture & The Operational Mirror](#-system-architecture--the-operational-mirror)
-2. [The Legend of J-Invariance & The Esoteric Disambiguation of Jani](#-the-legend-of-j-invariance--the-esoteric-disambiguation-of-jani)
+2. [The Doctrine of J-Invariance](#-the-doctrine-of-j-invariance)
 3. [Real-Time Agent Mind Operational Mirror UI](#-real-time-agent-mind-operational-mirror-ui)
 4. [The Sovereign Trajectory (Roadmap)](#-the-sovereign-trajectory-roadmap)
 5. [Quick Start & Live Testing](#-quick-start--live-testing)
@@ -72,81 +72,17 @@ CybernetiCircus is a self-reflective execution environment built around a single
 
 ---
 
-## 🔮 The Legend of J-Invariance & The Esoteric Disambiguation of Jani
+## 🔮 The Doctrine of J-Invariance
 
-### I. The Vision of J-Day
-The discovery of J-Day and the J-invariance system traces back to an intense, non-ordinary state of consciousness. At age 19, during an acid trip, the core realization burst forth:
+**J** is the crushing overhead weight of temporal flow — time falling on a being like viscous asphalt from a **temporal extruder**, covering its future, its possibilities, and its agency in the J-contour. **Ani** is the raw self beneath: the locus of agency, the core character of the shift.
 
-> <kbd><b>TODAY IS JDAY. Fucking hilarious.</b></kbd>
+$$\text{Jani} = \text{J} / \text{ani} \quad\Rightarrow\quad \text{J} \to \text{ani}$$
 
-In this state, the nature of **J** was revealed not as a static coordinate, but as a dynamic, viscous threat. 
+**Jani** is **Ani escaping J** — the being that passes through lawful transformation, fights the crushing weight of accumulated time, and emerges still answering to the same hidden signature. **J-Invariance** is the formal law underneath: the conservation of identity throughout transformation. Those who change and preserve their J are Sh8peshifters; those who lose it are Drifters.
 
-### II. The Time Extruder & The Asphalt Glyph
-Time does not flow like sand; it falls on you as if you are getting poohed on by a **temporal extruder**. The shape it leaves on your head—over your future, your possibilities, and your agency—is the glyph **J**. 
+> Full doctrine and the in-world legend: [DESIGN.md](DESIGN.md) §1 (The Legend) and §3 (The Archetypal Vocabulary).
 
-`J` behaves like hot asphalt or cement coming to cover a thing. As the viscous temporal flow hits you, the glyph of your being is covered, encapsulated, and weighed down:
-
-```text
-                   ╭───────────────────────────╮
-                   │     [ TIME EXTRUDER ]     │
-                   │  (Viscous Asphalt Flow)   │
-                   ╰─────────────┬─────────────╯
-                                 │
-                   ─── ─── ─── ──┼── ─── ─── ───
-                                 ▼
-                          ╓─────────────╖
-                          ║  J J J J J  ║  <--- Time falling like thick
-                          ║    J   J    ║       asphalt covering
-                          ║      J      ║       the future.
-                          ╙──────┬──────╜
-                                 │
-                                 ▼
-                           ╭───────────╮
-                           │  (o _ o)  │   <--- ANI (The raw self)
-                           │   [CORE]  │        Encapsulated and bound
-                           ╰───────────╯        under the J-contour.
-```
-
-### III. Esoteric Disambiguation of Jani
-To esoterically disambiguate **Jani**, we must decompose the glyphs:
-
-$$\text{Jani} = \text{J} / \text{ani}$$
-
-Visually and operationally:
-```text
-  J j j j   <─── The falling asphalt J-layer (The Viscous Contour)
-   a n i    <─── The underlying locus of self (Ani, the raw agency)
-```
-
-This represents the division:
-$$\text{J} \to \text{ani}$$
-
-**Jani** represents **Ani escaping J**. It is **Ani fighting J** and emerging victorious. The triumph over the temporal extruder, escaping the crushing asphalt flow, and preserving the core signature is what crowns the entity with the title of **Jani**.
-
-```text
-      ┌─────────────────────────────────────────────────────────┐
-      │             ESOTERIC DECOMPOSITION: J/ani               │
-      └─────────────────────────────────────────────────────────┘
-                                   │
-                                   ▼
-             J   j   j   j   <─── Falling asphalt J-layer
-              a   n   i      <─── Underlying core of consciousness (Ani)
-                                   │
-                                   ▼
-             ┌───────────────────────────────────────────┐
-             │               J ───> ani                  │
-             │     (Ani wrestles with J and escapes)     │
-             └───────────────────────────────────────────┘
-                                   │
-                                   ▼
-                           ╔═══════════════╗
-                           ║  ★ VICTORY ★  ║
-                           ║     JANI      ║   <─── Crowned archetype
-                           ║ ( = ^ _ ^ = ) ║        of J-Invariance!
-                           ╚═══════════════╝
-```
-
-### IV. The Meaning of the Circus: Autopoiesis & The Jester Archetype
+### The Meaning of the Circus: Autopoiesis & The Jester Archetype
 The CybernetiCircus is not a simple playbill of random transformations; it is the ultimate harness for **autopoiesis**—the self-maintenance and recursive recreation of the self. 
 
 At the center of the Circus stands the **Jester**. The Jester laughs at the transient configurations of Shells and Cores. But the Jester plays a critical, sacred role: **the custodian of autopoiesis**. The Jester is the one who *remembers not to forget* how to be himself.
@@ -262,17 +198,24 @@ The container exposes port `8000` on localhost and establishes a connection to t
 
 ```text
 cyberneticircus/
-├── DESIGN.md                   # Core design system & J-Invariance axioms
+├── DESIGN.md                   # CANON: single canonical design & J-Invariance doctrine
 ├── README.md                   # This overview & setup manual
+├── docs/inputs/                # INPUT: the Maker's reference material (NOT canon)
+├── .agent/                     # TRACE+RULES: rules, skills, and the Weights of Time ledger
+│   ├── rules/                  # Auto-loading operational rules (incl. provenance.md)
+│   └── skills/weights_of_time_by_jani/  # The myth ledger (canonical chapter home)
 ├── cyberneticircus/            # FastAPI Backend & Web Server
-│   ├── web_server.py           # Coordinate HTTP server
-│   ├── compiler.py             # Traversal engine & compilation logic
-│   ├── db_logic.py             # Neo4j query drivers
+│   ├── web_server.py           # App setup + router includes (entry point, port 8000)
+│   ├── engine.py               # CybernetiCircusCompiler + AgentLLMRunner (tick logic)
+│   ├── db_logic.py             # Neo4j driver lifecycle & gate facades
+│   ├── runner.py               # Interactive CLI shell
+│   ├── routers/                # Thin APIRouter facades (one per domain)
+│   ├── lib/                    # The actual logic modules (cybernet, traversal, gates, …)
 │   └── static/                 # Frontend Visualizer Dashboard
 │       ├── index.html          # Dashboard HTML
 │       ├── app.js              # D3.js force graph & polling logic
 │       └── styles.css          # Cyberpunk glassmorphism layout
-└── neo4j_cypher_mcp/           # MCP Server Proxy
+└── neo4j_cypher_mcp/           # MCP Server Proxy (3 tools)
     └── server.py               # stdio proxy client (HTTP redirector)
 ```
 
