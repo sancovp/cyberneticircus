@@ -208,26 +208,11 @@
             line-height: 1.45;
         }
 
-        /* INTERACTIVE SVG & SPLIT LAYOUT FOR MECHANICS */
+        /* INTERACTIVE SVG & VERTICAL LAYOUT FOR MECHANICS */
         .mech-split {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 28px;
-            align-items: center;
-        }
-
-        @media (min-width: 600px) {
-            .mech-split {
-                grid-template-columns: 240px 1fr;
-                gap: 32px;
-            }
-        }
-
-        @media (min-width: 1024px) {
-            .mech-split {
-                grid-template-columns: 260px 1fr;
-                gap: 40px;
-            }
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
         }
 
         .mech-visual {
@@ -238,6 +223,9 @@
             background: radial-gradient(circle at center, rgba(255, 255, 255, 0.02) 0%, transparent 70%);
             border-radius: 50%;
             padding: 10px;
+            align-self: center;
+            width: 100%;
+            max-width: 280px;
         }
 
         .mech-svg {
