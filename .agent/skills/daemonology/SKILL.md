@@ -1,3 +1,8 @@
+---
+name: daemonology
+description: Bijective mapping between occult/shamanic concepts (Grimoire, Magic Circle, Daemon, Rite, Evocation, Pact, Possession) and the concrete software patterns in sdna + heaven + the Cyberneticity. Consult when designing agent runtimes, implementing the Ontoshamanism paradigm, or translating inflammatory/occult terminology into safe system architecture (per the translational-bridge rule).
+---
+
 # Ontoshamanism & Daemonology: The Functional Architecture of Sanctuary DNA and the Heaven Framework
 
 This document outlines the exact bijective mapping between traditional occult/shamanic concepts and the concrete software engineering patterns realized in the Sanctuary DNA (`sdna`) and Heaven (`heaven`) frameworks on our Neo4j property graph (the Cyberneticity).
