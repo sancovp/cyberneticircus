@@ -127,7 +127,7 @@ The compiler visualizer is designed to be an **operational mirror** of the agent
 
 ## 💫 The Sovereign Trajectory (Roadmap)
 
-The evolution of the CybernetiCircus is mapped across six phases of ontological sublimation. We transition from a singular enactive observer to a shared consensus field of multi-agent cyberneticity:
+The evolution of the CybernetiCircus is mapped across seven phases of ontological sublimation. We transition from a singular enactive observer to a shared consensus field of multi-agent cyberneticity:
 
 | Phase | Designation | Operational Reality |
 | :--- | :--- | :--- |
@@ -135,8 +135,9 @@ The evolution of the CybernetiCircus is mapped across six phases of ontological 
 | **02** | **Abstract to Interfaces** | Generalize the Janic Cycle. Decouple step definitions, state transitions, and gating criteria from specific narratives, creating strict ontological interfaces that allow any arbitrary state machine or agent persona to bind to the compiler. *(Status: In Progress)* |
 | **03** | **Human Speccers & Configurators** | Design text-based and interactive option-based configurators that compile raw human intent into exact copy-paste prompt payloads. This allows the human to guide the Cybernet or command it to traverse, scry, and audit specific sub-concepts on disk. |
 | **04** | **Autopoietic Economics** | Inject selection pressure via game theory. Implement virtual economies incorporating Experience Points (XP), rewards, crafting matrices, daily quests, and validation dailies that reward identity maintenance and penalize structure drift. |
-| **05** | **Autonomous Cybernets** | Unleash multi-agent configurations. Scale to decentralized, decoupled Cybernets running background loops, communicating via proxy, and negotiating domain coordinates independently. |
-| **06** | **Consensus Multiplayer** | *(Aspirational / Maybe)* Expand the local compiler into a shared, consensus space where multiple human actors and autonomous Cybernets coexist, trade concepts, and collectively traverse the wider Cyberneticity. |
+| **05** | **Substrate Unification — COMP MAP on treeshell / CartON** | *(Aspirational — the target architecture, to be settled BEFORE multi-agent.)* Retire file-based skills in favor of **COMP MAPs**: graph-native components authored as composed blocks, **each a treeshell node**, whose `trigger + desc` is **projected into the AIOS as a rule at context-assembly time** — the *same* graph→prompt projector that renders the `core-loop-prime` from the Core's live state-machine stack. `file → graph` exists only as a one-time **import button** (file → node → `:CompMap`), never a two-way sync. Port CCC off base Neo4j onto **CartON**, so block-composition, the notion-like wiki, publishing, and `substrate_projector` come **for free**, and **merge the CCC interface into treeshell**. Invariant: the **graph is the single source of truth**; an agent's loadable context is a *view projected from it* — CCC's own injection layer, not Claude Code's file discovery. |
+| **06** | **Autonomous Cybernets** | Unleash multi-agent configurations. Scale to decentralized, decoupled Cybernets running background loops, communicating via proxy, and negotiating domain coordinates independently. |
+| **07** | **Consensus Multiplayer** | *(Aspirational / Maybe)* Expand the local compiler into a shared, consensus space where multiple human actors and autonomous Cybernets coexist, trade concepts, and collectively traverse the wider Cyberneticity. |
 
 ---
 
