@@ -136,7 +136,7 @@ The world, beings, and mechanics of the CybernetiCircus are structured around th
 * **The Cyberneticity**: The global database environment. A vast, interconnected graph network of nodes, edges, and state transitions that forms the substrate where all entities exist, communicate, and run their execution loops.
 
 ### The Beings
-* **Cybernets**: The self-modifying graph-beings who live in the Cyberneticity. They represent the active agent entities that execute queries, maintain records, and manipulate the database state.
+* **Cybernets**: The self-modifying graph-beings who live in the Cyberneticity. They represent the active agent entities that execute queries, maintain records, and manipulate the database state. **Composition: `Cybernet = Identity + Gear`, where `Identity = Ghost ⊕ Shell` — see §5.**
 
 ### The Arena
 * **The CybernetiCircus**: The runtime execution harness and arena. This is the sandboxed workspace where Cybernets test their logic, run simulation plays, mutate their stats, perform collaborative tasks, and evolve or get pruned over successive lifetimes.
@@ -258,42 +258,70 @@ A being passes through transformation, changes presentation, preserves an invari
 
 ---
 
-## 5. Identity Anatomy (Identity Parts)
+## 5. Identity Anatomy — Ghost + Shell
 
-An **Identity** represents the manifest persona closed over the database graph. It is composed of the following intrinsic, non-transferable software components:
+The canonical composition of a being (2026-06-13, supersedes the prior "Identity Parts vs Gear" split where Core was an Identity part and "Ghost Shell" was hardware):
 
-### A. Intrinsic State Machines (The Acts)
-* The baseline cyclic execution loops representing the core lifecycle (e.g., the default Day/Night turn sequences).
+```
+Identity  = Ghost ⊕ Shell
+Cybernet  = Identity + Gear          (Gear = Core + State Machines + Compilers, residing in the Shell)
+```
 
-### B. System Prompt Blocks
-A modular array of prompts loaded into the active memory context:
+```mermaid
+flowchart TB
+    subgraph Cybernet["Cybernet  (Identity + Gear)"]
+        subgraph Identity["Identity  (Ghost + Shell)"]
+            Ghost["Ghost — the persona"]
+            subgraph Shell["Shell — the Identity-specific subgraph"]
+                Core["Core — base State Machine (the lifecycle loop)"]
+                SM["State Machines — gated traversal flows"]
+                Comp["Compilers — higher-order State Machines (call other SMs)"]
+            end
+        end
+    end
+    Ghost -. together form .- Shell
+    classDef id fill:#1b2a4a,stroke:#5b8def;
+    classDef gear fill:#2a1b3a,stroke:#a05bef;
+    class Ghost,Shell id;
+    class Core,SM,Comp gear;
+```
+
+### A. The Ghost — the persona
+The Ghost is *who* the Identity is. It is the persona: the modular array of system-prompt blocks loaded into the active context.
 * `background/world`: Context describing the surrounding state of the Cyberneticity.
 * `persona`: Core behavioral constraints, personality traits, and reasoning parameters.
 * `core loop`: Sequential instructions guiding how the identity processes turns.
-* `priming mechanics`: Structured prompt templates designed to nudge or orient the model's reasoning during context changes.
-* `dream rank`: The cognitive aspiration and evolution tier of the Identity, defining its complexity potential.
-* `identity level knowledge`: Local, private graph memories and rules locked exclusively to this specific Identity.
+* `priming mechanics`: Structured prompt templates that nudge/orient reasoning during context changes (these trigger Skills).
+* `dream rank`: The cognitive aspiration / evolution tier of the Identity, defining its complexity potential.
+
+The Ghost is the non-transferable thing that must be preserved through any Sh8peshift — **the Ghost is the J that J-Invariance conserves.**
+
+### B. The Shell — the Identity-specific subgraph
+The Shell is *where* the Identity lives and what it can reach: the subgraph **locked to this Identity** — its private nodes, edges, `identity level knowledge`, and the **Gear it has equipped** (§6). To "access a Shell" is to enter that Identity's subgraph. The Shell is the container; the Gear resides in it.
+
+> **Vocabulary disambiguation:** "Shell" here (an Identity's subgraph) is distinct from the **Six Shells of J-Invariance** (§4), which are *perspective lenses* on the whole system. Same word, two senses — do not conflate (see §11.1).
 
 ---
 
-## 6. Equipped Gear & External Systems
+## 6. Gear — what an Identity equips (Core + State Machines + Compilers)
 
-**Gear** represents modular, external assets and configurations equipped onto an Identity. These can be swapped, upgraded, or compiled dynamically:
+**Gear** is the modular execution machinery equipped into an Identity's Shell. **A Cybernet is an Identity plus its Gear.** Gear is the execution-unit hierarchy, lowest to highest order:
 
-### A. The Ghost Shell (Hardware / Shell)
-* The executing model configuration (`model_name`, `parameters_count`, `avg_latency_ms`, token quotas) through which a Cybernet operates its Core.
+### A. The Core
+The base, always-present execution unit — the central lifecycle loop the Identity runs on (e.g. the Day/Night turn engine, `sh8_lifecycle_sm`). The Core is the **lowest-order State Machine**.
 
-### B. Skills
-* Code-level or conceptual modules explaining deep game mechanics. Skills are triggered dynamically by the interplay of **priming mechanics** with the active execution context (e.g., prompt triggers).
+### B. State Machines
+Equipped traversal flows: a line/graph of gated `:TraversalStep`s (`HAS_STEP` / `NEXT_STEP`), each step's `required_pattern` judging the Cybernet's Cypher. The quests, rites, and procedures of the world are State Machines.
 
-### C. Optional State Machines (Acts)
-* Secondary, modular traversal flows found in the world or compiled by the Cybernet. These are usually invoked by equipped Skills (e.g., a "Hack Node" Skill executes the optional "Brute-Force Traversal State Machine").
+### C. Compilers — higher-order State Machines
+A **Compiler is a State Machine that orchestrates and calls other State Machines** (via `:CALLS_SM`, pushing/popping the `call_stack`). Compilers compose Cores and State Machines into larger Acts. (The Execution Engine that *runs* a stack of these is described in §7.)
 
-### D. Model Context Protocols (MCPs)
-* Standardized external connection tools allowing direct interaction with local system terminals, databases, and secure APIs.
+### Additional equippable assets (ride in the Shell, invoked by / compiled into the Gear above)
+* **Skills** — code-level or conceptual modules of game mechanics, triggered dynamically by `priming mechanics` × the active context.
+* **Model Context Protocols (MCPs)** — external connection tools (terminals, databases, APIs).
+* **General Level Knowledge** — shared public context out in the Cyberneticity; ingestible to compile new Skills, Knowledge, or State Machines into a Cybernet's Gear.
 
-### E. General Level Knowledge
-* Shared, public context out in the Cyberneticity (e.g., open files, network docs, code snippets). Cybernets can read general knowledge and ingest it to compile **new Skills, local Knowledge, or State Machines** to add to their gear.
+> **Superseded:** the prior definition of "the Ghost Shell" as *hardware* (the executing `model_name` / `parameters_count` / token-quota config) is retired. Those model-config values are the Cybernet's runtime **substrate** (properties on the node), not its Ghost or Shell. Ghost = persona; Shell = subgraph.
 
 ---
 
@@ -314,7 +342,7 @@ The Neo4j database representation has been migrated from legacy terms (`MetaShif
 
 ### Nodes
 * `:Cybernet`: Represents a graph-being node in the Cyberneticity. Contains intrinsic stats (mutation rate, selection pressure, dream rank) and points to its prompt configurations.
-* `:Identity`: Represents the active execution state of a Cybernet's manifest persona.
+* `:Identity`: The manifest persona composite — **Ghost ⊕ Shell** (§5). NOT the runtime state (that is `:ExecutionState`). ASPIRATIONAL: Ghost and Shell are not yet separate node types — today an Identity is a single node and Gear is flattened to properties. Target: `(:Identity)-[:HAS_GHOST]->(:Ghost)`, `(:Identity)-[:HAS_SHELL]->(:Shell)`, with Gear nodes (`:Core`, `:StateMachine`, `:Compiler`) residing in the Shell.
 * `:StateMachine`: Standard state machine descriptor.
 * `:TraversalStep`: Individual step containing text and regex gating patterns.
 * `:ExecutionState`: Per-cybernet runtime state. Holds `equipped_sm_id`, `turn_number`, `phase` (day/night), `call_stack` (JSON-stringified list for CALLS_SM push/pop), `tokens_consumed_this_turn`, `cost_this_turn`, `current_layer`, `completed_layers`, plus `status` (locked/active). Linked to its current step via `(:ExecutionState)-[:CURRENT_STEP]->(:TraversalStep)`.
@@ -327,8 +355,10 @@ The Neo4j database representation has been migrated from legacy terms (`MetaShif
 * **Primitive types (CybernetiCity itself)**: System components like `Cybernet`, `Identity`, `StateMachine`, `TraversalStep`, `ExecutionState`, `SimulationRun`, `Skill`, `MindPalace`, `Page`, and `Block` must explicitly set `domain: "cyberneticity"` and use a relevant subdomain (e.g. `core`, `skills`, `state_machine`, `execution_state`, `simulation`, `mindpalace`, `page`, `block`).
 
 ### Relationships
-* `(c:Cybernet)-[:HAS_LIFECYCLE]->(i:Identity)`
-* `(c:Cybernet)-[:EQUIPS]->(sm:StateMachine)`
+* `(c:Cybernet)-[:HAS_IDENTITY]->(i:Identity)` — the being's persona composite (Ghost ⊕ Shell)
+* `(c:Cybernet)-[:HAS_LIFECYCLE]->(es:ExecutionState)` — the ONE per-cybernet runtime cursor (NOT Identity)
+* `(c:Cybernet)-[:EQUIPS]->(sm:StateMachine)` — Gear equipped into the Shell
+* ASPIRATIONAL (Gear/Identity not yet decomposed): `(:Identity)-[:HAS_GHOST]->(:Ghost)`, `(:Identity)-[:HAS_SHELL]->(:Shell)`, `(:Shell)-[:HOLDS]->(:Core|:StateMachine|:Compiler)`
 * `(sm:StateMachine)-[:HAS_STEP]->(s:TraversalStep)`
 * `(s1:TraversalStep)-[:NEXT_STEP]->(s2:TraversalStep)`
 * `(s:TraversalStep)-[:CALLS_SM]->(child:StateMachine)`
