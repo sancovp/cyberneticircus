@@ -65,7 +65,7 @@ RETURN n, r, m
 
 FULL_GRAPH_CYPHER = """
 MATCH (n)
-WHERE n:Cybernet OR n:Identity OR n:ExecutionState OR n:StateMachine OR n:TraversalStep OR n:TraversalState OR n:SimulationRun OR n:MindPalace OR n:Page
+WHERE n:Cybernet OR n:Identity OR n:ExecutionState OR n:StateMachine OR n:TraversalStep OR n:SimulationRun OR n:MindPalace OR n:Page
 WITH collect(DISTINCT n) as all_nodes
 UNWIND all_nodes as n
 WITH DISTINCT n, all_nodes

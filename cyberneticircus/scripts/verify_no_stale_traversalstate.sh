@@ -4,17 +4,13 @@
 # Detects references to the OLD :HAS_TRAVERSAL → :TraversalState pattern
 # (the per-cybernet lock pattern that was REPLACED by :HAS_LIFECYCLE → :ExecutionState).
 #
-# Expected hits (known dead/legacy code, do not fix in this pass — see DESIGN.md §11.8):
-#   - lib/state_machines.py     (cypher builders, fix pending)
-#   - lib/lifecycle.py          (LOCK_OR_CREATE / FORCE_ALIGN / READ_TRAVERSAL_STEP, fix pending)
-#   - lib/evolution.py          (CLEAR_TRAVERSAL_STATES constant for test reset, harmless if never called)
-#   - lib/gates.py              (docstring references)
-#   - lib/visualizer.py         (node label list — TraversalState not in live graph, harmless dead label)
-#   - test_game_loop.py, verify_*.py  (test/verify scripts use DETACH DELETE for setup)
-#   - static/app.js             (SACRED — do not touch; just a label-check that never matches)
+# The runtime gating fix (DESIGN.md §11.8) has LANDED: lib/state_machines.py,
+# lib/lifecycle.py, lib/gates.py, lib/evolution.py, lib/visualizer.py, db_logic.py,
+# engine.py, and the test/verify scripts are all on :ExecutionState / :HAS_LIFECYCLE.
+# There are NO remaining expected hits — the allowlist is empty. ANY hit is a regression.
 #
-# Unexpected hits (should be 0 after the runtime gating fix lands) — fail loudly:
-#   anywhere else: DESIGN.md, *.claude/rules/*.md, routers/*, db_logic.py, engine.py, etc.
+# Unexpected hits (must be 0) — fail loudly:
+#   anywhere: lib/*, db_logic.py, engine.py, routers/*, *.md, etc.
 #
 # Usage: bash cyberneticircus/scripts/verify_no_stale_traversalstate.sh
 # Exit: 0 if no unexpected hits, 1 if unexpected hits found.
@@ -24,20 +20,10 @@ set -uo pipefail
 PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$PROJECT_ROOT" || exit 2
 
-# Locations where stale references are EXPECTED (dead/legacy code, test setups, sacred).
-EXPECTED_PATHS=(
-  "cyberneticircus/lib/state_machines.py"
-  "cyberneticircus/lib/lifecycle.py"
-  "cyberneticircus/lib/evolution.py"
-  "cyberneticircus/lib/gates.py"
-  "cyberneticircus/lib/visualizer.py"
-  "cyberneticircus/db_logic.py"
-  "cyberneticircus/engine.py"
-  "cyberneticircus/test_game_loop.py"
-  "cyberneticircus/verify_domain_expansion.py"
-  "cyberneticircus/verify_daemon_summoning.py"
-  "cyberneticircus/static/app.js"
-)
+# The runtime gating fix has landed; no stale references are expected anywhere.
+# static/app.js is SACRED (never edited) but contains no live HAS_TRAVERSAL/
+# TraversalState reference, so it is not allowlisted. ANY hit is a regression.
+EXPECTED_PATHS=()
 
 # Pattern: HAS_TRAVERSAL or TraversalState
 PATTERN='HAS_TRAVERSAL|TraversalState'

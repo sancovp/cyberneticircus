@@ -26,8 +26,7 @@ def verify_summoning():
     test_name = "test_daemon_jester"
     with engine.driver.session() as session:
         session.run("MATCH (m:Cybernet) WHERE m.name STARTS WITH $name DETACH DELETE m", {"name": test_name})
-        # Wipe TraversalState to ensure clean slate
-        session.run("MATCH (s:TraversalState) DETACH DELETE s")
+        # (the per-cybernet ExecutionState is removed by the DETACH DELETE above)
     print("   [PASS] Wiped previous test data.")
     
     # 3. Create Cybernet
@@ -212,7 +211,6 @@ def verify_summoning():
     print("\n5. Cleaning up test nodes...")
     with engine.driver.session() as session:
         session.run("MATCH (m:Cybernet) WHERE m.name STARTS WITH $name DETACH DELETE m", {"name": test_name})
-        session.run("MATCH (s:TraversalState) DETACH DELETE s")
     print("   [PASS] Database cleaned.")
     
     print("=" * 60)

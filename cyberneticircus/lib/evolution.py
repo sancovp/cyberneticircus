@@ -22,8 +22,6 @@ OPTIONAL MATCH (m)-[:HAS_SIMULATION]->(sim:SimulationRun)
 DETACH DELETE m, s, i, sim
 """
 
-CLEAR_TRAVERSAL_STATES = "MATCH (s:TraversalState) DETACH DELETE s"
-
 CLONE_CYBERNET_CYPHER = """
 CREATE (m:Cybernet {
     name: $child_name,
@@ -129,8 +127,9 @@ def evaluate_evolution(session, *, name: str, status: Dict[str, Any]) -> str:
     event-message describing the outcome.
 
     `status` is the output of `get_character_status`. The session is used
-    for all DB writes. TraversalState nodes are always cleared at the end
-    of an evolution pass (they only live for a single turn's gate).
+    for all DB writes. The cybernet's single ExecutionState is reset by
+    RESET_LIFECYCLE_CYPHER (survive/reproduce) or removed by REAP_CYPHER (reap);
+    there is no separate per-turn lock node to clear.
     """
     fitness = status["fitness_score"]
     sm_id = status["equipped_sm_id"]
@@ -138,7 +137,6 @@ def evaluate_evolution(session, *, name: str, status: Dict[str, Any]) -> str:
     # 1. REAPING (Pruning) — fitness below survival threshold
     if fitness < REAP_THRESHOLD:
         session.run(REAP_CYPHER, {"name": name})
-        session.run(CLEAR_TRAVERSAL_STATES)
         return (
             f"Identity graph '{name}' fitness ({fitness}) fell below selection "
             f"threshold. Reaped from DB."
@@ -163,7 +161,6 @@ def evaluate_evolution(session, *, name: str, status: Dict[str, Any]) -> str:
         session.run(CLONE_IDENTITY_CYPHER, {"name": name, "child_name": child_name})
         session.run(CLONE_EQUIPS_AND_LIFECYCLE_CYPHER, {"name": name, "child_name": child_name})
         session.run(RESET_LIFECYCLE_CYPHER, {"name": name, "sm_id": sm_id})
-        session.run(CLEAR_TRAVERSAL_STATES)
 
         return (
             f"Identity '{name}' achieved outstanding fitness ({fitness}) and "
@@ -174,7 +171,6 @@ def evaluate_evolution(session, *, name: str, status: Dict[str, Any]) -> str:
 
     # 3. SURVIVAL (reset parent for new lifetime)
     session.run(RESET_LIFECYCLE_CYPHER, {"name": name, "sm_id": sm_id})
-    session.run(CLEAR_TRAVERSAL_STATES)
     return (
         f"Identity '{name}' fitness ({fitness}) met survival standards. "
         f"Lifetime reset for another cycle."

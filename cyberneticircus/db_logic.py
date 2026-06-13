@@ -100,12 +100,12 @@ def is_traversal_locked(cybernet_name: str) -> bool:
 
 def auto_progress_step(active_step: Dict[str, Any],
                       target_step_id: Optional[str] = None) -> str:
-    """Advance this TraversalState to its next (or explicit) TraversalStep."""
+    """Advance this ExecutionState to its next (or explicit) TraversalStep."""
     return _auto_progress_step(active_step, target_step_id, get_driver, sm_cypher, logger)
 
 
 def scan_and_trigger_traversal(results: List[Dict[str, Any]]) -> None:
-    """If a returned node carries trigger_traversal, materialize a TraversalState for it."""
+    """If a returned node carries trigger_traversal, lock the cybernet's ExecutionState for it."""
     return _scan_and_trigger_traversal(results, get_driver, sm_cypher, logger)
 
 
@@ -116,7 +116,7 @@ def serialize_value(value: Any) -> Any:
 
 def query_database(query: str, cybernet_name: str,
                    parameters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
-    """Execute Cypher under the per-cybernet TraversalState lock (the LLM-loop gate)."""
+    """Execute Cypher under the per-cybernet ExecutionState lock (the LLM-loop gate)."""
     _validate_cypher_query(query)
     active_step = get_active_traversal_step(cybernet_name)
     is_mutation = _is_mutation_query(query)

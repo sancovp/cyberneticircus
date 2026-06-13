@@ -26,7 +26,6 @@ def verify_expansion():
     test_name = "test_jani_expansion"
     with engine.driver.session() as session:
         session.run("MATCH (m:Cybernet) WHERE m.name STARTS WITH $name DETACH DELETE m", {"name": test_name})
-        session.run("MATCH (s:TraversalState) DETACH DELETE s")
     print("   [PASS] Wiped previous test data.")
     
     # 3. Create Cybernet
@@ -153,7 +152,6 @@ def verify_expansion():
     print("\n5. Cleaning up test nodes...")
     with engine.driver.session() as session:
         session.run("MATCH (m:Cybernet) WHERE m.name STARTS WITH $name DETACH DELETE m", {"name": test_name})
-        session.run("MATCH (s:TraversalState) DETACH DELETE s")
     print("   [PASS] Database cleaned.")
     
     print("=" * 60)

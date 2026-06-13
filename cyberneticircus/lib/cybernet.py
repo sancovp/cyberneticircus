@@ -44,7 +44,7 @@ def equip_state_machine_cypher(cybernet_name: str, state_machine_id: str) -> str
     return f"""MATCH (c:Cybernet {{name: $cybernet_name}})
 MATCH (sm:StateMachine {{id: $state_machine_id}})
 MERGE (c)-[:EQUIPS]->(sm)
-MERGE (c)-[:HAS_LIFECYCLE]->(s:ExecutionState {{equipped_sm_id: $state_machine_id, status: 'idle', domain: 'cyberneticity', subdomain: 'lifecycle'}})
+MERGE (c)-[:HAS_LIFECYCLE]->(s:ExecutionState {{equipped_sm_id: $state_machine_id, status: 'locked', domain: 'cyberneticity', subdomain: 'lifecycle'}})
 RETURN s"""
 
 

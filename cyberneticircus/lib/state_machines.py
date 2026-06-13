@@ -32,7 +32,7 @@ MERGE (s)-[:CALLS_SM]->(sm)"""
 def get_active_traversal_step_cypher() -> str:
     """Read the locked TraversalStep for the given cybernet (per-cybernet scope)."""
     return """
-    MATCH (c:Cybernet {name: $cybernet_name})-[:HAS_TRAVERSAL]->(s:TraversalState {status: 'locked'})-[:CURRENT_STEP]->(curr:TraversalStep)
+    MATCH (c:Cybernet {name: $cybernet_name})-[:HAS_LIFECYCLE]->(s:ExecutionState {status: 'locked'})-[:CURRENT_STEP]->(curr:TraversalStep)
     RETURN curr.id as id, curr.text as text,
            curr.instruction_file_path as instruction_file_path,
            curr.required_pattern as required_pattern,
@@ -71,9 +71,9 @@ def read_step_text_cypher() -> str:
 
 
 def advance_state_cypher() -> str:
-    """Move CURRENT_STEP from one step to another for a given TraversalState elementId."""
+    """Move CURRENT_STEP from one step to another for a given ExecutionState elementId."""
     return """
-    MATCH (s:TraversalState)-[r:CURRENT_STEP]->(curr:TraversalStep)
+    MATCH (s:ExecutionState)-[r:CURRENT_STEP]->(curr:TraversalStep)
     WHERE elementId(s) = $state_id
     DELETE r
     WITH s
@@ -83,15 +83,17 @@ def advance_state_cypher() -> str:
 
 
 def dissolve_state_cypher() -> str:
-    """Final step reached: detach the TraversalState entirely (unlocks writes)."""
+    """Final step reached: unlock the ExecutionState (set status='unlocked').
+    The ExecutionState node persists (created at equip-time); we only clear its
+    locked status so the gate stops firing for this cybernet."""
     return """
-    MATCH (s:TraversalState) WHERE elementId(s) = $state_id DETACH DELETE s
+    MATCH (s:ExecutionState) WHERE elementId(s) = $state_id SET s.status = 'unlocked'
     """
 
 
 def count_locked_states_cypher() -> str:
-    """Count global locked TraversalStates (used by scan_and_trigger_traversal)."""
-    return "MATCH (s:TraversalState {status: 'locked'}) RETURN count(s) as c"
+    """Count global locked ExecutionStates (used by scan_and_trigger_traversal)."""
+    return "MATCH (s:ExecutionState {status: 'locked'}) RETURN count(s) as c"
 
 
 def step_exists_cypher() -> str:
@@ -106,11 +108,21 @@ def create_placeholder_step_cypher() -> str:
     """
 
 
-def create_traversal_state_cypher() -> str:
-    """Materialize a fresh locked TraversalState pointing at a given TraversalStep."""
+def lock_and_align_state_cypher() -> str:
+    """Reuse an existing ExecutionState: lock it + point its CURRENT_STEP at the
+    given step. The ExecutionState already exists (created at equip-time), so we
+    do NOT create a node — we lock + repoint the one that's there.
+
+    Matches the most-recently-touched unlocked/idle ExecutionState (any cybernet)
+    whose step it should align; used by the trigger_traversal hook to activate a
+    guided checklist on a node that carries trigger_traversal."""
     return """
     MATCH (step:TraversalStep {id: $step_id})
-    CREATE (s:TraversalState {status: 'locked', target_id: $tid, target_label: $tl,
-           created_at: timestamp(), domain: 'cyberneticity', subdomain: 'traversal_state'})
-    -[:CURRENT_STEP]->(step)
+    MATCH (c:Cybernet)-[:HAS_LIFECYCLE]->(s:ExecutionState)
+    WHERE coalesce(s.status, 'unlocked') <> 'locked'
+    WITH s, step LIMIT 1
+    OPTIONAL MATCH (s)-[r:CURRENT_STEP]->()
+    DELETE r
+    SET s.status = 'locked', s.target_id = $tid, s.target_label = $tl
+    CREATE (s)-[:CURRENT_STEP]->(step)
     """

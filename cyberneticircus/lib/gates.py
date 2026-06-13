@@ -13,7 +13,7 @@ Functions:
 - serialize_value                          -- Neo4j → JSON-safe converter
 - run_cypher                                -- execute + serialize
 - get_active_traversal_step                 -- per-cybernet lock read
-- auto_progress_step                        -- advance TraversalState
+- auto_progress_step                        -- advance ExecutionState
 - scan_and_trigger_traversal                -- trigger_traversal hook
 - adjust_transition_weight_internal         -- NEXT_STEP weight tuning
 - get_schema                                -- db.labels/rels/props dump
@@ -124,7 +124,7 @@ def _append_instruction_file(text: Optional[str], file_path: Optional[str],
 
 def get_active_traversal_step(cybernet_name: str, get_driver: Callable,
                               sm_cypher, logger) -> Optional[Dict[str, Any]]:
-    """Read the locked TraversalStep for THIS cybernet (per-cybernet scope)."""
+    """Read the locked step (via the cybernet's ExecutionState) per-cybernet scope."""
     try:
         with get_driver().session() as session:
             record = session.run(sm_cypher.get_active_traversal_step_cypher(),
@@ -150,7 +150,7 @@ def get_active_traversal_step(cybernet_name: str, get_driver: Callable,
 
 def auto_progress_step(active_step: Dict[str, Any], target_step_id: Optional[str],
                        get_driver: Callable, sm_cypher, logger) -> str:
-    """Advance this TraversalState to its next (or explicit) TraversalStep."""
+    """Advance this ExecutionState to its next (or explicit) TraversalStep."""
     state_id, curr_id = active_step["state_element_id"], active_step["id"]
     with get_driver().session() as session:
         next_id = target_step_id
@@ -175,7 +175,7 @@ def auto_progress_step(active_step: Dict[str, Any], target_step_id: Optional[str
         return msg
 
 
-# --- Trigger scan (writes a new TraversalState if a node has trigger_traversal)
+# --- Trigger scan (locks an existing ExecutionState if a node has trigger_traversal)
 
 def _find_trigger(val):
     if isinstance(val, dict):
@@ -208,7 +208,7 @@ def scan_and_trigger_traversal(results: List[Dict[str, Any]],
             if not session.run(sm_cypher.step_exists_cypher(), id=step_id).peek():
                 session.run(sm_cypher.create_placeholder_step_cypher(),
                             id=step_id, text=f"Guided checklist starting at {step_id}.")
-            session.run(sm_cypher.create_traversal_state_cypher(),
+            session.run(sm_cypher.lock_and_align_state_cypher(),
                         step_id=step_id, tid=target_id, tl=target_label)
     except Exception as e:
         logger.error(f"Failed to auto-trigger traversal: {e}")

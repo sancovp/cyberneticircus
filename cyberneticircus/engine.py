@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """CybernetiCircus — LLM Runner. Thin facade per `cyberneticircus-architecture.md` §9.1.
 The engine owns only: AgentLLMRunner, CybernetiCircusCompiler (thin facade), per-cybernet
-TraversalState lock acquisition, and tick_turn (read step -> call LLM -> execute cypher
+ExecutionState lock acquisition, and tick_turn (read step -> call LLM -> execute cypher
 -> gate -> auto-progress). All real logic lives in lib/."""
 import os, json, logging, random
 from typing import Any, Dict, Optional
@@ -158,7 +158,7 @@ class CybernetiCircusCompiler:
     # --- The LLM loop: tick_turn ---
     def tick_turn(self, name: str, runner: AgentLLMRunner) -> Dict[str, Any]:
         """One step of the Day/Night cycle. Reads active step, gates via
-        per-cybernet TraversalState lock, calls the LLM, executes the query,
+        per-cybernet ExecutionState lock, calls the LLM, executes the query,
         and auto-progresses (or pops the call stack on child-SM completion,
         or evaluates evolution at lifetime end)."""
         status = self.get_character_status(name)
@@ -191,7 +191,7 @@ class CybernetiCircusCompiler:
             output["event_message"] = lib_lifecycle.run_step_side_effects(
                 session, name=name, step_id=step_id)
 
-            # 2. Per-cybernet TraversalState lock (gate)
+            # 2. Per-cybernet ExecutionState lock (gate)
             from db_logic import is_traversal_locked, query_database
             lib_lifecycle.ensure_lock(session, name=name, step_id=step_id,
                                       is_locked=is_traversal_locked(name))
@@ -224,8 +224,9 @@ class CybernetiCircusCompiler:
                 # 5. Token + cost accounting
                 lib_lifecycle.accumulate_token_cost(session, name=name, sm_id=sm_id)
 
-                # 6. Sync ExecutionState.CURRENT_STEP from TraversalState
-                new_step_id = lib_lifecycle.sync_execution_state_from_traversal(
+                # 6. Read back the ExecutionState's CURRENT_STEP (auto_progress
+                #    already advanced it; None means the rite completed/unlocked).
+                new_step_id = lib_lifecycle.read_active_execution_step(
                     session, name=name, sm_id=sm_id)
                 if new_step_id is not None:
                     entry_id = lib_lifecycle.find_entry_step_id(session, sm_id)

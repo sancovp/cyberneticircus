@@ -1,13 +1,17 @@
 """
-Lifecycle helpers for the ExecutionState / TraversalState of a Cybernet.
+Lifecycle helpers for the ExecutionState of a Cybernet.
 
 These were extracted from `engine.py` (which is now the LLM runner only).
 Functions take a neo4j session (or driver) and a cybernet_name; they return
 the result of their database write so the caller can compose event messages.
 
-The per-cybernet isolation model is:
-  (:Cybernet {name})-[:HAS_LIFECYCLE]->(:ExecutionState)
-  (:Cybernet {name})-[:HAS_TRAVERSAL]->(:TraversalState {cybernet_name})-[:CURRENT_STEP]->(:TraversalStep)
+The per-cybernet isolation model is a SINGLE runtime node:
+  (:Cybernet {name})-[:HAS_LIFECYCLE]->(:ExecutionState {status})-[:CURRENT_STEP]->(:TraversalStep)
+
+The ExecutionState is created at equip-time (see lib/cybernet.py EQUIP_SM_CYPHER)
+with status='locked'. The runtime gate reads this same node; there is no separate
+per-turn lock node. `status='locked'` means a rite is in progress (the gate fires);
+`status='unlocked'` means writes are free.
 
 `entry_step_id` resolves an SM's entry step robustly even when the SM has cycles:
 it counts incoming NEXT_STEP edges and picks the minimum (entry has zero or lowest).
@@ -141,47 +145,36 @@ def accumulate_token_cost(session, *, name: str, sm_id: str) -> tuple:
 
 
 # ---------------------------------------------------------------------------
-# Per-cybernet TraversalState lock (the gate)
+# Per-cybernet ExecutionState lock (the gate). The ExecutionState already
+# exists (created at equip-time); the gate reads + locks THIS one node. There
+# is no separate per-turn lock node. We only ensure the node is locked and its
+# CURRENT_STEP is aligned to the engine's active step.
 # ---------------------------------------------------------------------------
 
-LOCK_OR_CREATE_CYPHER = """
-MATCH (c:Cybernet {name: $name})
+LOCK_AND_ALIGN_CYPHER = """
+MATCH (c:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:ExecutionState)
 MATCH (step:TraversalStep {id: $step_id})
-CREATE (c)-[:HAS_TRAVERSAL]->(s:TraversalState {
-    status: 'locked',
-    cybernet_name: $name,
-    created_at: timestamp(),
-    domain: 'cyberneticity',
-    subdomain: 'traversal_state'
-})-[:CURRENT_STEP]->(step)
-"""
-
-FORCE_ALIGN_CYPHER = """
-MATCH (c:Cybernet {name: $name})-[:HAS_TRAVERSAL]->(s:TraversalState)
-MATCH (s)-[r:CURRENT_STEP]->()
+OPTIONAL MATCH (s)-[r:CURRENT_STEP]->()
 DELETE r
-WITH s
-MATCH (step:TraversalStep {id: $step_id})
+SET s.status = 'locked'
 CREATE (s)-[:CURRENT_STEP]->(step)
 """
 
 
 def ensure_lock(session, *, name: str, step_id: str, is_locked: bool) -> None:
-    """Create THIS cybernet's TraversalState if missing, or force-align its
-    CURRENT_STEP to the active ExecutionState step. Scoped per-cybernet so
+    """Lock THIS cybernet's ExecutionState + force-align its CURRENT_STEP to the
+    engine's active step. The ExecutionState already exists (equip-time); we just
+    ensure status='locked' and the step pointer matches. Scoped per-cybernet so
     concurrent cybernets never block each other."""
-    if not is_locked:
-        session.run(LOCK_OR_CREATE_CYPHER, {"name": name, "step_id": step_id})
-    else:
-        session.run(FORCE_ALIGN_CYPHER, {"name": name, "step_id": step_id})
+    session.run(LOCK_AND_ALIGN_CYPHER, {"name": name, "step_id": step_id})
 
 
 # ---------------------------------------------------------------------------
-# ExecutionState CURRENT_STEP update after a successful step
+# ExecutionState CURRENT_STEP read after a successful step
 # ---------------------------------------------------------------------------
 
-READ_TRAVERSAL_STEP_CYPHER = """
-MATCH (c:Cybernet {name: $name})-[:HAS_TRAVERSAL]->(s:TraversalState {status: 'locked'})-[:CURRENT_STEP]->(curr:TraversalStep)
+READ_EXECUTION_STEP_CYPHER = """
+MATCH (c:Cybernet {name: $name})-[:HAS_LIFECYCLE]->(s:ExecutionState {status: 'locked'})-[:CURRENT_STEP]->(curr:TraversalStep)
 RETURN curr.id as current_step_id
 """
 
@@ -208,18 +201,16 @@ SET s.turn_number = s.turn_number + 1,
 """
 
 
-def sync_execution_state_from_traversal(session, *, name: str, sm_id: str) -> Optional[str]:
-    """After the LLM's cypher has run + auto-progressed, sync the
-    ExecutionState.CURRENT_STEP to the TraversalState's new step. Returns
-    the new step id (or None if TraversalState was completed/cleared)."""
-    rec = session.run(READ_TRAVERSAL_STEP_CYPHER, {"name": name}).single()
+def read_active_execution_step(session, *, name: str, sm_id: str) -> Optional[str]:
+    """After the LLM's cypher ran + auto-progressed the ExecutionState's
+    CURRENT_STEP, read back the new (locked) step id. Returns the new step id, or
+    None if the rite completed (status flipped to 'unlocked'). Also flips phase to
+    'night' for night steps. There is no separate lock node to sync from —
+    auto_progress already moved THIS node's CURRENT_STEP."""
+    rec = session.run(READ_EXECUTION_STEP_CYPHER, {"name": name}).single()
     if not rec:
         return None
     new_step_id = rec["current_step_id"]
-    session.run(
-        SET_EXECUTION_STEP_CYPHER,
-        {"name": name, "sm_id": sm_id, "new_step_id": new_step_id},
-    )
     if "night" in new_step_id.lower():
         session.run(SET_PHASE_NIGHT_CYPHER, {"name": name, "sm_id": sm_id})
     return new_step_id
