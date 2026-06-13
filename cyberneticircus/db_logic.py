@@ -104,9 +104,10 @@ def auto_progress_step(active_step: Dict[str, Any],
     return _auto_progress_step(active_step, target_step_id, get_driver, sm_cypher, logger)
 
 
-def scan_and_trigger_traversal(results: List[Dict[str, Any]]) -> None:
-    """If a returned node carries trigger_traversal, lock the cybernet's ExecutionState for it."""
-    return _scan_and_trigger_traversal(results, get_driver, sm_cypher, logger)
+def scan_and_trigger_traversal(results: List[Dict[str, Any]],
+                               cybernet_name: Optional[str] = None) -> None:
+    """If a returned node carries trigger_traversal, lock THIS cybernet's ExecutionState for it."""
+    return _scan_and_trigger_traversal(results, cybernet_name, get_driver, sm_cypher, logger)
 
 
 def serialize_value(value: Any) -> Any:
@@ -127,7 +128,7 @@ def query_database(query: str, cybernet_name: str,
         results.append({"_state_machine_event":
                         _auto_progress_step(active_step, target_step_id, get_driver, sm_cypher, logger)})
     else:
-        _scan_and_trigger_traversal(results, get_driver, sm_cypher, logger)
+        _scan_and_trigger_traversal(results, cybernet_name, get_driver, sm_cypher, logger)
     return results
 
 

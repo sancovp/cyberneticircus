@@ -193,22 +193,29 @@ def _find_trigger(val):
     return None
 
 
-def scan_and_trigger_traversal(results: List[Dict[str, Any]],
+def scan_and_trigger_traversal(results: List[Dict[str, Any]], cybernet_name: Optional[str],
                                get_driver: Callable, sm_cypher, logger) -> None:
     found = None
     for r in results:
         found = found or _find_trigger(r)
     if not found:
         return
+    if not cybernet_name:
+        # No cybernet to scope the lock to — cannot safely activate a flow without
+        # knowing WHO retrieved the trigger node, so skip rather than lock a random
+        # cybernet's cursor.
+        return
     step_id, target_id, target_label = found
     try:
         with get_driver().session() as session:
-            if session.run(sm_cypher.count_locked_states_cypher()).single()["c"]:
+            if session.run(sm_cypher.count_locked_states_cypher(),
+                           cybernet_name=cybernet_name).single()["c"]:
                 return
             if not session.run(sm_cypher.step_exists_cypher(), id=step_id).peek():
                 session.run(sm_cypher.create_placeholder_step_cypher(),
                             id=step_id, text=f"Guided checklist starting at {step_id}.")
             session.run(sm_cypher.lock_and_align_state_cypher(),
+                        cybernet_name=cybernet_name,
                         step_id=step_id, tid=target_id, tl=target_label)
     except Exception as e:
         logger.error(f"Failed to auto-trigger traversal: {e}")

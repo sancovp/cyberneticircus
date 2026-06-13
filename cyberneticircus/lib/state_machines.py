@@ -92,8 +92,12 @@ def dissolve_state_cypher() -> str:
 
 
 def count_locked_states_cypher() -> str:
-    """Count global locked ExecutionStates (used by scan_and_trigger_traversal)."""
-    return "MATCH (s:ExecutionState {status: 'locked'}) RETURN count(s) as c"
+    """Count THIS cybernet's locked ExecutionStates (used by scan_and_trigger_traversal).
+
+    Scoped to the cybernet: a lock on some OTHER cybernet must not block this one
+    from being triggered into its own flow (each cybernet has its own cursor)."""
+    return ("MATCH (c:Cybernet {name: $cybernet_name})-[:HAS_LIFECYCLE]->"
+            "(s:ExecutionState {status: 'locked'}) RETURN count(s) as c")
 
 
 def step_exists_cypher() -> str:
@@ -113,12 +117,13 @@ def lock_and_align_state_cypher() -> str:
     given step. The ExecutionState already exists (created at equip-time), so we
     do NOT create a node — we lock + repoint the one that's there.
 
-    Matches the most-recently-touched unlocked/idle ExecutionState (any cybernet)
-    whose step it should align; used by the trigger_traversal hook to activate a
-    guided checklist on a node that carries trigger_traversal."""
+    Scoped to the retrieving cybernet: the trigger must lock the cybernet that
+    retrieved the trigger_traversal node into the flow — NOT a nondeterministic
+    "first non-locked ExecutionState of any cybernet" (each cybernet has exactly
+    one ExecutionState cursor, so scoping it also makes the match deterministic)."""
     return """
     MATCH (step:TraversalStep {id: $step_id})
-    MATCH (c:Cybernet)-[:HAS_LIFECYCLE]->(s:ExecutionState)
+    MATCH (c:Cybernet {name: $cybernet_name})-[:HAS_LIFECYCLE]->(s:ExecutionState)
     WHERE coalesce(s.status, 'unlocked') <> 'locked'
     WITH s, step LIMIT 1
     OPTIONAL MATCH (s)-[r:CURRENT_STEP]->()
