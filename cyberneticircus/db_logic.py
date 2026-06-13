@@ -172,9 +172,10 @@ def _evaluate_pattern(query: str, active_step: Optional[Dict[str, Any]],
         if _matches(required, query):
             return True, None
         if is_mutation:
+            intent = f"Intent: {desc}. " if desc else ""
             raise PermissionError(
-                f"Database Writes Locked: Active Traversal Step '{active_step['id']}' "
-                f"requires query matching pattern: {desc or required}"
+                f"Database Writes Locked: Active Traversal Step '{active_step['id']}'. "
+                f"{intent}Your Cypher must match this regex pattern: {required}"
             )
         return False, None
 
@@ -182,10 +183,13 @@ def _evaluate_pattern(query: str, active_step: Optional[Dict[str, Any]],
         if tr.get("required_pattern") and _matches(tr["required_pattern"], query):
             return True, tr["id"]
     if transitions and is_mutation:
-        choices = ", ".join(f"'{t['id']}': {t['description']}" for t in transitions)
+        choices = "; ".join(
+            f"'{t['id']}' ({t.get('description', 'no description')}) → Cypher must match regex: {t['required_pattern']}"
+            for t in transitions if t.get("required_pattern")
+        )
         raise PermissionError(
             f"Database Writes Locked: Active Traversal Step '{active_step['id']}' "
-            f"is a decision point. Choices: {choices}"
+            f"is a decision point. Choose one by emitting Cypher that matches its regex: {choices}"
         )
     if is_mutation:
         raise PermissionError(
