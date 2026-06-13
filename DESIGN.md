@@ -316,6 +316,8 @@ The base, always-present execution unit — the central lifecycle loop the Ident
 ### B. State Machines
 Equipped traversal flows: a line/graph of gated `:TraversalStep`s (`HAS_STEP` / `NEXT_STEP`), each step's `required_pattern` judging the Cybernet's Cypher. The quests, rites, and procedures of the world are State Machines.
 
+> **STEP LAW (NON-NEGOTIABLE): every SM step's gated action is a cypher query produced from a TEMPLATE.** A step defines the *exact expected cypher* — a template with parameter slots — and the action is deterministic: fill the template, submit, the gate verifies it is *exactly* that query. `required_pattern` must **encode the template's exact form**, never a loose substring. A pattern like `(?i)ticked` that any cypher merely *containing* `ticked` satisfies is WRONG; the pattern must pin the full structure (cf. `jester_boot`: `(?i)CREATE\s*\(c:Cybernet\s*\{\s*name:\s*['"]JesterCoreOne['"].*\}\)`). **ASPIRATIONAL:** each `:TraversalStep` carries an explicit `template` property (the canonical cypher with `{slots}`), rendered into the step's instruction text and the gate's 403 so the animator emits exactly the expected query; `required_pattern` is then the compiled check of that template.
+
 ### C. Compilers — higher-order State Machines
 A **Compiler is a State Machine that orchestrates and calls other State Machines** (via `:CALLS_SM`, pushing/popping the `call_stack`). Compilers compose Cores and State Machines into larger Acts. (The Execution Engine that *runs* a stack of these is described in §7.)
 
