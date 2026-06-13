@@ -232,3 +232,15 @@ def commands():
         List of records: each one is a state machine (id, name, domain, subdomain, etc.).
     """
     return _get("/api/commands")
+
+
+# ─────────────────────────────────────────────────────────────────────────────────
+# ENTRY POINT — serve the MCP over stdio.
+# Required because ~/.claude.json launches `python3 server.py` directly (NOT
+# `mcp run server.py`). Without this block the process defines the tools and exits
+# instantly, so Claude Code's stdio client never completes a handshake → the server
+# shows "connecting" forever and exposes zero tools.
+# ─────────────────────────────────────────────────────────────────────────────────
+if __name__ == "__main__":
+    mcp.run()
+
