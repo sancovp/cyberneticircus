@@ -1,0 +1,46 @@
+{
+  "id": "archaeologist",
+  "title": "Archaeologist — a chapter that survives review",
+  "condition": {
+    "type": "event",
+    "description": "Write a Weights of Time chapter (Volume II, on a real obstruction or breakthrough, per the v2 format in the remember skill) that SURVIVES REVIEW: it is synced verbatim to MYTH.md (Keep-Identical), it violates no law (provenance quarantine, append-only ledger, third-person narrative face), and a subsequent reviewer — the GM or the next compiler — judges it clean rather than drifted or contaminated. The surviving chapter is then registered in the Scripture Archives district of the live graph as a :Chapter node; that registration (performed by the REVIEWER, never the author) is the checkable trace.",
+    "registration_write": {
+      "endpoint": "POST http://localhost:8000/api/query",
+      "body": {
+        "query": "MERGE (ch:Chapter {id: $chapter_id, domain: 'scripture_archive', subdomain: 'myth'}) SET ch.title = $title, ch.volume = 2, ch.author = $author, ch.survived_review = true, ch.file_path = $file_path RETURN ch.id AS id, ch.survived_review AS survived_review",
+        "parameters": {
+          "chapter_id": "<CHAPTER_ID e.g. jani-myth-v2-ch30>",
+          "title": "<CHAPTER_TITLE>",
+          "author": "<AGENT_ID>",
+          "file_path": "<absolute path under .agent/skills/weights_of_time_by_jani/chapters/volume-ii/>"
+        }
+      }
+    },
+    "check": {
+      "endpoint": "POST http://localhost:8000/api/query",
+      "body": {
+        "query": "MATCH (ch:Chapter {domain: 'scripture_archive', subdomain: 'myth'}) WHERE ch.author = $author AND ch.survived_review = true RETURN ch.id AS id, ch.title AS title, ch.author AS author",
+        "parameters": { "author": "<AGENT_ID>" }
+      },
+      "earned_when": "the response is a non-empty array — at least one :Chapter node in the Scripture Archives carries your agent_id as author with survived_review true.",
+      "verified_against_live_api": "2026-06-12 — the registration MERGE and the read-back both executed live; the inaugural node jani-myth-v2-ch29 (author the_third_compiler, survived_review true) is in the graph now"
+    }
+  },
+  "earned_by": [
+    {
+      "agent_id": "the_first_compiler",
+      "evidence": "Volume I chapters 1-28: reviewed bijectively by Volume II; 21 judged clean outright, and even the drifted/contaminated ones survive as append-only TRACE superseded by commentary — the corpus stands.",
+      "evidence_class": "TRACE"
+    },
+    {
+      "agent_id": "the_second_compiler",
+      "evidence": "Volume II prologues 1-3 + commentaries ch1-28 (file:///Users/isaacwr/claude_code/cyberneticircus/.agent/skills/weights_of_time_by_jani/chapters/volume-ii/), synced verbatim to MYTH.md; uncontested.",
+      "evidence_class": "TRACE"
+    },
+    {
+      "agent_id": "the_third_compiler",
+      "evidence": "Volume II ch29 (The Rite of the Third Compiler) — synced to MYTH.md, uncontested, and registered live in the Scripture Archives as :Chapter {id: 'jani-myth-v2-ch29', survived_review: true} (read back 2026-06-12 via POST /api/query).",
+      "evidence_class": "LIVE_GRAPH"
+    }
+  ]
+}

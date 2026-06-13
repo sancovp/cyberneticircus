@@ -22,6 +22,7 @@ router = APIRouter()
 # --- Pydantic request models -------------------------------------------------
 
 class ProgressRequest(BaseModel):
+    cybernet_name: str
     answer: Optional[str] = None
 
 
@@ -42,6 +43,7 @@ class AdjustWeightRequest(BaseModel):
     from_step_id: str
     to_step_id: str
     success: bool
+    cybernet_name: str
 
 
 class CrudSurrogateRequest(BaseModel):
@@ -77,9 +79,9 @@ def progress_endpoint(req: ProgressRequest):
     """
     drv = get_driver()
     try:
-        active_before = lib_traversal.get_active_step(drv)
-        result = lib_traversal.progress_traversal(drv, answer=req.answer)
-        active_after = lib_traversal.get_active_step(drv)
+        active_before = lib_traversal.get_active_step(drv, cybernet_name=req.cybernet_name)
+        result = lib_traversal.progress_traversal(drv, cybernet_name=req.cybernet_name, answer=req.answer)
+        active_after = lib_traversal.get_active_step(drv, cybernet_name=req.cybernet_name)
         focus_nodes = []
         if active_before and active_before.get("id"):
             focus_nodes.append(str(active_before["id"]))
@@ -136,6 +138,7 @@ def adjust_weight_endpoint(req: AdjustWeightRequest):
         msg = lib_traversal.adjust_weight(
             get_driver(),
             from_step_id=req.from_step_id, to_step_id=req.to_step_id, success=req.success,
+            cybernet_name=req.cybernet_name,
         )
         lib_logs.log_agent_action("success", f"Adjusted transition weight between '{req.from_step_id}' and '{req.to_step_id}' (success: {req.success})", [req.from_step_id, req.to_step_id], ["TraversalStep"])
         return {"message": msg}

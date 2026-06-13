@@ -17,6 +17,7 @@ router = APIRouter()
 
 class QueryRequest(BaseModel):
     query: str
+    cybernet_name: Optional[str] = None
     parameters: Optional[Dict[str, Any]] = None
 
 
@@ -38,7 +39,7 @@ def query_endpoint(req: QueryRequest):
         pass
 
     validate_cypher_query(req.query)
-    res = query_database(req.query, req.parameters)
+    res = query_database(req.query, req.cybernet_name, req.parameters)
     focus_nodes, focus_labels = _scan_for_focus(res)
     lib_logs.log_agent_action("action", f"Executed query: {req.query}", focus_nodes, focus_labels)
     return res

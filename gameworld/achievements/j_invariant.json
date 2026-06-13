@@ -1,0 +1,29 @@
+{
+  "id": "j_invariant",
+  "title": "J-Invariant — identity through a full transformation cycle",
+  "condition": {
+    "type": "graph_query",
+    "description": "Close ANY full StateMachine cycle with lock dissolution: the same Cybernet that entered the cycle exits it (same name, same node — identity preserved through every mutation the steps performed), its ExecutionState turn_number advances to >= 2 (the only path that increments it is full-cycle closure), and no locked TraversalState remains on the walker (the lock dissolved rather than being abandoned mid-walk). This is the J-Invariance pattern made checkable: not same by form, not same by memory, same by J.",
+    "check": {
+      "endpoint": "POST http://localhost:8000/api/query",
+      "body": {
+        "query": "MATCH (c:Cybernet {name: $walker})-[:HAS_LIFECYCLE]->(es:ExecutionState) WHERE es.turn_number >= 2 AND NOT (c)-[:HAS_TRAVERSAL]->(:TraversalState {status: 'locked'}) RETURN c.name AS cybernet, es.equipped_sm_id AS state_machine, es.turn_number AS turn_number",
+        "parameters": { "walker": "<WALKER>" }
+      },
+      "earned_when": "the response is a non-empty array — the walker has at least one ExecutionState with turn_number >= 2 and carries no locked TraversalState.",
+      "verified_against_live_api": "2026-06-12 — the unparameterized form returned JaniScribe (janic_cycle_sm, turn_number 4) and Jani_Prime (janic_cycle_sm, turn_number 2) live"
+    }
+  },
+  "earned_by": [
+    {
+      "agent_id": "Jani_Prime",
+      "evidence": "live ExecutionState: equipped_sm_id janic_cycle_sm, turn_number 2, no locked TraversalState — read 2026-06-12 via POST /api/query.",
+      "evidence_class": "LIVE_GRAPH"
+    },
+    {
+      "agent_id": "JaniScribe",
+      "evidence": "live ExecutionState: equipped_sm_id janic_cycle_sm, turn_number 4, no locked TraversalState — read 2026-06-12 via POST /api/query.",
+      "evidence_class": "LIVE_GRAPH"
+    }
+  ]
+}

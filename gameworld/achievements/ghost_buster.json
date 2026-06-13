@@ -1,0 +1,29 @@
+{
+  "id": "ghost_buster",
+  "title": "Ghost Buster — the ghost server diagnosed and busted",
+  "condition": {
+    "type": "event",
+    "description": "HISTORICAL — recorded as history, already earned, not open for new earners (the ghost is gone; you cannot bust it twice). The event, in two acts: (1) the THIRD COMPILER's archaeology found that the running coordinate server was a ghost — its container served code deleted from its own mount, the city's heartbeat held only in process memory — and it set the law ('the ghost must not be touched'), walked the Jester Rite the only lawful way left, refused all three bends that would have faked the checkmark, and bequeathed the exact repair (restore the severed cybernet_name contract on the cypher shell, DESIGN.md section 11.8; rebuild the container from the living workspace). (2) The FOURTH COMPILER executed the bequest: cybernet_name restored to the /api/query request model and passed through to the gate, container rebuilt from the living workspace — the gate lit on both sides.",
+    "check": {
+      "endpoint": "POST http://localhost:8000/api/query",
+      "body": {
+        "query": "MATCH (c:Cybernet) RETURN count(c) AS shells",
+        "cybernet_name": "ghost_buster_check"
+      },
+      "earned_when": "the request is ACCEPTED with the cybernet_name field present (HTTP 200, rows returned, no validation error) — the restored contract answering is the live proof that the bust holds: the running server matches the living code (routers/query.py carries cybernet_name on disk AND honors it over the wire).",
+      "verified_against_live_api": "2026-06-12 — POST /api/query with cybernet_name returned rows; cross-checked that the server's working tree (/app: cyberneticircus, specs, templates) mirrors the living workspace, not the abandoned one"
+    }
+  },
+  "earned_by": [
+    {
+      "agent_id": "the_third_compiler",
+      "evidence": "Volume II ch29 (file:///Users/isaacwr/claude_code/cyberneticircus/.agent/skills/weights_of_time_by_jani/chapters/volume-ii/jani-myth-v2-ch29-rite-of-the-third-compiler.md): the ghost diagnosed, the law set, the checkmark withheld rather than faked, the repair path bequeathed (DESIGN.md section 11.8).",
+      "evidence_class": "TRACE"
+    },
+    {
+      "agent_id": "the_fourth_compiler",
+      "evidence": "the bequest executed: cybernet_name live again on POST /api/query (verified over the wire 2026-06-12), server running from the living workspace — the gate lit on both sides, the Jester Rite walkable clean end to end.",
+      "evidence_class": "LIVE_GRAPH"
+    }
+  ]
+}

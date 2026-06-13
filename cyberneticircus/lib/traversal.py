@@ -29,19 +29,20 @@ def get_schema(driver) -> Dict[str, Any]:
 
 # --- Progress (advance :ExecutionState) -------------------------------------
 
-def progress_traversal(driver, *, answer: Optional[str] = None) -> Dict[str, Any]:
-    """Advance the active :ExecutionState (read current step → evaluate → move NEXT_STEP).
+def progress_traversal(driver, *, cybernet_name: str, answer: Optional[str] = None) -> Dict[str, Any]:
+    """Advance the given Cybernet's :ExecutionState (read current step → evaluate → move NEXT_STEP).
 
-    Thin facade over the LLM-loop gate in db_logic/gates.
+    Thin facade over the LLM-loop gate in db_logic/gates. Per-cybernet scope:
+    the cybernet_name contract matches db_logic.progress_traversal and the MCP tool.
     """
     from db_logic import progress_traversal as _impl
-    return {"message": _impl(answer)}
+    return {"message": _impl(cybernet_name, answer)}
 
 
-def get_active_step(driver) -> Optional[Dict[str, Any]]:
-    """Read the currently-locked TraversalStep (per-cybernet)."""
+def get_active_step(driver, *, cybernet_name: str) -> Optional[Dict[str, Any]]:
+    """Read the currently-locked TraversalStep for THIS cybernet (per-cybernet scope)."""
     from db_logic import get_active_traversal_step
-    return get_active_traversal_step()
+    return get_active_traversal_step(cybernet_name)
 
 
 # --- Create flow (multiple TraversalSteps + NEXT_STEP chain) ----------------
@@ -131,10 +132,11 @@ def create_transition(driver, *, from_step_id: str, to_step_id: str,
 
 # --- Adjust weight (success/fail nudge) -------------------------------------
 
-def adjust_weight(driver, *, from_step_id: str, to_step_id: str, success: bool) -> str:
+def adjust_weight(driver, *, from_step_id: str, to_step_id: str, success: bool,
+                  cybernet_name: str) -> str:
     """Thin facade over db_logic's adjust_transition_weight_internal."""
     from db_logic import adjust_transition_weight_internal
-    return adjust_transition_weight_internal(from_step_id, to_step_id, success)
+    return adjust_transition_weight_internal(from_step_id, to_step_id, success, cybernet_name)
 
 
 # --- CRUD: state machine calls (CALLS_SM edges) ------------------------------
@@ -297,7 +299,8 @@ def _simulate_traversal(driver, *, domain: str, subdomain: str,
             "expected_fitness": total_fitness, "outcome_class": outcome_class}
 
 
-def _calibrate_simulation(driver, *, run_id: str, actual_diff: Dict[str, Any]) -> Dict[str, Any]:
+def _calibrate_simulation(driver, *, run_id: str, actual_diff: Dict[str, Any],
+                          cybernet_name: str) -> Dict[str, Any]:
     """Score a SimulationRun by matching its expected_diffs against actual_diff, then
     nudge each step's transition weight (success on ≥80% match, fail otherwise)."""
     with driver.session() as session:
@@ -322,7 +325,8 @@ def _calibrate_simulation(driver, *, run_id: str, actual_diff: Dict[str, Any]) -
         adjustments = []
         for i in range(len(steps_data) - 1):
             from_id, to_id = steps_data[i]["step_id"], steps_data[i + 1]["step_id"]
-            adjustments.append(adjust_weight(driver, from_step_id=from_id, to_step_id=to_id, success=success_run))
+            adjustments.append(adjust_weight(driver, from_step_id=from_id, to_step_id=to_id,
+                                             success=success_run, cybernet_name=cybernet_name))
         session.run(
             """MATCH (sim:SimulationRun {run_id: $run_id})
             SET sim.actual_diff = $actual_diff, sim.accuracy = $accuracy, sim.calibrated = true""",
@@ -362,7 +366,9 @@ def crud_surrogate(driver, *, action: str, parameters: Optional[Dict[str, Any]] 
     if action == "calibrate":
         run_id = params.get("run_id")
         actual_diff = params.get("actual_diff")
-        if not run_id or actual_diff is None:
-            raise ValueError("run_id and actual_diff required")
-        return _calibrate_simulation(driver, run_id=run_id, actual_diff=actual_diff)
+        cybernet_name = params.get("cybernet_name")
+        if not run_id or actual_diff is None or not cybernet_name:
+            raise ValueError("run_id, actual_diff, and cybernet_name required")
+        return _calibrate_simulation(driver, run_id=run_id, actual_diff=actual_diff,
+                                     cybernet_name=cybernet_name)
     raise ValueError(f"unknown action: '{action}'")

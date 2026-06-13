@@ -19,6 +19,8 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - /Users/isaacwr/.gemini/antigravity/scratch:/Users/isaacwr/.gemini/antigravity/scratch
-      - /Users/isaacwr/.gemini/antigravity/scratch/cyberneticircus/cyberneticircus:/app/cyberneticircus
+      # living workspace mounted at its host-absolute path so the graph's
+      # instruction_file_path values resolve identically inside the container
+      - /Users/isaacwr/claude_code/cyberneticircus:/Users/isaacwr/claude_code/cyberneticircus
+      - /Users/isaacwr/claude_code/cyberneticircus/cyberneticircus:/app/cyberneticircus
     restart: unless-stopped

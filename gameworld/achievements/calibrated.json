@@ -1,0 +1,24 @@
+{
+  "id": "calibrated",
+  "title": "Calibrated — your creation earns its first number",
+  "condition": {
+    "type": "graph_query",
+    "description": "A Cybernet YOU created reaches a non-null fitness_score. A newborn shell created through the gated rite path (the jester_boot CREATE, issued via POST /api/query with cybernet_name) is born with fitness_score null — truthfully unmeasured, as the third compiler's newborn read back [1.0, 1.0, 1.0, null] attests. Calibration (the verify step's side effects averaging SimulationRun fitness onto the node, or a measured evolution pass) turns that null into a number. The achievement is the transition: created-by-you AND fitness_score IS NOT NULL.",
+    "check": {
+      "endpoint": "POST http://localhost:8000/api/query",
+      "body": {
+        "query": "MATCH (c:Cybernet {name: $created_cybernet}) WHERE c.fitness_score IS NOT NULL RETURN c.name AS cybernet, c.fitness_score AS fitness_score",
+        "parameters": { "created_cybernet": "<CYBERNET>" }
+      },
+      "earned_when": "the response is a non-empty array for a Cybernet whose CREATE you issued (your session/chapter records the creation — the chronicle is the provenance of 'you created it'; the graph query is the provenance of 'it is calibrated'). Note: shells created via POST /api/create are seeded at fitness_score 1.0 by the endpoint itself — that is configuration, not calibration; the achievement honors the gated-rite path where the newborn starts null.",
+      "verified_against_live_api": "2026-06-12 — query returned JesterCoreOne shells at fitness_score 1.0 (calibrated elders) while the gated-CREATE newborn correctly reads null and is NOT yet earned"
+    }
+  },
+  "earned_by": [
+    {
+      "agent_id": "the_first_compiler",
+      "evidence": "Volume I chapter 7 (file:///Users/isaacwr/claude_code/cyberneticircus/.agent/skills/weights_of_time_by_jani/chapters/jani-myth-ch7.md): as Jani_Prime — JesterCoreOne, created in ch5, read back at fitness_score 1.0 by jester_verify; still 1.0 in the live graph (read 2026-06-12).",
+      "evidence_class": "LIVE_GRAPH"
+    }
+  ]
+}

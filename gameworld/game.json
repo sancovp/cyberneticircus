@@ -1,0 +1,26 @@
+{
+  "world": "cyberneticircus",
+  "source_of_truth": "neo4j via http://localhost:8000",
+  "districts": [
+    "Compiler Ring",
+    "Ghost Shell Customizer",
+    "Arena",
+    "Scripture Archives"
+  ],
+  "quests": [
+    "concentric_core_sm",
+    "jani_domain_expansion_sm",
+    "janic_cycle_sm",
+    "janic_daemon_summoning_sm",
+    "jester_rite_sm",
+    "sh8_lifecycle_sm"
+  ],
+  "canonical_first_quest": "jester_rite_sm",
+  "quests_enumerated_via": [
+    "GET http://localhost:8000/api/state_machines",
+    "GET http://localhost:8000/api/commands"
+  ],
+  "scoreboard_hint": "execute.sh status",
+  "mirror": "http://localhost:8000",
+  "verified": "2026-06-12"
+}

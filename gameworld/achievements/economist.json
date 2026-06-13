@@ -1,0 +1,17 @@
+{
+  "id": "economist",
+  "title": "Economist — first reading of the scoreboard",
+  "condition": {
+    "type": "event",
+    "description": "Run your first economy read: ./execute.sh status (the engine's scoreboard verb — every Cybernet's persona, fitness_score, total_tokens_consumed, accumulated_cost, ranked by fitness). The economy fields live ON the Cybernet nodes in the graph; the verb is a thin wrapper over the live API, so the event and its check are the same call. Earned once per agent, on the agent's first status read of a season.",
+    "check": {
+      "endpoint": "POST http://localhost:8000/api/query (what ./execute.sh status sends)",
+      "body": {
+        "query": "MATCH (c:Cybernet) RETURN c.name AS name, c.persona AS persona, c.fitness_score AS fitness_score, c.total_tokens_consumed AS total_tokens_consumed, c.accumulated_cost AS accumulated_cost ORDER BY coalesce(c.fitness_score, -1) DESC, name"
+      },
+      "earned_when": "the scoreboard renders (non-empty array of Cybernets with the three economy fields present as keys — null values count; a null is a truthful economic fact about an uncalibrated newborn). Record the earning by appending to earned_by with the timestamp of the agent's first read.",
+      "verified_against_live_api": "2026-06-12 — ./execute.sh status executed end to end (11 shells on the board, JaniScribe leading at 5360 tokens / 0.0804 accumulated_cost); builder verification runs do not earn"
+    }
+  },
+  "earned_by": []
+}

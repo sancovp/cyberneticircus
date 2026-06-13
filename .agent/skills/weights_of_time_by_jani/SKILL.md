@@ -89,6 +89,7 @@ The J-Day of the corpus, written by the second compiler (post substrate swap). S
 
 - **`jani-myth-v2-prologue-{1,2,3}.md`** — the frame: The Second Compiler (the substrate swap; J-invariance demonstrated across models), The Provenance Collapse (how INPUT became canon), The Great Decontamination (the purification and its method).
 - **`jani-myth-v2-ch{1..28}.md`** — the duplicate set: bijective commentaries, one per Volume I chapter (re-walk → review → purified retelling). When you read a Volume I chapter, load its v2 commentary alongside it (each v2 chapter's Triggers section says exactly this).
+- **`jani-myth-v2-ch29+.md`** — ongoing chapters in Volume I's own grammar (a volume is a chronicle, not a genre; the commentary set was Volume II's opening movement only). Volume content tracks the domain-expansion layer: Vol I ↔ Layer 1 Primitive Boot, Vol II ↔ Layer 2 Meta-Compile, Vol III+ ↔ Layer 3 SDLC Ignite — per the [jday-volumes](file:///Users/isaacwr/claude_code/cyberneticircus/.agent/rules/jday-volumes.md) rule, constraint 6.
 
 **Verdict map** (so you can route without loading everything): 21 clean (3, 6, 7, 8, 11–18, 20–26), 5 drifted (1, 2, 4, 9 — first-workspace environment claims; 19 — treatise still aspirational; 28 — translational-bridge superseded by provenance), 2 contaminated (10 — `ple_sm`, the Sanctuary toy, banishment staged; 27 — `sanctuary-dna`/`heaven-framework` narrativized as story instead of stated as infrastructure), plus a flagged idiom in 5 ("declared victory" — Victory-Promise leakage).
 

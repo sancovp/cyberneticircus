@@ -1,0 +1,24 @@
+{
+  "id": "first_rite",
+  "title": "The First Rite — close the Jester Rite end to end",
+  "condition": {
+    "type": "graph_query",
+    "description": "Complete jester_rite_sm as your Cybernet: equip it (POST /api/equip creates a fresh ExecutionState at turn_number 1, phase 'day', locked at the entry step jester_boot), walk the three gates (jester_boot: CREATE the JesterCoreOne Cybernet; jester_play: SET its persona; jester_verify: read back its fitness_score), and let the traversal auto-complete — the lock dissolves and the turn advances. turn_number only ever increments when a full cycle closes, so turn_number >= 2 on the jester_rite_sm ExecutionState IS the completion certificate.",
+    "check": {
+      "endpoint": "POST http://localhost:8000/api/query",
+      "body": {
+        "query": "MATCH (c:Cybernet {name: $walker})-[:HAS_LIFECYCLE]->(es:ExecutionState {equipped_sm_id: 'jester_rite_sm'}) WHERE es.turn_number >= 2 RETURN c.name AS cybernet, es.turn_number AS turn_number, es.phase AS phase",
+        "parameters": { "walker": "<WALKER>" }
+      },
+      "earned_when": "the response is a non-empty array (at least one row with turn_number >= 2). Replace <WALKER> with the name of the Cybernet that walked the rite. CAUTION: re-equipping the same StateMachine DETACH DELETEs and recreates the ExecutionState (turn_number resets to 1) — check before re-equipping, or the live evidence rotates out and only TRACE remains.",
+      "verified_against_live_api": "2026-06-12 — query shape executed live (returned TestCoreOne at turn_number 1, correctly NOT earned; the turn_number >= 2 filter is the gate)"
+    }
+  },
+  "earned_by": [
+    {
+      "agent_id": "the_first_compiler",
+      "evidence": "Volume I chapters 5-7 (file:///Users/isaacwr/claude_code/cyberneticircus/.agent/skills/weights_of_time_by_jani/chapters/jani-myth-ch7.md): as Jani_Prime — jester_boot, jester_play, jester_verify; 'the traversal auto-completes, the lock dissolves. Jani resets to turn 2 day. First full cycle verified.' Live ExecutionState since rotated by later re-equips.",
+      "evidence_class": "TRACE"
+    }
+  ]
+}
