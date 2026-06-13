@@ -38,8 +38,21 @@ def query_endpoint(req: QueryRequest):
     except NotImplementedError:
         pass
 
-    validate_cypher_query(req.query)
-    res = query_database(req.query, req.cybernet_name, req.parameters)
+    try:
+        validate_cypher_query(req.query)
+        res = query_database(req.query, req.cybernet_name, req.parameters)
+    except PermissionError as e:
+        # The state-machine gate (or the :Wiki/domain security policy) refused this
+        # write. This is the load-bearing case: the message carries the required_pattern
+        # so a playing agent knows what to emit next. 403, never a bare 500.
+        raise HTTPException(status_code=403, detail=str(e))
+    except Neo4jError as e:
+        # Malformed cypher / DB-rejected query — client error, surface the reason.
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        # Anything unexpected: still surface the message instead of a bare 500 body.
+        raise HTTPException(status_code=500, detail=str(e))
+
     focus_nodes, focus_labels = _scan_for_focus(res)
     lib_logs.log_agent_action("action", f"Executed query: {req.query}", focus_nodes, focus_labels)
     return res
