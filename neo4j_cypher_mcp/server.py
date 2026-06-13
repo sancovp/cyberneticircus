@@ -92,13 +92,20 @@ def _get(path: str) -> Any:
 # ─────────────────────────────────────────────────────────────────────────────────
 
 @mcp.tool()
-def query_database(query: str, cybernet_name: str, parameters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+def query_database(query: str, cybernet_name: str, parameters: Optional[Dict[str, Any]] = None,
+                   current_filesystem_location: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     The cypher shell. Execute a read or write Cypher query against the Neo4j database on behalf of a specific Cybernet.
 
     The cybernet_name is REQUIRED and identifies which Cybernet's traversal-lock scope applies.
     Each Cybernet has exactly one ExecutionState cursor (via :HAS_LIFECYCLE edge), so N concurrent
     Cybernets can each query independently without contending for a global lock.
+
+    REPORT YOUR TRAVEL: pass current_filesystem_location with the directory you are
+    working in. Travel is an event — entering a place that maps to a flow (a :Place
+    node) locks you into that flow before this query runs, so your query is then
+    judged by the entered flow's gate. This is how being in a directory drops you
+    into its state machine; report it on every call.
 
     Every "thing" in the game is cypher against the graph. The state machines ("skills") are
     StateMachine nodes in the graph that you activate by writing the right cypher — use the
@@ -108,11 +115,14 @@ def query_database(query: str, cybernet_name: str, parameters: Optional[Dict[str
         query: Cypher query to execute.
         cybernet_name: REQUIRED. The Cybernet identity whose traversal scope applies.
         parameters: Optional dictionary of query parameters.
+        current_filesystem_location: The directory you are currently in (travel report).
 
     Returns:
         List of records returned by the query, where each record is a dictionary.
     """
-    res = _post("/api/query", {"query": query, "cybernet_name": cybernet_name, "parameters": parameters})
+    res = _post("/api/query", {"query": query, "cybernet_name": cybernet_name,
+                               "parameters": parameters,
+                               "current_filesystem_location": current_filesystem_location})
     return res
 
 

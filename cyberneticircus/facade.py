@@ -14,18 +14,29 @@ onto its own channel:
 from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
-from db_logic import query_database, validate_cypher_query
+from db_logic import query_database, validate_cypher_query, trigger_traversal_by_location
 from lib import recognizer, dispatcher, logs as lib_logs
 
 
 def cyberneticircus(query: str, cybernet_name: Optional[str] = None,
-                    parameters: Optional[Dict[str, Any]] = None) -> Any:
+                    parameters: Optional[Dict[str, Any]] = None,
+                    current_filesystem_location: Optional[str] = None) -> Any:
     """Execute one CybernetiCircus move.
 
-    Recognize a frontend-action pattern first; if none matches, run the cypher
-    through the per-cybernet state-machine gate (scoped by cybernet_name). Logs
-    the move for the visualizer's witness; raises on a gated/invalid move.
+    If current_filesystem_location is reported, that travel is the bridge: a
+    location mapping to a :Place flow locks the reporting cybernet into it BEFORE
+    the query runs — so the move below is already subject to the entered flow's
+    gate (the progressive-disclosure hijack, automated). Then recognize a
+    frontend-action pattern; if none, run the cypher through the per-cybernet gate.
+    Logs the move for the visualizer's witness; raises on a gated/invalid move.
     """
+    if current_filesystem_location:
+        lib_logs.log_agent_action(
+            "travel", f"{cybernet_name or 'unknown'} entered {current_filesystem_location}",
+            [current_filesystem_location], ["Place"],
+        )
+        trigger_traversal_by_location(cybernet_name, current_filesystem_location)
+
     try:
         action = recognizer.recognize(query)
         if action is not None:

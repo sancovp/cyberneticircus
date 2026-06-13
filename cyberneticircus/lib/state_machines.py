@@ -91,6 +91,15 @@ def dissolve_state_cypher() -> str:
     """
 
 
+def find_place_trigger_cypher() -> str:
+    """Map a reported filesystem location to its flow: the :Place node keyed by
+    filesystem_location carries the trigger_traversal step to lock into. This is
+    the dir↔graph bijection — entering a place IS retrieving its flow."""
+    return ("MATCH (p:Place {filesystem_location: $location}) "
+            "WHERE p.trigger_traversal IS NOT NULL "
+            "RETURN p.trigger_traversal AS step_id, p.name AS place LIMIT 1")
+
+
 def count_locked_states_cypher() -> str:
     """Count THIS cybernet's locked ExecutionStates (used by scan_and_trigger_traversal).
 

@@ -19,13 +19,15 @@ class QueryRequest(BaseModel):
     query: str
     cybernet_name: Optional[str] = None
     parameters: Optional[Dict[str, Any]] = None
+    current_filesystem_location: Optional[str] = None
 
 
 @router.post("/query")
 def query_endpoint(req: QueryRequest):
     """Delegate to the play-facade; map its domain errors to HTTP."""
     try:
-        return cyberneticircus(req.query, req.cybernet_name, req.parameters)
+        return cyberneticircus(req.query, req.cybernet_name, req.parameters,
+                               req.current_filesystem_location)
     except PermissionError as e:
         # Gate refusal or :Wiki/domain security policy. The message carries the
         # required regex so a playing agent knows what cypher to emit. 403, never 500.

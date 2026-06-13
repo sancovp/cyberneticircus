@@ -69,7 +69,7 @@ def validate_cypher_query(query: str) -> None:
             'cybernet', 'identity', 'execution_state', 'state_machine',
             'traversal', 'traversal_state', 'simulation', 'mindpalace',
             'page', 'block', 'task_list', 'task', 'skill',
-            'finding',
+            'finding', 'place',
         }
         if subdomain not in allowed:
             raise PermissionError(
@@ -219,6 +219,38 @@ def scan_and_trigger_traversal(results: List[Dict[str, Any]], cybernet_name: Opt
                         step_id=step_id, tid=target_id, tl=target_label)
     except Exception as e:
         logger.error(f"Failed to auto-trigger traversal: {e}")
+
+
+def trigger_traversal_by_location(cybernet_name: Optional[str], location: Optional[str],
+                                  get_driver: Callable, sm_cypher, logger) -> None:
+    """The progressive-disclosure bridge, automated: a reported filesystem location
+    maps (via a :Place node) to a flow, and entering that location locks the
+    reporting cybernet into the flow — same mechanism as scan_and_trigger, but the
+    trigger is WHERE you are, not what a query returned.
+
+    No-op unless: a location is reported, a cybernet is named to scope the lock,
+    the location maps to a :Place with a trigger_traversal, and that cybernet is
+    not already locked (don't interrupt a live flow)."""
+    if not location or not cybernet_name:
+        return
+    try:
+        with get_driver().session() as session:
+            place = session.run(sm_cypher.find_place_trigger_cypher(), location=location).single()
+            if not place:
+                return
+            step_id = place["step_id"]
+            if session.run(sm_cypher.count_locked_states_cypher(),
+                           cybernet_name=cybernet_name).single()["c"]:
+                return
+            if not session.run(sm_cypher.step_exists_cypher(), id=step_id).peek():
+                session.run(sm_cypher.create_placeholder_step_cypher(),
+                            id=step_id, text=f"Guided checklist starting at {step_id}.")
+            session.run(sm_cypher.lock_and_align_state_cypher(),
+                        cybernet_name=cybernet_name,
+                        step_id=step_id, tid=None, tl=None)
+            logger.info(f"Travel: {cybernet_name} entered {location} → locked into {step_id}")
+    except Exception as e:
+        logger.error(f"Failed to trigger traversal by location: {e}")
 
 
 # --- Schema + transition weight (public surface, impls in lib) --------------

@@ -32,6 +32,7 @@ from cyberneticircus.lib.gates import (
     run_cypher as _run_cypher,
     auto_progress_step as _auto_progress_step,
     scan_and_trigger_traversal as _scan_and_trigger_traversal,
+    trigger_traversal_by_location as _trigger_traversal_by_location,
     get_active_traversal_step as _get_active_traversal_step_impl,
     adjust_transition_weight_internal as _adjust_transition_weight_impl,
     get_schema as _get_schema_impl,
@@ -108,6 +109,11 @@ def scan_and_trigger_traversal(results: List[Dict[str, Any]],
                                cybernet_name: Optional[str] = None) -> None:
     """If a returned node carries trigger_traversal, lock THIS cybernet's ExecutionState for it."""
     return _scan_and_trigger_traversal(results, cybernet_name, get_driver, sm_cypher, logger)
+
+
+def trigger_traversal_by_location(cybernet_name: Optional[str], location: Optional[str]) -> None:
+    """If a reported filesystem location maps to a :Place flow, lock THIS cybernet into it."""
+    return _trigger_traversal_by_location(cybernet_name, location, get_driver, sm_cypher, logger)
 
 
 def serialize_value(value: Any) -> Any:
