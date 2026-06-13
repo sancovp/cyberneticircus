@@ -297,10 +297,10 @@ The Ghost is *who* the Identity is. Concretely, **the Ghost is an AIOS's system 
 
 The Ghost is the non-transferable thing that must be preserved through any Sh8peshift — **the Ghost is the J that J-Invariance conserves.**
 
-### B. The Shell — the Identity-specific subgraph (the Ghost, lifted into the graph)
-The Shell is *where* the Identity lives and what it can reach: the subgraph **locked to this Identity** — its private nodes, edges, `identity level knowledge`, and the **Gear it has equipped** (§6).
+### B. The Shell — the identity's whole graph-space, from the Cybernet's own POV
+The Shell is **the entire space of the graph related to this Identity, seen from the point of view of the Cybernet itself** — its subjective, POV-bounded subgraph: every node, edge, piece of `identity level knowledge`, and item of **Gear** (§6) that this being relates to and can reach. It is not an objective region of the graph; it is what *this* Cybernet sees as its world.
 
-Crucially, **the Shell is the Ghost lifted up into the graph.** A Ghost is normally filesystem text (an AIOS's system prompt + rules); the Shell is its **graph-native reflection** — the same persona content sculpted into nodes and edges. This is graph-as-coding-substrate applied to the persona: once the Ghost is a Shell, the identity can be *traversed, gated, and retrieved* as graph (retrieval-is-activation) instead of merely read as text — which is why the Gear hangs off the Shell. **Ghost (source) ↔ Shell (graph reflection) is a bijection.** To "access a Shell" is to enter that Identity's subgraph; the Shell is the container, the Gear resides in it.
+The **Ghost is lifted up into the Shell as its seed.** A Ghost is normally filesystem text (an AIOS's system prompt + rules); the Shell is its **graph-native reflection** — the persona content sculpted into nodes and edges — which the Shell then extends outward to the whole identity-related space. This is graph-as-coding-substrate applied to the persona: once the Ghost lives in the Shell, the identity can be *traversed, gated, and retrieved* as graph (retrieval-is-activation) instead of merely read as text — which is why the Gear hangs off the Shell. To "access a Shell" is to enter that Cybernet's subjective subgraph; the Shell is the container, the Gear resides in it.
 
 > **Vocabulary disambiguation:** "Shell" here (an Identity's subgraph) is distinct from the **Six Shells of J-Invariance** (§4), which are *perspective lenses* on the whole system. Same word, two senses — do not conflate (see §11.1).
 
@@ -346,7 +346,9 @@ The Neo4j database representation has been migrated from legacy terms (`MetaShif
 
 ### Nodes
 * `:Cybernet`: Represents a graph-being node in the Cyberneticity. Contains intrinsic stats (mutation rate, selection pressure, dream rank) and points to its prompt configurations.
-* `:Identity`: The manifest persona composite — **Ghost ⊕ Shell** (§5). NOT the runtime state (that is `:ExecutionState`). ASPIRATIONAL: Ghost and Shell are not yet separate node types — today an Identity is a single node and Gear is flattened to properties. Target: `(:Identity)-[:HAS_GHOST]->(:Ghost)`, `(:Identity)-[:HAS_SHELL]->(:Shell)`, with Gear nodes (`:Core`, `:StateMachine`, `:Compiler`) residing in the Shell.
+* `:Identity`: The manifest persona composite — **Ghost ⊕ Shell** (§5). NOT the runtime state (that is `:ExecutionState`). IMPLEMENTED (2026-06-13, `scripts/decompose_cybernets.py`): every Cybernet now carries `(c)-[:HAS_IDENTITY]->(:Identity)-[:HAS_GHOST]->(:Ghost {persona})` and `-[:HAS_SHELL]->(:Shell)`, the Shell `HOLDS` the Gear. 12/12 beings decomposed. (Still pending: classifying held SMs as `:Core` / `:Compiler`, and migrating the engine logic off the retained flat `description` / `EQUIPS` edges onto this structure.)
+* `:Ghost`: The persona, lifted out of the flat `Cybernet.description` into its own node (`persona` property). `domain:'cyberneticity', subdomain:'ghost'`.
+* `:Shell`: The Identity's graph-space anchor; `HOLDS` the equipped Gear. `subdomain:'shell'`.
 * `:StateMachine`: Standard state machine descriptor.
 * `:TraversalStep`: Individual step containing text and regex gating patterns.
 * `:ExecutionState`: Per-cybernet runtime state. Holds `equipped_sm_id`, `turn_number`, `phase` (day/night), `call_stack` (JSON-stringified list for CALLS_SM push/pop), `tokens_consumed_this_turn`, `cost_this_turn`, `current_layer`, `completed_layers`, plus `status` (locked/active). Linked to its current step via `(:ExecutionState)-[:CURRENT_STEP]->(:TraversalStep)`.
@@ -362,7 +364,7 @@ The Neo4j database representation has been migrated from legacy terms (`MetaShif
 * `(c:Cybernet)-[:HAS_IDENTITY]->(i:Identity)` — the being's persona composite (Ghost ⊕ Shell)
 * `(c:Cybernet)-[:HAS_LIFECYCLE]->(es:ExecutionState)` — the ONE per-cybernet runtime cursor (NOT Identity)
 * `(c:Cybernet)-[:EQUIPS]->(sm:StateMachine)` — Gear equipped into the Shell
-* ASPIRATIONAL (Gear/Identity not yet decomposed): `(:Identity)-[:HAS_GHOST]->(:Ghost)`, `(:Identity)-[:HAS_SHELL]->(:Shell)`, `(:Shell)-[:HOLDS]->(:Core|:StateMachine|:Compiler|:Skill)`. Daemon Summoning (`janic_daemon_summoning_sm`) is the MetaShifter act that constructs a new `:Cybernet` (Identity + Gear).
+* IMPLEMENTED (additive, `scripts/decompose_cybernets.py`): `(:Identity)-[:HAS_GHOST]->(:Ghost)`, `(:Identity)-[:HAS_SHELL]->(:Shell)`, `(:Shell)-[:HOLDS]->(:StateMachine|:Skill)`. The flat `EQUIPS`/`EQUIPS_SKILL` edges are retained (logic still reads them) — the Shell's `HOLDS` mirror them. ASPIRATIONAL still: `:Core` / `:Compiler` typing of held SMs, and the new-Cybernet **create flow** building this structure at birth (so Daemon Summoning — `janic_daemon_summoning_sm`, the MetaShifter act that constructs a new `:Cybernet` — produces a decomposed being directly instead of needing the backfill).
 * `(sm:StateMachine)-[:HAS_STEP]->(s:TraversalStep)`
 * `(s1:TraversalStep)-[:NEXT_STEP]->(s2:TraversalStep)`
 * `(s:TraversalStep)-[:CALLS_SM]->(child:StateMachine)`
