@@ -30,9 +30,15 @@ PATTERN='HAS_TRAVERSAL|TraversalState'
 
 # Find all references in .py and .md files.
 # Grep with absolute paths and strip the PROJECT_ROOT prefix to get a clean relative path.
+# Includes neo4j_cypher_mcp/server.py — the AGENT-FACING MCP tool surface (its
+# docstrings ARE the tool descriptions the LLM reads to decide what cypher to
+# write), which the earlier scope missed. The MCP test_*.py files still carry
+# stale `MATCH (s:TraversalState) DETACH DELETE s` resets (now silent no-ops);
+# those are knowingly deferred (need a test run to fix) and are NOT scanned here.
 ALL_REFS=$(grep -rEn "$PATTERN" \
   --include='*.py' --include='*.md' \
-  "$PROJECT_ROOT/cyberneticircus" "$PROJECT_ROOT/.claude" 2>/dev/null \
+  "$PROJECT_ROOT/cyberneticircus" "$PROJECT_ROOT/.claude" \
+  "$PROJECT_ROOT/neo4j_cypher_mcp/server.py" 2>/dev/null \
   | grep -v __pycache__ | grep -v '\.pyc' \
   | sed "s|^$PROJECT_ROOT/||" || true)
 

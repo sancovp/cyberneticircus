@@ -97,8 +97,8 @@ def query_database(query: str, cybernet_name: str, parameters: Optional[Dict[str
     The cypher shell. Execute a read or write Cypher query against the Neo4j database on behalf of a specific Cybernet.
 
     The cybernet_name is REQUIRED and identifies which Cybernet's traversal-lock scope applies.
-    TraversalStates only belong to Cybernets (via :HAS_TRAVERSAL edge), so N concurrent Cybernets
-    can each query independently without contending for a global lock.
+    Each Cybernet has exactly one ExecutionState cursor (via :HAS_LIFECYCLE edge), so N concurrent
+    Cybernets can each query independently without contending for a global lock.
 
     Every "thing" in the game is cypher against the graph. The state machines ("skills") are
     StateMachine nodes in the graph that you activate by writing the right cypher — use the
