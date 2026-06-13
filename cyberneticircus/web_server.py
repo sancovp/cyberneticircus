@@ -4,7 +4,7 @@ FastAPI shell for the cyberneticircus — per the APIRouter pattern.
 
 This file is the THIN OUTER FACADE. It does NOT contain business logic.
 It just: (1) creates the FastAPI app, (2) mounts static files, (3) includes
-the 9 per-domain routers, (4) serves the index.html, (5) starts uvicorn.
+the 10 per-domain routers, (4) serves the index.html, (5) starts uvicorn.
 
 The actual logic lives in cyberneticircus/routers/<domain>.py (1-line
 delegations) and cyberneticircus/lib/<domain>.py (compositions + atomics).
@@ -17,7 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 
 from db_logic import get_driver, populate_default_graphs
-from routers import query, commands, cybernet, traversal, graph, logs, mind_palace, specs, system
+from routers import query, commands, cybernet, traversal, graph, logs, mind_palace, specs, system, bounty
 
 
 logging.basicConfig(
@@ -37,7 +37,7 @@ app = FastAPI(title="CybernetiCircus Compiler API")
 # Mount static files
 app.mount("/static", StaticFiles(directory=os.path.join(current_dir, "static")), name="static")
 
-# Include the 9 per-domain routers (each is 1-line delegations to lib/)
+# Include the 10 per-domain routers (each is 1-line delegations to lib/)
 app.include_router(query.router,      prefix="/api",           tags=["query"])
 app.include_router(commands.router,   prefix="/api",           tags=["commands"])
 app.include_router(cybernet.router,   prefix="/api",           tags=["cybernet"])
@@ -47,6 +47,7 @@ app.include_router(logs.router,       prefix="/api",           tags=["logs"])
 app.include_router(mind_palace.router, prefix="/api",          tags=["mind_palace"])
 app.include_router(specs.router,      prefix="/api",           tags=["specs"])
 app.include_router(system.router,     prefix="/api",           tags=["system"])
+app.include_router(bounty.router,     prefix="/api",           tags=["bounty"])
 
 
 @app.get("/", response_class=HTMLResponse)
