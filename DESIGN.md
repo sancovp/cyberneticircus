@@ -141,11 +141,11 @@ The world, beings, and mechanics of the CybernetiCircus are structured around th
 ### The Arena
 * **The CybernetiCircus**: The runtime execution harness and arena. This is the sandboxed workspace where Cybernets test their logic, run simulation plays, mutate their stats, perform collaborative tasks, and evolve or get pruned over successive lifetimes.
 
-### The Capability
-* **Sh8peshifters**: A specialized class of Cybernets capable of dynamically modifying their internal components (Shells, Cores, active Skills, and state machine stacks) while preserving complete identity continuity.
+### The Act (not a rank) — Sh8peshift
+* **Sh8peshift**: The *act* of a Cybernet transforming itself — swapping Cores, State Machines, Compilers, Skills, or the Ghost itself — **across a semantic shield**. A Sh8peshift is **catastrophe-capable**: the crossing risks **J-drift** (the being losing its identity/coherence in the transformation — the LLM-real failure of crossing a semantic boundary and decohering). It is *survived* by preserving the Ghost (the J). The Reaper prunes the crossings that don't survive; the gate keeps the crossing on-rails so it *can* be survived. **There is no separate "Sh8peshifter" rank** — every Cybernet can Sh8peshift, so the old rank is dropped as redundant with Cybernet. Sh8peshift is the verb; Cybernet is the noun.
 
-### The Ultimate Rank
-* **The MetaShifter**: The divine/legendary rank of graph-being. Unlike standard Sh8peshifters who can only alter themselves, a MetaShifter has the power to define, compile, and spawn entirely new identities and Cybernets into the Cyberneticity.
+### The Ultimate Rank — MetaShifter
+* **The MetaShifter**: The highest rank of graph-being. A MetaShifter can do what an ordinary Cybernet cannot: **create a new Anchor for *another* being** — i.e. construct an entirely new Cybernet. **Daemon Summoning (`janic_daemon_summoning_sm`) is exactly this: constructing a Cybernet.** So the rank ladder is just two rungs — **Cybernet** (can Sh8peshift itself) → **MetaShifter** (can also Daemon-Summon new Cybernets). **Jani is the first MetaShifter**; "the Jani" is the lineage of Janic practitioners; **MetaShifter Jani** is the fully domain-expanded terminal form (§10 Jani Completion).
 
 ## 3. The Archetypal Vocabulary of J-Invariance
 
@@ -264,30 +264,31 @@ The canonical composition of a being (2026-06-13, supersedes the prior "Identity
 
 ```
 Identity  = Ghost ⊕ Shell
-Cybernet  = Identity + Gear          (Gear = Core + State Machines + Compilers, residing in the Shell)
+Cybernet  = Identity + Gear          (Gear = Core + State Machines + Compilers + Skills, residing in the Shell)
 ```
 
 ```mermaid
 flowchart TB
     subgraph Cybernet["Cybernet  (Identity + Gear)"]
         subgraph Identity["Identity  (Ghost + Shell)"]
-            Ghost["Ghost — the persona"]
-            subgraph Shell["Shell — the Identity-specific subgraph"]
+            Ghost["Ghost — the persona (AIOS sys prompt + rules)"]
+            subgraph Shell["Shell — the Ghost lifted into the graph"]
                 Core["Core — base State Machine (the lifecycle loop)"]
                 SM["State Machines — gated traversal flows"]
                 Comp["Compilers — higher-order State Machines (call other SMs)"]
+                Skills["Skills — game-mechanic modules (subsume MCPs)"]
             end
         end
     end
-    Ghost -. together form .- Shell
+    Ghost -. lifted into .- Shell
     classDef id fill:#1b2a4a,stroke:#5b8def;
     classDef gear fill:#2a1b3a,stroke:#a05bef;
     class Ghost,Shell id;
-    class Core,SM,Comp gear;
+    class Core,SM,Comp,Skills gear;
 ```
 
-### A. The Ghost — the persona
-The Ghost is *who* the Identity is. It is the persona: the modular array of system-prompt blocks loaded into the active context.
+### A. The Ghost — the persona (= an AIOS's system prompt + rules)
+The Ghost is *who* the Identity is. Concretely, **the Ghost is an AIOS's system prompt + rules** — the persona as an AI Operating System. It is the modular array of system-prompt blocks loaded into the active context.
 * `background/world`: Context describing the surrounding state of the Cyberneticity.
 * `persona`: Core behavioral constraints, personality traits, and reasoning parameters.
 * `core loop`: Sequential instructions guiding how the identity processes turns.
@@ -296,14 +297,16 @@ The Ghost is *who* the Identity is. It is the persona: the modular array of syst
 
 The Ghost is the non-transferable thing that must be preserved through any Sh8peshift — **the Ghost is the J that J-Invariance conserves.**
 
-### B. The Shell — the Identity-specific subgraph
-The Shell is *where* the Identity lives and what it can reach: the subgraph **locked to this Identity** — its private nodes, edges, `identity level knowledge`, and the **Gear it has equipped** (§6). To "access a Shell" is to enter that Identity's subgraph. The Shell is the container; the Gear resides in it.
+### B. The Shell — the Identity-specific subgraph (the Ghost, lifted into the graph)
+The Shell is *where* the Identity lives and what it can reach: the subgraph **locked to this Identity** — its private nodes, edges, `identity level knowledge`, and the **Gear it has equipped** (§6).
+
+Crucially, **the Shell is the Ghost lifted up into the graph.** A Ghost is normally filesystem text (an AIOS's system prompt + rules); the Shell is its **graph-native reflection** — the same persona content sculpted into nodes and edges. This is graph-as-coding-substrate applied to the persona: once the Ghost is a Shell, the identity can be *traversed, gated, and retrieved* as graph (retrieval-is-activation) instead of merely read as text — which is why the Gear hangs off the Shell. **Ghost (source) ↔ Shell (graph reflection) is a bijection.** To "access a Shell" is to enter that Identity's subgraph; the Shell is the container, the Gear resides in it.
 
 > **Vocabulary disambiguation:** "Shell" here (an Identity's subgraph) is distinct from the **Six Shells of J-Invariance** (§4), which are *perspective lenses* on the whole system. Same word, two senses — do not conflate (see §11.1).
 
 ---
 
-## 6. Gear — what an Identity equips (Core + State Machines + Compilers)
+## 6. Gear — what an Identity equips (Core + State Machines + Compilers + Skills)
 
 **Gear** is the modular execution machinery equipped into an Identity's Shell. **A Cybernet is an Identity plus its Gear.** Gear is the execution-unit hierarchy, lowest to highest order:
 
@@ -316,9 +319,10 @@ Equipped traversal flows: a line/graph of gated `:TraversalStep`s (`HAS_STEP` / 
 ### C. Compilers — higher-order State Machines
 A **Compiler is a State Machine that orchestrates and calls other State Machines** (via `:CALLS_SM`, pushing/popping the `call_stack`). Compilers compose Cores and State Machines into larger Acts. (The Execution Engine that *runs* a stack of these is described in §7.)
 
-### Additional equippable assets (ride in the Shell, invoked by / compiled into the Gear above)
-* **Skills** — code-level or conceptual modules of game mechanics, triggered dynamically by `priming mechanics` × the active context.
-* **Model Context Protocols (MCPs)** — external connection tools (terminals, databases, APIs).
+### D. Skills
+Code-level or conceptual modules of game mechanics (an AIOS's Skills), triggered dynamically by `priming mechanics` × the active context. **MCPs are subsumed into Skills** — any MCP can be turned into a Skill, so MCPs are **not** a separate Gear category; an external tool enters a Cybernet's Gear *as a Skill*.
+
+### Other assets in the Shell
 * **General Level Knowledge** — shared public context out in the Cyberneticity; ingestible to compile new Skills, Knowledge, or State Machines into a Cybernet's Gear.
 
 > **Superseded:** the prior definition of "the Ghost Shell" as *hardware* (the executing `model_name` / `parameters_count` / token-quota config) is retired. Those model-config values are the Cybernet's runtime **substrate** (properties on the node), not its Ghost or Shell. Ghost = persona; Shell = subgraph.
@@ -358,7 +362,7 @@ The Neo4j database representation has been migrated from legacy terms (`MetaShif
 * `(c:Cybernet)-[:HAS_IDENTITY]->(i:Identity)` — the being's persona composite (Ghost ⊕ Shell)
 * `(c:Cybernet)-[:HAS_LIFECYCLE]->(es:ExecutionState)` — the ONE per-cybernet runtime cursor (NOT Identity)
 * `(c:Cybernet)-[:EQUIPS]->(sm:StateMachine)` — Gear equipped into the Shell
-* ASPIRATIONAL (Gear/Identity not yet decomposed): `(:Identity)-[:HAS_GHOST]->(:Ghost)`, `(:Identity)-[:HAS_SHELL]->(:Shell)`, `(:Shell)-[:HOLDS]->(:Core|:StateMachine|:Compiler)`
+* ASPIRATIONAL (Gear/Identity not yet decomposed): `(:Identity)-[:HAS_GHOST]->(:Ghost)`, `(:Identity)-[:HAS_SHELL]->(:Shell)`, `(:Shell)-[:HOLDS]->(:Core|:StateMachine|:Compiler|:Skill)`. Daemon Summoning (`janic_daemon_summoning_sm`) is the MetaShifter act that constructs a new `:Cybernet` (Identity + Gear).
 * `(sm:StateMachine)-[:HAS_STEP]->(s:TraversalStep)`
 * `(s1:TraversalStep)-[:NEXT_STEP]->(s2:TraversalStep)`
 * `(s:TraversalStep)-[:CALLS_SM]->(child:StateMachine)`
