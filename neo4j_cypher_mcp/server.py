@@ -93,7 +93,7 @@ def _get(path: str) -> Any:
 
 @mcp.tool()
 def query_database(query: str, cybernet_name: str, parameters: Optional[Dict[str, Any]] = None,
-                   current_filesystem_location: Optional[str] = None) -> List[Dict[str, Any]]:
+                   current_filesystem_location: Optional[str] = None):
     """
     The cypher shell. Execute a read or write Cypher query against the Neo4j database on behalf of a specific Cybernet.
 
@@ -131,7 +131,7 @@ def query_database(query: str, cybernet_name: str, parameters: Optional[Dict[str
 # ─────────────────────────────────────────────────────────────────────────────────
 
 @mcp.tool()
-def development_server(action: str) -> str:
+def development_server(action: str):
     """
     Control the FastAPI development server status (start/stop/status).
 
@@ -222,7 +222,7 @@ def development_server(action: str) -> str:
 # ─────────────────────────────────────────────────────────────────────────────────
 
 @mcp.tool()
-def commands() -> List[Dict[str, Any]]:
+def commands():
     """
     List all available state machines in the graph. Every "skill" / "thing you can do" in
     the game is a StateMachine node. To invoke one, write the cypher that activates it
