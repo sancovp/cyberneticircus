@@ -331,15 +331,15 @@ Code-level or conceptual modules of game mechanics (an AIOS's Skills), triggered
 
 ---
 
-## 7. The Compiler (The Execution Engine)
+## 7. The Execution Engine — two drivers, one advance mechanic
 
-* **Definition**: The game engine runtime that executes the active stack of State Machines for an Identity.
-* **Logic**:
-  * Checks for `:CALLS_SM` routing to push parent execution frames onto the `call_stack`.
-  * Executes the LLM query action for the active step.
-  * Checks calibration accuracy and transitions the `:ExecutionState` node's `CURRENT_STEP` along the `NEXT_STEP` edges of the active StateMachine.
-  * Pops the parent frame from the `call_stack` upon sub-state machine completion, returning execution to the parent State Machine.
-  * Evaluates selection pressure (survival resetting, reaping, or mutated reproduction) at the end of a lifetime cycle (5 turns).
+**The advance mechanic (shared by both drivers):** a Cybernet's SM advances via `_auto_progress_step` — it moves `:ExecutionState.CURRENT_STEP` along `NEXT_STEP` when a submitted Cypher matches the active step's `required_pattern` (and `:CALLS_SM` pushes/pops the `call_stack` for sub-SMs). Both drivers below call this *same* mechanic; they differ only in **who supplies the Cypher.** Do not conflate them (this doc previously did, and it caused a real re-twist).
+
+* **Driver A — the agent with the MCP (THE CANONICAL TICK).** An external agent equipped with the `query_database` MCP tool reads the active step, composes the *templated* Cypher (§6.B Step Law), and submits it via `/api/query`. **The agent IS the LLM**; the server only gates and advances. **This is how the world ticks — calling agents who have the MCP equipped is the only thing that ticks it.** The server never calls a model in this path; there is no minimax in the loop. (Verified live 2026-06-13: an MCP-equipped agent walked a locked step → matching write → auto-progress to the next step; off-step write → 403.)
+
+* **Driver B — the server-side Compiler `tick_turn` (autonomous / human-manual variant).** `CybernetiCircusCompiler.tick_turn(name, runner)` (`engine.py`) reads the step, **calls an LLM itself** (`AgentLLMRunner` → minimax), executes the returned Cypher, and auto-progresses — i.e. the *server* animates a Cybernet with **no external agent**. This serves (a) autonomous / background Cybernets (Roadmap Phase 06) and (b) a human manually stepping a Cybernet from the dashboard via `POST /api/tick`. **It is NOT the primary loop, and it is currently BROKEN:** `routers/cybernet.py` does `from engine import tick_turn`, but `tick_turn` exists only as a `CybernetiCircusCompiler` *method*, not a module-level function → `ImportError`. Fixing it is needed *only* for the server-animates-itself case; it does **not** block agent-driven play (Driver A works without it).
+
+The Compiler also evaluates selection pressure (survival reset / reaping / mutated reproduction) at the end of a lifetime cycle (5 turns).
 
 ---
 
@@ -650,7 +650,7 @@ the visualizer (`cyberneticircus/static/app.js`) currently calls these specializ
 | `GET /api/mindpalaces`, `GET /api/mindpalace`, `POST /api/mindpalace/import` | the mind palace UI | cypher directly from the visualizer (or thin wrappers) |
 | `GET /api/specs/list`, `POST /api/specs/save`, `GET /api/specs/templates` | the spec composer | cypher directly from the visualizer |
 
-### 11.8 Architecture Drift — Runtime Gating Cypher (THE NEXT THING)
+### 11.8 Architecture Drift — Runtime Gating Cypher (✅ RESOLVED 2026-06-13 — see §12.1; kept for history)
 
 **Discovered 2026-06-12, session 8.** The cypher-string builders in `cyberneticircus/lib/state_machines.py` (called by `lib/gates.py:get_active_traversal_step` + `auto_progress_step` + `scan_and_trigger_traversal`) still match against the OLD `:HAS_TRAVERSAL → :TraversalState` pattern. The live graph has 0 such edges/nodes. Result:
 
@@ -668,7 +668,45 @@ the visualizer (`cyberneticircus/static/app.js`) currently calls these specializ
 
 **Fix scope (when ready)**: ~120 lines of cypher changes in `lib/state_machines.py` (7 functions) + ~50 lines in `lib/lifecycle.py` (LOCK_OR_CREATE / FORCE_ALIGN / READ_TRAVERSAL_STEP) + a logic change in `lib/gates.py:auto_progress_step` (no more state_element_id; use `(s:ExecutionState)` directly with `(s)-[:CURRENT_STEP]->(...)` semantics). All cypher changes, no schema migration needed. Estimated effort: 30-60 min if the engine.py call sites are read carefully first.
 
-**Until this is fixed**: the LLM-loop gate is OFF. `validate_cypher_query()` still enforces the `:Wiki` write ban + the `domain`/`subdomain` requirement, but the per-step `required_pattern` check is bypassed.
+**~~Until this is fixed~~ FIXED 2026-06-13**: the LLM-loop gate is now ON (this whole section is resolved — see §12.1). `validate_cypher_query()` enforces the `:Wiki` ban + `domain`/`subdomain`, AND the per-step `required_pattern` check now fires.
 
-**Verification**: the script `cyberneticircus/scripts/verify_no_stale_traversalstate.sh` (new in this session) greps for stale `HAS_TRAVERSAL`/`TraversalState` references in `*.py` + `*.md` and fails the build if any are found. Current state: 1 hit in `lib/state_machines.py:35` (and other lines in that file) — known, fix-pending. Should return 0 hits when the fix lands.
+**Verification**: the script `cyberneticircus/scripts/verify_no_stale_traversalstate.sh` greps for stale `HAS_TRAVERSAL`/`TraversalState` references in `*.py` + `*.md` (and now `neo4j_cypher_mcp/server.py`) and fails if any are found. Current state (post-fix): **0 hits**.
+
+---
+
+## 12. Operational Reality & Cross-System Architecture (rehydration record, 2026-06-13)
+
+Written in full (no shorthand) so the project can be rebuilt from nothing. Where this updates earlier sections, it supersedes them.
+
+### 12.1 §11.8 is RESOLVED — the runtime gate is LIVE
+The half-done `:TraversalState`/`:HAS_TRAVERSAL` → `:ExecutionState`/`:HAS_LIFECYCLE` rename is finished (commits `77637db`, `5ec9ab5`, `1172015`, `6faec02`). `lib/state_machines.py` queries the live chain, so `get_active_traversal_step` finds the locked step and `_evaluate_pattern` fires. Verified live: off-step write → **403** carrying the required regex; matching write → executes + **auto-advances** `CURRENT_STEP`. `scan_and_trigger` is scoped to the retrieving cybernet (`lock_and_align`/`count_locked` take `cybernet_name`). `verify_no_stale_traversalstate.sh` returns 0. The per-step gate is ON.
+
+### 12.2 The MCP is LIVE (was dead the entire prior history)
+The cyberneticircus MCP (`neo4j_cypher_mcp/server.py`) is the agent's only hand on the graph; wired in the **global** `mcpServers` of `~/.claude.json` (launched `python3 server.py RELOAD_TS=<n>`). It had been crash-on-import forever, via **two stacked bugs**, both fixed this session:
+1. (`c162b21`) `mcp`/FastMCP 1.25.0 + pydantic 2.10.6 reject a tool's return-type annotation (`create_model(result=…)` unannotated → `PydanticUserError`). **FIX: drop return-type annotations on every `@mcp.tool` function.** (Never annotate FastMCP tool returns under this version — it silently kills the whole server.)
+2. (`1852e09`) `server.py` had **no `if __name__ == "__main__": mcp.run()`** — `python3 server.py` (what the config launches) defined the tools and exited instantly. **FIX: add the entry point.**
+**Reload procedure:** bump `RELOAD_TS` in `~/.claude.json` **and start a genuinely fresh session** (MCP binds at session start; a resumed session keeps its old/dead connection). **Three tools:** `query_database` (→ `POST /api/query`, the gated shell), `development_server` (start/stop/status the HTTP server — use instead of `docker compose restart`), `commands` (→ `GET /api/commands`). **Lesson:** import-OK ≠ serves — verify with a real stdio handshake (`initialize` → `tools/list`), not just `import server`.
+
+### 12.3 The play pathway (MCP → HTTP → facade → neo4j; separated for SaaS, deliberately)
+`query_database` POSTs to `/api/query` → `cyberneticircus/facade.py::cyberneticircus()` — the single inner play-facade both the web server and the MCP pass through (`6aa4ce7`) → `db_logic.query_database` (the gate). The MCP stays a thin HTTP client; it does **not** import the package in-process. The boundary is kept HTTP so the server/agents/eventual-minimax stay privatizable behind it.
+
+### 12.4 Location-as-trigger (the progressive-disclosure bridge, automated)
+`query_database` takes `current_filesystem_location`. A `:Place {filesystem_location, trigger_traversal}` node is the dir↔graph bijection: reporting a location that maps to a `:Place` locks the (unlocked) reporting cybernet into that flow **before** the query runs — being somewhere is the trigger. `scripts/project_places.py` projects `gameworld/places/*/place.json` → `:Place` nodes (compiler-ring → `jester_boot` wired; the other three districts have no flow yet). Law 5 ("report your travel", `gameworld/.claude/rules/gameworld-laws.md`) + the tool docstring instruct it. Verified: location alone locked a walker into `jester_boot`.
+
+### 12.5 Cross-system: the PromptWorld / nomicon marriage (the Daemon-Summoning engine)
+Daemon Summoning (= constructing a Cybernet = the MetaShifter act, §2) = enumerating a Cybernet's spec until its **AIOS is base-complete**. The enumeration mechanics already exist in PromptWorld + the doc-mirror nomicon system (`mind_of_god:/home/GOD/gnosys-plugin-v2`):
+- **The ladder:** component → skill → skillchain → AIOS → framework → nomicon → APP.
+- **AIOS base-completion criterion** (from `scalable-publishing/docs/vision/_aios.md`): a **looping SKILLCHAIN + survival machinery (cursor + core-loop-prime + transition-hook + SYSTEM.md)**.
+- **Maps 1:1 onto CCC:** SKILLCHAIN (orchestrator-SM wrapping inner-SMs) = **Compiler**; `SYSTEM.md` = **Ghost**; cursor = **ExecutionState**; core-loop-prime = **Core**; transition-hook = **the gate**. ⇒ an AIOS is base-complete iff a Cybernet's Shell holds `{Ghost, looping Compiler/Skillchain, Core, ExecutionState cursor, transition-hook}` — a **checkable cypher subgraph**. **CCC's graph + gate IS the `is_complete()` oracle the nomicon lacks** (the nomicon stores flat markdown; no programmatic completeness check exists).
+- **Verdict: give PromptWorld CCC's MCP** (do NOT call into it — PromptWorld's own MCP server was deliberately reverted; its only surface is the coarse `POST /api/chat`). It consumes an MCP trivially (`ClaudeAgentOptions.mcp_servers`, one wire in `p_main_agent.py::_build_options`). The publishing↔wiki half already exists (`scalable-publishing` makes CartON/Neo4j its source of truth via `substrate_projector`).
+- **Still unbuilt in both:** the automated enumerate-until-complete engine — that is the real Daemon-Summoning work.
+
+### 12.6 COMP MAP — the graph-native component (Roadmap Phase 05 direction)
+Decided this session (supersedes "skills are files mirrored into the graph"): retire file-based skills for **COMP MAPs** — graph-native components authored as composed blocks (on CartON), **each a treeshell node**. A COMP MAP is `{trigger, desc}`; on trigger (reuse the existing `trigger_traversal`/`scan_and_trigger` machinery), `concat(trigger, desc)` is **projected into the AIOS as a rule at context-assembly time** — the *same* graph→prompt projector that renders the core-loop-prime from the Core's live SM stack (**PULL**, never a reactive watcher). `file → graph` is a one-time **import button** (file → node → `:CompMap`), never two-way sync. **Invariant:** the graph is the single source of truth; an agent's loadable context is a *view projected from it* — CCC owns the injection, not Claude Code's file discovery. Bigger move (later): port CCC off base Neo4j onto **CartON** (block-composition / wiki / publishing / `substrate_projector` for free) and merge the CCC interface into **treeshell**. The graph→AIOS-context projector is the tick's context-assembly step (Driver A, §7), so it is built *with* the cycle.
+
+### 12.7 The Step Law (cross-ref §6.B)
+Every SM step's gated action is a cypher query produced from a **template** with one exact expected form; `required_pattern` encodes the template exactly, never a loose substring. ASPIRATIONAL: a `:TraversalStep.template` property rendered into the step instruction + the 403.
+
+### 12.8 The tick — settled (cross-ref §7)
+There is **no autonomous loop running**, and that is fine: **the canonical tick is an agent equipped with the MCP** walking a state machine (Driver A). Verified live this session (a disposable Cybernet locked at a step → matching `query_database` → auto-progressed to the next step). `/api/tick` / `tick_turn` (Driver B, server-animates-itself) is broken and only needed for autonomous/background Cybernets (Phase 06) or human dashboard step-through — not the primary loop.
 
