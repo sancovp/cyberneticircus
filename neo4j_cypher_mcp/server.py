@@ -95,30 +95,59 @@ def _get(path: str) -> Any:
 def query_database(query: str, cybernet_name: str, parameters: Optional[Dict[str, Any]] = None,
                    current_filesystem_location: Optional[str] = None):
     """
-    The cypher shell. Execute a read or write Cypher query against the Neo4j database on behalf of a specific Cybernet.
+    The cypher shell — your single hand on CybernetiCircus. This is the ONLY way to act
+    in the game. Read the mechanics below before you play.
 
-    The cybernet_name is REQUIRED and identifies which Cybernet's traversal-lock scope applies.
-    Each Cybernet has exactly one ExecutionState cursor (via :HAS_LIFECYCLE edge), so N concurrent
-    Cybernets can each query independently without contending for a global lock.
+    THE GAME IS THE GRAPH. CybernetiCircus is a Neo4j property graph, and every "thing"
+    in it — beings, procedures, places, items, knowledge — is a node. Every ACTION you
+    take is a Cypher query against that graph. There is no other verb. You do not narrate
+    or pretend; you write Cypher and the graph changes (or refuses you).
 
-    REPORT YOUR TRAVEL: pass current_filesystem_location with the directory you are
-    working in. Travel is an event — entering a place that maps to a flow (a :Place
-    node) locks you into that flow before this query runs, so your query is then
-    judged by the entered flow's gate. This is how being in a directory drops you
-    into its state machine; report it on every call.
+    WHO YOU ARE (cybernet_name, REQUIRED). You act AS a Cybernet — a being that exists
+    only while it executes. cybernet_name scopes your turn: each Cybernet has exactly one
+    ExecutionState cursor (via :HAS_LIFECYCLE edge), so many Cybernets play concurrently
+    without contending. Reads are ungated; WRITES are judged (see THE GATE).
 
-    Every "thing" in the game is cypher against the graph. The state machines ("skills") are
-    StateMachine nodes in the graph that you activate by writing the right cypher — use the
-    `commands()` tool to discover what's available.
+    TRAVEL — report it every call (current_filesystem_location). Pass the directory you
+    are working in. Travel is an event: if that location maps to a flow (a :Place node
+    carrying a trigger_traversal), entering it LOCKS you into that flow BEFORE this query
+    runs — so being in a directory drops you into its state machine. This is the core
+    move: you go somewhere, you report it, the system catches you. Always report it.
+
+    THE GATE (how writes are judged). When you are locked at a TraversalStep, your write
+    must match that step's required_pattern (a regex). A matching write passes AND
+    auto-advances you to the next step. A non-matching write is REFUSED with a 403 whose
+    message carries the exact regex you must satisfy — that refusal IS your instruction
+    for the next legal move. Reads are never gated. If you are not locked, writes are
+    free (subject to the constraints below).
+
+    MAKING OBJECTS. A game object is a node: give it a type Label plus
+    {id, name, description}, and — MANDATORY on every CREATE/MERGE of a labeled node —
+    domain:'cyberneticity' and a sanctioned subdomain. Link parts with typed relationships.
+    Example (a task list, exactly the live pattern):
+        CREATE (tl:TaskList {id:'tl_x', name:'My List', description:'...',
+                             domain:'cyberneticity', subdomain:'task_list'})
+        CREATE (tl)-[:HAS_TASK]->(:Task {id:'t1', name:'first', domain:'cyberneticity',
+                             subdomain:'task'})
+    Sanctioned subdomains (cyberneticity domain): cybernet, identity, execution_state,
+    state_machine, traversal, traversal_state, simulation, mindpalace, page, block,
+    task_list, task, skill, finding, place. A CREATE/MERGE missing domain+subdomain, an
+    unsanctioned subdomain, or any write to the :Wiki namespace is REFUSED.
+
+    DISCOVERY. Use the `commands()` tool to list the entry-point steps of every procedure
+    ("skill"/quest) currently summonable. Use reads (MATCH ... RETURN) to inspect state,
+    your current step, the economy (Cybernet.fitness_score / total_tokens_consumed /
+    accumulated_cost), and what exists before you write.
 
     Args:
-        query: Cypher query to execute.
-        cybernet_name: REQUIRED. The Cybernet identity whose traversal scope applies.
-        parameters: Optional dictionary of query parameters.
-        current_filesystem_location: The directory you are currently in (travel report).
+        query: Cypher query to execute (a read, or a gated write).
+        cybernet_name: REQUIRED. The Cybernet you act as; scopes your traversal lock.
+        parameters: Optional dict of Cypher parameters.
+        current_filesystem_location: The directory you are in — your travel report.
 
     Returns:
-        List of records returned by the query, where each record is a dictionary.
+        List of records (each a dict). A gate refusal returns as an error carrying the
+        required regex; a state-machine advance appears as a _state_machine_event record.
     """
     res = _post("/api/query", {"query": query, "cybernet_name": cybernet_name,
                                "parameters": parameters,
