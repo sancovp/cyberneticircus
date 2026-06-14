@@ -264,6 +264,31 @@ def commands():
 
 
 # ─────────────────────────────────────────────────────────────────────────────────
+# TOOL 4: GET_CONTEXT — project your being's core-loop-prime (read-only)
+# ─────────────────────────────────────────────────────────────────────────────────
+
+@mcp.tool()
+def get_context(cybernet_name: str):
+    """
+    Project your being's context (read-only). Returns the core-loop-prime — the
+    state diagram of your LIVE Core: which State Machines your Core runs (the
+    CORE_RUNS sequence = the Day), your current position, the selectable inner-SM
+    bandit arms at your active step (default arm: "make a thing or not"), and where
+    the Day terminates — plus any active COMP MAP rules. This is the graph
+    projecting a view of itself for your context (PULL, never a mutation).
+
+    Call it to ORIENT before you act: see your Core stack and the step you are on.
+
+    Args:
+        cybernet_name: the Cybernet whose context to project.
+
+    Returns:
+        {cybernet, core_loop_prime, comp_maps, context} — `context` is the full block.
+    """
+    return _get(f"/api/context/{cybernet_name}")
+
+
+# ─────────────────────────────────────────────────────────────────────────────────
 # ENTRY POINT — serve the MCP over stdio.
 # Required because ~/.claude.json launches `python3 server.py` directly (NOT
 # `mcp run server.py`). Without this block the process defines the tools and exits

@@ -8,9 +8,22 @@ from pydantic import BaseModel
 
 from lib import system as lib_system
 from lib import logs as lib_logs
+from lib import projector as lib_projector
+from db_logic import get_driver
 
 
 router = APIRouter()
+
+
+@router.get("/context/{cybernet_name}")
+def get_context_endpoint(cybernet_name: str):
+    """Project a being's context (read-only, DESIGN §13.5): the core-loop-prime
+    rendered from its live Core Chain stack + any active COMP MAP rules. The
+    describe()-analog / the tick's context-assembly step (PULL from the graph)."""
+    try:
+        return lib_projector.assemble_context(get_driver(), name=cybernet_name)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 class ExecuteHostCommandRequest(BaseModel):
