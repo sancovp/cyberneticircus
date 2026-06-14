@@ -720,12 +720,74 @@ Daemon Summoning (= constructing a Cybernet = the MetaShifter act, §2) = enumer
 - **Verdict: give PromptWorld CCC's MCP** (do NOT call into it — PromptWorld's own MCP server was deliberately reverted; its only surface is the coarse `POST /api/chat`). It consumes an MCP trivially (`ClaudeAgentOptions.mcp_servers`, one wire in `p_main_agent.py::_build_options`). The publishing↔wiki half already exists (`scalable-publishing` makes CartON/Neo4j its source of truth via `substrate_projector`).
 - **Still unbuilt in both:** the automated enumerate-until-complete engine — that is the real Daemon-Summoning work.
 
-### 12.6 COMP MAP — the graph-native component (Roadmap Phase 05 direction)
-Decided this session (supersedes "skills are files mirrored into the graph"): retire file-based skills for **COMP MAPs** — graph-native components authored as composed blocks (on CartON), **each a treeshell node**. A COMP MAP is `{trigger, desc}`; on trigger (reuse the existing `trigger_traversal`/`scan_and_trigger` machinery), `concat(trigger, desc)` is **projected into the AIOS as a rule at context-assembly time** — the *same* graph→prompt projector that renders the core-loop-prime from the Core's live SM stack (**PULL**, never a reactive watcher). `file → graph` is a one-time **import button** (file → node → `:CompMap`), never two-way sync. **Invariant:** the graph is the single source of truth; an agent's loadable context is a *view projected from it* — CCC owns the injection, not Claude Code's file discovery. Bigger move (later): port CCC off base Neo4j onto **CartON** (block-composition / wiki / publishing / `substrate_projector` for free) and merge the CCC interface into **treeshell**. The graph→AIOS-context projector is the tick's context-assembly step (Driver A, §7), so it is built *with* the cycle.
+### 12.6 COMP MAP — the graph-native component → **see §13**
+The COMP MAP component layer is now specified in full under **§13 (The Chain Ontology & the Component Layer)** — COMP MAP = a graph-native Chain/Link, projected into the AIOS via the `describe()`-analog projector that also renders the core-loop-prime from the Core's live Chain stack (§13.5). The bigger move stands: port CCC off base Neo4j onto **CartON** (block-composition / wiki / publishing / `substrate_projector` + the SOMA/OWL enforcement tier for free) and merge the CCC interface into **treeshell**. The graph→AIOS-context projector is the tick's context-assembly step (Driver A, §7), built *with* the cycle.
 
 ### 12.7 The Step Law (cross-ref §6.B)
 Every SM step's gated action is a cypher query produced from a **template** with one exact expected form; `required_pattern` encodes the template exactly, never a loose substring. ASPIRATIONAL: a `:TraversalStep.template` property rendered into the step instruction + the 403.
 
 ### 12.8 The tick — settled (cross-ref §7)
 There is **no autonomous loop running**, and that is fine: **the canonical tick is an agent equipped with the MCP** walking a state machine (Driver A). Verified live this session (a disposable Cybernet locked at a step → matching `query_database` → auto-progressed to the next step). `/api/tick` / `tick_turn` (Driver B, server-animates-itself) is broken and only needed for autonomous/background Cybernets (Phase 06) or human dashboard step-through — not the primary loop.
+
+---
+
+## 13. The Chain Ontology (UCO) & the Component Layer (COMP MAP)
+
+The frame under which the COMP MAP component layer is built (2026-06-13, with Isaac). This is the **active build direction**, not a Phase-05 aside; §12.6 is now a pointer here.
+
+### 13.1 UCO — the Universal Chain Ontology (verified from `sdna/chain_ontology.py`)
+SDNA's whole hierarchy reduces to **two homoiconic primitives**:
+```
+Link (ABC)        — atomic exec unit; wraps a config; execute(context) -> LinkResult; describe(depth)
+Chain(Link)       — a sequence of Links that IS ALSO a Link            ← the homoicon
+EvalChain(Chain)  — a Chain + an OVP/eval link in a loop (loops until eval passes)
+Compiler(Chain)   — a Chain whose get_compiled(context) emits a compiled Link
+ConfigLink(Link)  — a Link wrapping a LinkConfig
+LinkResult.status — SUCCESS | BLOCKED | ERROR | AWAITING_INPUT
+```
+Source: heaven `core/chains/base/link.py` + `base_chain.py`, extracted from the llegos actor model — **keeping only the composition, not the message-passing substrate.** A Chain being a Link is what makes composition homoiconic: `SDNAC=Link`, `SDNAFlow=Chain`, `SDNAFlowchain=EvalChain`, `DUOChain=DUOChain`.
+
+### 13.2 CCC ↔ UCO is the same ontology already (not a rename)
+| UCO | CCC |
+|---|---|
+| **Link** (atomic, wraps config, execute→result) | **`:TraversalStep`** (atomic gated action: emit templated cypher → pass/403) |
+| **Chain** (sequence of Links, *is* a Link) | **`:StateMachine`** (`HAS_STEP`/`NEXT_STEP` sequence) |
+| **Chain-is-a-Link** (homoicon) | **`:CALLS_SM`** — an SM nested as a step inside another SM |
+| **`Compiler(Chain)`** | **Compiler** — *already the same word and meaning* (§6.C) |
+| **EvalChain** (loop until eval) | the **Day loop / OVP** — run until terminal/threshold (§7, §6.A) |
+| **`LinkResult.BLOCKED`** | the gate's **403** |
+| **`describe(depth)`** | **the projector** — a Chain describing itself into context = the core-loop-prime / COMP MAP projection (§13.5) |
+
+`Compiler` matching exactly, and `describe()` already being the self-projection, indicates UCO is the abstract form of what CCC built concretely in the graph.
+
+### 13.3 The reframe: UCO is the shape-ontology, NOT a runtime CCC executes
+The wrong picture is "UCO runs in python-async, CCC runs the same ontology in graph-gate — two parallel execution substrates." CCC does **not** run UCO's python, and does not need to:
+- **UCO = the shapes** (Link/Chain/Compiler/EvalChain). The graph holds the shapes (Chains=SMs, Links=steps, the Core config).
+- **There is ONE interpreter: the LLM, shaped by the gate.** The gate's shape-errors (the **403s**) are a **typecheck failure** that forces the LLM to emit Link-conformant execution. The LLM *is* the interpreter of the Chain ontology — "from just having errors about shapes."
+- **A python UCO package of CCC = hardcoding the shapes** as dead reference code; it would never *run* without an interpreter, and the LLM+gate already is one.
+- **Optional, later, for self-interpretability:** because every exec passes through the **MCP chokepoint** (`/api/query` → facade), one *could* dispatch each cypher to a python `Link.execute` mirror to get a typed trace of the graph run — the system rendering a legible account of itself. Real, but downstream of execution, not part of it.
+
+**The thesis (cross-ref §7's LLM-as-NN):** the shapes are the program, the LLM is the interpreter, the gate-error is the typecheck/training-signal. You don't compile to python — you "compile" to shapes the LLM fills.
+
+### 13.4 Modules — the Cybernet is Chains-of-Chains
+Since a Chain is a Link, modules nest homoiconically:
+```
+CoreModule = Chain [ DayCore, NightCore ]
+  DayCore   = Chain (the CORE_RUNS day sequence; §6.A)
+  NightCore = Chain (autocommentary = the consolidation / weight-update / context-webbing pass; §7 increment 2)
+```
+The Cybernet is a Chain-of-Chains. The meta-labels (`CoreModule`/`DayCore`/`NightCore`) are **named Chains**. "Swap chains and compilers in their link steps" needs no special machinery — **swappability falls out of the homoicon** (any Chain/Compiler fits any Link slot because a Chain is a Link). `autocommentary`-as-Night is just NightCore sitting as the second Link in the CoreModule Chain.
+
+### 13.5 COMP MAP — the graph-native component (= a Chain/Link)
+A **COMP MAP** is a graph-native component (retires file-based skills): a `{trigger, desc}` authored as composed blocks, **a Chain/Link** (and a treeshell node). On trigger (reuse `trigger_traversal`/`scan_and_trigger`), `concat(trigger, desc)` is **projected into the AIOS as a rule at context-assembly time** — via the *same* projector (`describe()`-analog) that renders the **core-loop-prime from the Core's live Chain stack** (the `CORE_RUNS` sequence + the bandit arms at each exec phase). **PULL**, never a reactive watcher. `file → graph` = one-time **import button** (file → `:CompMap`), never two-way sync. **Invariant:** the graph is the single source of truth; the loadable context is a *view projected from it* — CCC owns the injection, not Claude Code's file discovery. (Getting the Core right, §6.A, is exactly what makes this projection well-defined — same machine.)
+
+### 13.6 Two-tier enforcement — why no python interpreter ships
+Distribution = **export the neo4j base DB as JSON, or run it as SaaS**; the DB is self-validating, so no python interpreter travels with it. Correctness is enforced in two distinct tiers:
+- **Tier 1 — structural shapes** (statements about the *state* of the graph: uniqueness, existence, type). **Native neo4j constraints** (`scripts/setup_constraints.py`: `StateMachine.id`/`TraversalStep.id`/`Core.id` unique, live) → **SOMA/OWL** declarative shapes when CCC ports onto CartON (§12.6) — the OWL requirement engine we see firing in CartON (`abstract requires has_frame`, `all_core_requirements_met`). **DB-resident; ships in the JSON.**
+- **Tier 2 — the traversal gate** (a write-time policy keyed to the writer's locked step: the `required_pattern`). **NOT a graph shape** — SHACL/constraints validate graph *state*, not *who-may-write-what-next*. Lives in the thin server/MCP every tenant/player runs anyway (or an APOC transaction trigger if ever made DB-resident).
+- **SHACL caveat:** SHACL is **RDF**; neo4j is a **labeled-property-graph**. Literal SHACL needs the `n10s` (neosemantics) bolt-on over an RDF view. So the right "something" is **neo4j constraints + SOMA/OWL**, not SHACL-on-the-LPG — same idea ("declarative shapes the data must satisfy"), correct substrate.
+- **What native constraints CANNOT do: relationship cardinality** (e.g. one `:HAS_LIFECYCLE` per Cybernet). That is a SOMA/OWL or APOC-trigger concern; until then `setup_constraints.py` *reports* violations (scaffold-to-harness). **Live violations found 2026-06-13:** `JesterCoreOne` ×5 + `Child_Daemon_Jester` ×3 (rites **CREATE** instead of **MERGE** → duplicate beings; blocks `Cybernet.name` uniqueness until deduped), and `TestCoreOne` with 2 ExecutionStates. These are the motivating case: no enforcement → the LLM-driven writes silently multiplied beings.
+
+### 13.7 Naming-scope decision
+**Adopt the Chain/Link ontology as the frame now**; name the COMP MAP / module layer in Chain/Link terms. **(a) chosen:** keep the graph labels `:StateMachine`/`:TraversalStep` (much code/edge depends on them) and *recognize* SM≡Chain, Step≡Link, Compiler≡Compiler — zero migration. **(b) ASPIRATIONAL:** a full label rename to `:Chain`/`:Link` so the graph literally speaks UCO — cosmetic, deferred; the shapes matter, not the substrate names.
 
