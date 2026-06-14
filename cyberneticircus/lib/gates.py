@@ -28,6 +28,7 @@ from neo4j.graph import Node, Relationship, Path
 from . import bootstrap_procedures
 from . import core as core_lib
 from . import lifecycle
+from . import consolidation
 
 
 # --- Gate primitives ---------------------------------------------------------
@@ -72,6 +73,7 @@ def validate_cypher_query(query: str) -> None:
             'traversal', 'traversal_state', 'simulation', 'mindpalace',
             'page', 'block', 'task_list', 'task', 'skill',
             'finding', 'place', 'ghost', 'shell', 'core', 'compiler',
+            'consolidation',
         }
         if subdomain not in allowed:
             raise PermissionError(
@@ -178,8 +180,12 @@ def auto_progress_step(active_step: Dict[str, Any], target_step_id: Optional[str
                            f"(phase={phase}, entry step '{entry_id}'). The Core keeps running.")
                     logger.info(msg)
                     return msg
+            # Day terminal → NIGHT consolidation before the Core ENDS: reinforce
+            # the run's chosen bandit arms + web a :Consolidation node (§6.A 2b).
+            night = consolidation.consolidate(session, state_id=state_id)
             session.run(sm_cypher.dissolve_state_cypher(), state_id=state_id)
-            msg = f"Traversal Auto-Completed! Final step '{curr_id}' complete (Day terminal). Database writes are UNLOCKED."
+            msg = (f"Traversal Auto-Completed! Final step '{curr_id}' complete (Day terminal). "
+                   f"{night + ' ' if night else ''}Database writes are UNLOCKED.")
             logger.info(msg)
             return msg
         rec = session.run(sm_cypher.read_step_text_cypher(), id=next_id).single()

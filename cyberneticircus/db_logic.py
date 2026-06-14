@@ -133,9 +133,34 @@ def query_database(query: str, cybernet_name: str,
     if should_auto_progress and active_step:
         results.append({"_state_machine_event":
                         _auto_progress_step(active_step, target_step_id, get_driver, sm_cypher, logger)})
+        # target_step_id is set ONLY when a decision-point ARM was chosen (the being
+        # selected by which transition pattern its write matched). Record the chosen
+        # arm so Night consolidation can reinforce its weight (the bandit, §6.A inc 3).
+        if target_step_id:
+            _record_bandit_choice(active_step.get("state_element_id"),
+                                  active_step["id"], target_step_id)
     else:
         _scan_and_trigger_traversal(results, cybernet_name, get_driver, sm_cypher, logger)
     return results
+
+
+_RECORD_CHOICE_CYPHER = (
+    "MATCH (s:ExecutionState) WHERE elementId(s) = $sid "
+    "SET s.bandit_choices = coalesce(s.bandit_choices, []) + [$choice]"
+)
+
+
+def _record_bandit_choice(state_element_id: Optional[str], from_id: str, to_id: str) -> None:
+    """Append a chosen bandit arm ('from|to' NEXT_STEP) to the ExecutionState, for
+    Night consolidation to reinforce. Best-effort: never breaks the play call."""
+    if not state_element_id:
+        return
+    try:
+        with get_driver().session() as session:
+            session.run(_RECORD_CHOICE_CYPHER, sid=state_element_id,
+                        choice=f"{from_id}|{to_id}")
+    except Exception as e:
+        logger.error(f"Failed to record bandit choice: {e}")
 
 
 def progress_traversal(cybernet_name: str, answer: Optional[str] = None) -> str:
