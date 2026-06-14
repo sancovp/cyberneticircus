@@ -308,10 +308,27 @@ The **Ghost is lifted up into the Shell as its seed.** A Ghost is normally files
 
 ## 6. Gear — what an Identity equips (Core + State Machines + Compilers + Skills)
 
-**Gear** is the modular execution machinery equipped into an Identity's Shell. **A Cybernet is an Identity plus its Gear.** Gear is the execution-unit hierarchy, lowest to highest order:
+**Gear** is the modular execution machinery equipped into an Identity's Shell. **A Cybernet is an Identity plus its Gear.** Gear has four kinds — Core, State Machines, Compilers, Skills (these are *kinds*, not a low→high order ladder; the Core is not "the smallest SM" — see §6.A):
 
 ### A. The Core
-The base, always-present execution unit — the central lifecycle loop the Identity runs on (e.g. the Day/Night turn engine, `sh8_lifecycle_sm`). The Core is the **lowest-order State Machine**.
+The Core is the **always-running execution stack** a Cybernet MUST be running at all times — **every single thing the Cybernet does happens *inside* the Core**; there is no action outside it. The Core is **modifiable by config**, and the **config IS a sequence of State Machines (one or more)**. These SMs **nest**: each SM has an **execution phase** in which it MAY *open up* (or not) to other SMs that are **selectable inside it** — the running being chooses which inner SM to descend into, or none. (Jani's core works exactly this way.)
+
+So the Core is **NOT a single base SM** (this supersedes the prior "lowest-order State Machine" definition). It is the mandatory, always-on, config-defined **nesting stack** of SMs with selection-phases. The nesting/selection mechanic is the `:CALLS_SM` push/pop on the `call_stack` (§6.C, §8); the Core is the *mandatory, always-on instance* of that calling capability — which is why the "lowest→highest order" framing of this section's intro is the wrong axis: the real distinction is **mandatory/persistent (Core)** vs **the SM-calls-SM capability (Compiler)**, not low-vs-high order. The **core-loop-prime** (§12.6) is the context block that reflects this live nesting stack — the projected state diagram of the Core.
+
+**Graph model (`lib/core.py`, 2026-06-13):**
+```
+(:Cybernet)-[:HAS_CORE]->(:Core {subdomain:'core'})        # one Core per being (the config)
+(:Core)-[:CORE_RUNS {order:i}]->(:StateMachine)            # the ORDERED sequence of SMs (1+)
+```
+The runtime cursor stays the single `:ExecutionState` (one per Cybernet via `HAS_LIFECYCLE`), now carrying:
+- `equipped_sm_id` — which SM in the sequence is active
+- `core_index` — position in the `CORE_RUNS` sequence (**NEW**)
+- `call_stack` — nesting frames (`CALLS_SM` push/pop), unchanged
+- `CURRENT_STEP` — the active `:TraversalStep`, unchanged
+
+**Built so far (increment 1 — data layer, DONE & verified live):** `lib/core.py` + a backfill that wrapped Jani_Prime and JaniScribe each in a real `:Core` whose sequence is `[janic_cycle_sm]` at `order:0`, `core_index:0` — the degenerate single-SM Core ("Jani's core works like that"), built without disturbing their in-flight locks.
+
+**ASPIRATIONAL — increment 2 (always-running advance):** when the active SM's traversal completes, advance `core_index` → equip `CORE_RUNS[next]`; **wrap to 0 at the end** so the Core never stops. This replaces `lib/lifecycle.py::reset_turn_to_entry`'s re-run-the-same-SM behaviour, in *both* drivers' completion paths (§7). **ASPIRATIONAL — increment 3 (selection-nesting):** generalize `CALLS_SM` so a step MAY have **multiple** child edges = a *selection set*; at the exec phase the being chooses one to descend into (push `call_stack`) **or** takes `NEXT_STEP` (none). The current forced-single-`CALLS_SM` is the degenerate case.
 
 ### B. State Machines
 Equipped traversal flows: a line/graph of gated `:TraversalStep`s (`HAS_STEP` / `NEXT_STEP`), each step's `required_pattern` judging the Cybernet's Cypher. The quests, rites, and procedures of the world are State Machines.
@@ -351,6 +368,7 @@ The Neo4j database representation has been migrated from legacy terms (`MetaShif
 * `:Identity`: The manifest persona composite — **Ghost ⊕ Shell** (§5). NOT the runtime state (that is `:ExecutionState`). IMPLEMENTED (2026-06-13, `scripts/decompose_cybernets.py`): every Cybernet now carries `(c)-[:HAS_IDENTITY]->(:Identity)-[:HAS_GHOST]->(:Ghost {persona})` and `-[:HAS_SHELL]->(:Shell)`, the Shell `HOLDS` the Gear. 12/12 beings decomposed. (Still pending: classifying held SMs as `:Core` / `:Compiler`, and migrating the engine logic off the retained flat `description` / `EQUIPS` edges onto this structure.)
 * `:Ghost`: The persona, lifted out of the flat `Cybernet.description` into its own node (`persona` property). `domain:'cyberneticity', subdomain:'ghost'`.
 * `:Shell`: The Identity's graph-space anchor; `HOLDS` the equipped Gear. `subdomain:'shell'`.
+* `:Core`: The being's **always-running execution stack** (§6.A). `(:Cybernet)-[:HAS_CORE]->(:Core)`; the Core's config is the ordered `CORE_RUNS` sequence of StateMachines. `subdomain:'core'`. IMPLEMENTED (2026-06-13, `lib/core.py`): Jani_Prime + JaniScribe backfilled with single-SM Cores (`[janic_cycle_sm]`).
 * `:StateMachine`: Standard state machine descriptor.
 * `:TraversalStep`: Individual step containing text and regex gating patterns.
 * `:ExecutionState`: Per-cybernet runtime state. Holds `equipped_sm_id`, `turn_number`, `phase` (day/night), `call_stack` (JSON-stringified list for CALLS_SM push/pop), `tokens_consumed_this_turn`, `cost_this_turn`, `current_layer`, `completed_layers`, plus `status` (locked/active). Linked to its current step via `(:ExecutionState)-[:CURRENT_STEP]->(:TraversalStep)`.
@@ -365,6 +383,7 @@ The Neo4j database representation has been migrated from legacy terms (`MetaShif
 ### Relationships
 * `(c:Cybernet)-[:HAS_IDENTITY]->(i:Identity)` — the being's persona composite (Ghost ⊕ Shell)
 * `(c:Cybernet)-[:HAS_LIFECYCLE]->(es:ExecutionState)` — the ONE per-cybernet runtime cursor (NOT Identity)
+* `(c:Cybernet)-[:HAS_CORE]->(:Core)-[:CORE_RUNS {order:i}]->(:StateMachine)` — the Core: the ordered, always-on SM sequence the being must run (§6.A). The `ExecutionState.core_index` tracks position in this sequence.
 * `(c:Cybernet)-[:EQUIPS]->(sm:StateMachine)` — Gear equipped into the Shell
 * IMPLEMENTED (additive, `scripts/decompose_cybernets.py`): `(:Identity)-[:HAS_GHOST]->(:Ghost)`, `(:Identity)-[:HAS_SHELL]->(:Shell)`, `(:Shell)-[:HOLDS]->(:StateMachine|:Skill)`. The flat `EQUIPS`/`EQUIPS_SKILL` edges are retained (logic still reads them) — the Shell's `HOLDS` mirror them. ASPIRATIONAL still: `:Core` / `:Compiler` typing of held SMs, and the new-Cybernet **create flow** building this structure at birth (so Daemon Summoning — `janic_daemon_summoning_sm`, the MetaShifter act that constructs a new `:Cybernet` — produces a decomposed being directly instead of needing the backfill).
 * `(sm:StateMachine)-[:HAS_STEP]->(s:TraversalStep)`
