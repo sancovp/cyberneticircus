@@ -54,11 +54,46 @@ def core_sm_at_index_cypher() -> str:
 
 
 def core_length_cypher() -> str:
-    """How many SMs are in the Core sequence (for wrap-around at the end)."""
+    """How many SMs are in the Core sequence."""
     return """
     MATCH (m:Cybernet {name: $name})-[:HAS_CORE]->(:Core)-[r:CORE_RUNS]->(:StateMachine)
     RETURN count(r) AS n
     """
+
+
+# ---------------------------------------------------------------------------
+# Increment 2 — the always-running advance (Day sequence → terminal → Night → end)
+#
+# When an SM in the Core completes, the Core advances to the NEXT SM in its
+# CORE_RUNS sequence (the Day continues across SMs). When there is no next SM,
+# that is the Day TERMINAL — the gate dissolves the lock (→ Night/end). The Core
+# does NOT loop forever: it ENDS, and external triggers (place/scan/equip)
+# re-start it (= the cycle). See DESIGN §6.A / §7 increment 2.
+#
+# CORE_RUNS may carry a `phase` ('day'|'night'); advancing into a night-phase SM
+# sets ExecutionState.phase='night' (NightCore = the consolidation pass, e.g.
+# autocommentary). Keyed off the ExecutionState's elementId so it composes with
+# gates.auto_progress_step (which holds state_element_id, not the cybernet name).
+# ---------------------------------------------------------------------------
+
+CORE_NEXT_SM_CYPHER = """
+MATCH (c:Cybernet)-[:HAS_LIFECYCLE]->(s:ExecutionState) WHERE elementId(s) = $state_id
+MATCH (c)-[:HAS_CORE]->(:Core)-[r:CORE_RUNS]->(nextsm:StateMachine)
+WHERE r.order = coalesce(s.core_index, 0) + 1
+RETURN nextsm.id AS next_sm_id, coalesce(r.phase, 'day') AS phase
+LIMIT 1
+"""
+
+ADVANCE_CORE_CYPHER = """
+MATCH (c:Cybernet)-[:HAS_LIFECYCLE]->(s:ExecutionState) WHERE elementId(s) = $state_id
+MATCH (entry:TraversalStep {id: $entry_id})
+OPTIONAL MATCH (s)-[old:CURRENT_STEP]->() DELETE old
+SET s.equipped_sm_id = $next_sm_id,
+    s.core_index = coalesce(s.core_index, 0) + 1,
+    s.status = 'locked',
+    s.phase = $phase
+CREATE (s)-[:CURRENT_STEP]->(entry)
+"""
 
 
 # ---------------------------------------------------------------------------

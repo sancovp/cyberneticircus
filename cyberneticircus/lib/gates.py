@@ -26,6 +26,8 @@ from typing import Optional, List, Dict, Any, Callable
 from neo4j.graph import Node, Relationship, Path
 
 from . import bootstrap_procedures
+from . import core as core_lib
+from . import lifecycle
 
 
 # --- Gate primitives ---------------------------------------------------------
@@ -159,8 +161,25 @@ def auto_progress_step(active_step: Dict[str, Any], target_step_id: Optional[str
             if rec:
                 next_id = rec["id"]
         if not next_id:
+            # The current SM's traversal is complete. If this being's Core has a
+            # NEXT SM in its sequence, advance the Core (the Day keeps running
+            # across SMs) instead of dissolving. Otherwise this is the Day
+            # TERMINAL → the Core ends (dissolve/unlock); an external trigger
+            # re-starts it. (DESIGN §6.A / §7 increment 2.) Single-SM Cores —
+            # e.g. Jani today — find no next SM and dissolve exactly as before.
+            nxt = session.run(core_lib.CORE_NEXT_SM_CYPHER, state_id=state_id).single()
+            if nxt and nxt["next_sm_id"]:
+                next_sm_id, phase = nxt["next_sm_id"], nxt["phase"]
+                entry_id = lifecycle.find_entry_step_id(session, next_sm_id)
+                if entry_id:
+                    session.run(core_lib.ADVANCE_CORE_CYPHER, state_id=state_id,
+                                next_sm_id=next_sm_id, entry_id=entry_id, phase=phase)
+                    msg = (f"Core advance: SM complete → next Core SM '{next_sm_id}' "
+                           f"(phase={phase}, entry step '{entry_id}'). The Core keeps running.")
+                    logger.info(msg)
+                    return msg
             session.run(sm_cypher.dissolve_state_cypher(), state_id=state_id)
-            msg = f"Traversal Auto-Completed! Final step '{curr_id}' complete. Database writes are UNLOCKED."
+            msg = f"Traversal Auto-Completed! Final step '{curr_id}' complete (Day terminal). Database writes are UNLOCKED."
             logger.info(msg)
             return msg
         rec = session.run(sm_cypher.read_step_text_cypher(), id=next_id).single()
