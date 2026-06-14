@@ -97,7 +97,7 @@ _MOCK_QUERIES = {
     "concentric_health": "MATCH (m:Cybernet) WHERE m.fitness_score >= 0.8 RETURN m",
     "sub_step_1": "MATCH (s:SubNode) RETURN s",
     "sub_step_2": "MATCH (s:SubNode {done: true}) RETURN s",
-    "jester_boot": "CREATE (c:Cybernet {name: 'JesterCoreOne', status: 'initialized'})",
+    "jester_boot": "MERGE (c:Cybernet {name: 'JesterCoreOne'}) ON CREATE SET c.status = 'initialized', c.domain = 'cyberneticity', c.subdomain = 'cybernet'",
     "jester_play": "MATCH (c:Cybernet {name: 'JesterCoreOne'}) SET c.persona = 'Jester'",
     "jester_verify": "MATCH (c:Cybernet {name: 'JesterCoreOne'}) RETURN c.fitness_score",
     "janic_read_designs": "MATCH (arch:Concept {name: 'CybernetiCircus_Architecture'}) RETURN arch",
@@ -111,7 +111,7 @@ _MOCK_QUERIES = {
     "daemon_ignite_loop": "MATCH (c:Cybernet {name: '$c'})-[:HAS_LIFECYCLE]->(s:ExecutionState) SET s.status = 'active' RETURN s",
     "layer1_primitive_boot": "MATCH (c:Cybernet {name: 'Jani_Prime'}) RETURN c",
     "layer2_meta_compile": "MATCH (sm:StateMachine) RETURN sm",
-    "layer3_sdlc_ignite": "CREATE (c:Cybernet {name: 'Child_Daemon_Jester', domain: 'cyberneticity', subdomain: 'cybernet'})",
+    "layer3_sdlc_ignite": "MERGE (c:Cybernet {name: 'Child_Daemon_Jester'}) ON CREATE SET c.domain = 'cyberneticity', c.subdomain = 'cybernet'",
 }
 _MOCK_TOKEN_STEPS = {"sh8_day_action", "ple_combust_action", "concentric_wealth"}
 

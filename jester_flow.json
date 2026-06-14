@@ -2,9 +2,9 @@
   "steps": [
     {
       "id": "jester_boot",
-      "text": "Jester Rite - Step 1: Initialize the Jester core node. Run a Cypher query to CREATE the Cybernet node for JesterCoreOne.",
-      "required_pattern": "(?i)CREATE\\s*\\(c:Cybernet\\s*\\{\\s*name:\\s*['\"]JesterCoreOne['\"].*\\}\\)",
-      "pattern_description": "Create the JesterCoreOne Cybernet node in the graph."
+      "text": "Jester Rite - Step 1: Initialize the Jester core node IDEMPOTENTLY. Run a Cypher MERGE on the JesterCoreOne Cybernet node keyed on name, using ON CREATE SET for its initial properties — so re-running the rite never duplicates the being.",
+      "required_pattern": "(?i)MERGE\\s*\\(c:Cybernet\\s*\\{\\s*name:\\s*['\"]JesterCoreOne['\"]\\s*\\}\\)\\s*ON\\s+CREATE\\s+SET",
+      "pattern_description": "MERGE (c:Cybernet {name: 'JesterCoreOne'}) ON CREATE SET c.status='initialized', c.domain='cyberneticity', c.subdomain='cybernet'"
     },
     {
       "id": "jester_play",

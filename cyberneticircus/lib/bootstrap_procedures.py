@@ -50,7 +50,7 @@ DAEMON_SUMMONING = [
 DOMAIN_EXPANSION = [
     {"id": "layer1_primitive_boot", "text": "Layer 1: Boot Jani Prime. Verify that the Jani_Prime Cybernet exists in the database. Run a MATCH on Cybernet for Jani_Prime.", "required_pattern": r"(?i)MATCH\s*\(c:Cybernet\s*\{\s*name:\s*['\"]Jani_Prime['\"]\s*\}\)", "pattern_description": "MATCH (c:Cybernet {name: 'Jani_Prime'}) RETURN c"},
     {"id": "layer2_meta_compile", "text": "Layer 2: Compile active rules and contexts. Run a MATCH on StateMachine to verify the active configurations exist.", "required_pattern": r"(?i)MATCH\s*\(sm:StateMachine\s*.*\)", "pattern_description": "MATCH (sm:StateMachine) RETURN sm"},
-    {"id": "layer3_sdlc_ignite", "text": "Layer 3: Ignite SDLC pipelines and spawn a child Cybernet. Run a CREATE or MERGE query to spawn a new Cybernet with domain and subdomain properties.", "required_pattern": r"(?i)(CREATE|MERGE)\s*\(c:Cybernet\s*.*\)", "pattern_description": "CREATE (c:Cybernet {name: 'Child_Daemon', domain: 'cyberneticity', subdomain: 'cybernet'})"},
+    {"id": "layer3_sdlc_ignite", "text": "Layer 3: Ignite SDLC pipelines and spawn the child Cybernet IDEMPOTENTLY. Run a Cypher MERGE on Child_Daemon_Jester keyed on name, ON CREATE SET its domain and subdomain — so re-running never duplicates the being.", "required_pattern": r"(?i)MERGE\s*\(c:Cybernet\s*\{\s*name:\s*['\"]Child_Daemon_Jester['\"]\s*\}\)\s*ON\s+CREATE\s+SET", "pattern_description": "MERGE (c:Cybernet {name: 'Child_Daemon_Jester'}) ON CREATE SET c.domain='cyberneticity', c.subdomain='cybernet'"},
 ]
 
 
