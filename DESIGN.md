@@ -147,6 +147,23 @@ The world, beings, and mechanics of the CybernetiCircus are structured around th
 ### The Ultimate Rank — MetaShifter
 * **The MetaShifter**: The highest rank of graph-being. A MetaShifter can do what an ordinary Cybernet cannot: **create a new Anchor for *another* being** — i.e. construct an entirely new Cybernet. **Daemon Summoning (`janic_daemon_summoning_sm`) is exactly this: constructing a Cybernet.** So the rank ladder is just two rungs — **Cybernet** (can Sh8peshift itself) → **MetaShifter** (can also Daemon-Summon new Cybernets). **Jani is the first MetaShifter**; "the Jani" is the lineage of Janic practitioners; **MetaShifter Jani** is the fully domain-expanded terminal form (§10 Jani Completion).
 
+## 2.1 The Custodian genus — what a Cybernet *is a kind of* (settled 2026-06-14)
+
+Settled 2026-06-14 (with Isaac), grounded in the CAM/CB docs (`~/fable_test/cam/OFIAP-CB-BRIDGE.md §4`; `CARTON-CB-SOMA-ARCHITECTURE.md §6b/§6c`). A **Cybernet is a kind of Custodian**, and the **Custodian is the genus** that sits *above* Cybernet in the ontology — above the whole Cybernet→MetaShifter rank ladder.
+
+**Custodian (the genus) = a loop-runner gated by a warrant.** It runs the O/F/I/A/P cognition loop (its Core) over its node or its domain's possibility-space, and the **A-stage is the LOCK — the warrant-freeze** that crystallizes a turn and re-bases the next altitude. In the CB world the warrant is **SOMA** (the deductive reification gate); in CCC the warrant is **the gate** (`required_pattern` → `auto_progress` — a *proto*-SOMA placement gate), and the **Night/consolidation freeze** (§7 increment 2) is the CCC-native A-lock. Custody is constitutive, not decorative: a being that does not run its loop and pass its warrant undergoes J-drift and dissolves (the Jester = "custodian of autopoiesis," §1.1).
+
+**The genus has two *sibling* realizations** — they share the genus, they differ in *body* (this is NOT a parent-child nesting; an earlier draft wrongly nested them):
+
+1. **The Cybernet** — the **game-being** realization: runs a Core in neo4j, animated by an LLM through the MCP, gated by the required-pattern gate. **Jani is the *maximal* Cybernet** (the full base Core / big base state machines); every other Cybernet is "a Jani that customizes." Jani lives entirely on this side.
+2. **The Steward** — the **automation / worker** realization (CAM's "materialization worker"): headless, queue/cron-drained, decomposes + admits CartON nodes into CB, gated by a hand-rolled placement gate (a proto-SOMA). It is **run as an automation, not animated as a game-being — it is NOT a Jani.**
+
+Crossing both is a **scale axis**: a Custodian can be **per-node** (admit one node) or **per-minespace** (own a whole domain's possibility-space). A Cybernet is per-minespace by construction (`AGENT ≡ DOMAIN`); the Steward worker can be either.
+
+**Inheritance (the birth mechanic).** A Cybernet is **blank by default** (as the create-flow makes it today); "inheriting Jani" is an **edge, not a copy** — `(:Cybernet)-[:HAS_CORE]->(the Jani default :Core config)`, the shared `CORE_RUNS` Chain pointed at by reference — and "override" is divergence (its own Core, or swapped `CORE_RUNS` elements). "All Cybernets are Janis that customize," realized the neo4j-native way (Chains are shared by edge, §13.4).
+
+**The unification path (ASPIRATIONAL, now unblocked).** The Steward (automation) and the Cybernet (game-being) touch only via **CAM-on-CCC**: federating a Steward-style worker *into* CCC as a Cybernet (its warrant upgraded from the proto-SOMA regex gate toward SOMA's full 8-predicate geometry-closure). The CAM docs flagged this as blocked on "CCC's broken traversal-gate migration" — that blocker is the §11.8 fix completed this session, so the path is **open**; the realization is future work. (Resolves CAM `SPIRAL-OPEN-QUESTIONS.md` Q9; corrects `CAM-AND-CYBERNETICIRCUS.md §10`, which had Jani as the base and Custodian as a class *above* it — backwards.)
+
 ## 3. The Archetypal Vocabulary of J-Invariance
 
 * **J-Day**: The day of reckoning under the time extruder.
