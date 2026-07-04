@@ -604,7 +604,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function getRGBColor(node) {
         if (node.label === "MindPalace") return [6, 182, 212]; // cyan
         if (node.label === "Page") return [34, 211, 238]; // teal
-        if (node.label === "Block") return [148, 163, 184]; // grey
+        if (node.label === "Block") return [120, 190, 205]; // palace-family soft teal
         if (node.active_tag === "cybernet") return [46, 213, 115]; // green
         if (node.active_tag === "step") return [0, 210, 255]; // cyan
         if (node.active_tag === "state_machine") return [160, 100, 255]; // purple
@@ -904,6 +904,13 @@ document.addEventListener("DOMContentLoaded", () => {
                     ctx.font = "8px 'Outfit', sans-serif";
                     ctx.textAlign = "center";
                     ctx.fillText(node.name, node.x, node.y + node.r + 13);
+                } else if (node.label === "Page") {
+                    // Pages are rooms in the palace island — keep them legible.
+                    ctx.fillStyle = "rgba(34, 211, 238, 0.65)";
+                    ctx.font = "7px 'Outfit', sans-serif";
+                    ctx.textAlign = "center";
+                    const nm = node.name || "";
+                    ctx.fillText(nm.length > 20 ? nm.substring(0, 17) + "…" : nm, node.x, node.y + node.r + 11);
                 }
             }
         });
@@ -2266,16 +2273,46 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    function mpPalaceName(id) {
+        const mp = mindPalaces.find((m) => m.id === id);
+        return mp ? mp.name : "";
+    }
+
+    function mpUpdateBreadcrumb() {
+        const crumb = document.getElementById("mp-breadcrumb");
+        if (!crumb) return;
+        const palace = mpPalaceName(currentPalaceId) || "Palace";
+        const titleInput = document.getElementById("mp-page-title");
+        const page = (titleInput && titleInput.value.trim()) || "Untitled Page";
+        crumb.innerHTML =
+            `<span class="mp-crumb mp-crumb-palace">\u{1F3DB}️ ${escapeMpHtml(palace)}</span>` +
+            `<span class="mp-crumb-sep">›</span>` +
+            `<span class="mp-crumb mp-crumb-page">\u{1F4C4} ${escapeMpHtml(page)}</span>`;
+    }
+
+    function escapeMpHtml(s) {
+        return String(s == null ? "" : s)
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
     async function loadMindPalaces() {
+        const select = document.getElementById("palace-select");
         try {
             const res = await fetch("/api/mindpalaces");
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             mindPalaces = data.mindpalaces || [];
-            
-            const select = document.getElementById("palace-select");
+
             if (select) {
                 const prevVal = select.value;
                 select.innerHTML = '<option value="">-- Select Palace --</option>';
+                if (mindPalaces.length === 0) {
+                    const opt = document.createElement("option");
+                    opt.value = "";
+                    opt.textContent = "-- No palaces yet — create one below --";
+                    opt.disabled = true;
+                    select.appendChild(opt);
+                }
                 mindPalaces.forEach(mp => {
                     const opt = document.createElement("option");
                     opt.value = mp.id;
@@ -2290,7 +2327,16 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         } catch (e) {
             console.error("Failed to load mind palaces:", e);
+            if (select) {
+                select.innerHTML = '<option value="">-- Could not reach graph --</option>';
+            }
+            showSpecStatus("Could not load Mind Palaces (graph unreachable).", true);
         }
+    }
+
+    const mpTitleInput = document.getElementById("mp-page-title");
+    if (mpTitleInput) {
+        mpTitleInput.addEventListener("input", mpUpdateBreadcrumb);
     }
 
     const palaceSelect = document.getElementById("palace-select");
@@ -2307,51 +2353,89 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function loadPalacePages(mpId) {
+        const list = document.getElementById("palace-pages-list");
+        if (list) list.innerHTML = '<div class="mp-list-state">Loading pages…</div>';
         try {
             const res = await fetch(`/api/mindpalace/${mpId}/pages`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             currentPages = data.pages || [];
-            
-            const list = document.getElementById("palace-pages-list");
-            if (list) {
-                list.innerHTML = "";
-                if (currentPages.length === 0) {
-                    list.innerHTML = '<div style="font-size:11px; color:var(--text-muted); padding:5px 0;">No pages yet.</div>';
-                } else {
-                    currentPages.forEach(p => {
-                        const item = document.createElement("div");
-                        item.className = "tree-item";
-                        if (p.page_id === currentPageId) {
-                            item.classList.add("active");
-                        }
-                        item.textContent = p.title;
-                        item.onclick = () => {
-                            Array.from(list.getElementsByClassName("tree-item")).forEach(el => el.classList.remove("active"));
-                            item.classList.add("active");
-                            loadPage(p.page_id);
-                        };
-                        list.appendChild(item);
-                    });
-                }
+            if (!list) return;
+
+            list.innerHTML = "";
+            if (currentPages.length === 0) {
+                list.innerHTML = '<div class="mp-list-state">No rooms yet — add a page below.</div>';
+                return;
             }
+
+            currentPages.forEach(p => {
+                const item = document.createElement("div");
+                item.className = "tree-item mp-page-item";
+                if (p.page_id === currentPageId) item.classList.add("active");
+
+                const label = document.createElement("span");
+                label.className = "mp-page-label";
+                label.textContent = p.title;
+
+                const del = document.createElement("button");
+                del.className = "mp-page-del";
+                del.innerHTML = "&times;";
+                del.title = "Delete this page";
+                del.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    mpDeletePage(p.page_id, p.title);
+                });
+
+                item.appendChild(label);
+                item.appendChild(del);
+                item.addEventListener("click", () => {
+                    Array.from(list.getElementsByClassName("tree-item")).forEach(el => el.classList.remove("active"));
+                    item.classList.add("active");
+                    loadPage(p.page_id);
+                });
+                list.appendChild(item);
+            });
         } catch (e) {
             console.error("Failed to load pages:", e);
+            if (list) list.innerHTML = '<div class="mp-list-state mp-list-error">Could not load pages.</div>';
+        }
+    }
+
+    async function mpDeletePage(pageId, title) {
+        if (!confirm(`Delete the page "${title || "Untitled"}" and all its blocks?`)) return;
+        try {
+            const res = await fetch(`/api/mindpalace/page/${pageId}`, { method: "DELETE" });
+            if (res.ok) {
+                if (pageId === currentPageId) hidePageEditor();
+                await loadPalacePages(currentPalaceId);
+                await drawGraph(activeIdentity);
+                showSpecStatus("Page deleted.");
+            } else {
+                const err = await res.json().catch(() => ({}));
+                showSpecStatus("Error: " + (err.detail || res.status), true);
+            }
+        } catch (e) {
+            showSpecStatus("Network error deleting page.", true);
         }
     }
 
     async function loadPage(pageId) {
+        const container = document.getElementById("mp-blocks-container");
         try {
             currentPageId = pageId;
-            const res = await fetch(`/api/mindpalace/page/${pageId}`);
-            const data = await res.json();
-            
             document.getElementById("no-page-selected").classList.add("hidden");
             document.getElementById("page-editor-container").classList.remove("hidden");
-            
+            if (container) container.innerHTML = '<div class="mp-list-state">Entering room…</div>';
+
+            const res = await fetch(`/api/mindpalace/page/${pageId}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+
             const titleInput = document.getElementById("mp-page-title");
             titleInput.value = data.title || "";
-            
+
             currentPageBlocks = data.blocks || [];
+            mpUpdateBreadcrumb();
             
             // Reset active sub-tabs to "Composer", uncheck "Edit Raw", and hide raw view elements
             if (mpTabComposerBtn) mpTabComposerBtn.classList.add("active");
@@ -2367,6 +2451,8 @@ document.addEventListener("DOMContentLoaded", () => {
             compileMpPreview();
         } catch (e) {
             console.error("Failed to load page:", e);
+            if (container) container.innerHTML = '<div class="mp-list-state mp-list-error">Could not open this page.</div>';
+            showSpecStatus("Could not open page (graph unreachable).", true);
         }
     }
 
@@ -2375,6 +2461,8 @@ document.addEventListener("DOMContentLoaded", () => {
         currentPageBlocks = [];
         const editorContainer = document.getElementById("page-editor-container");
         const placeholder = document.getElementById("no-page-selected");
+        const crumb = document.getElementById("mp-breadcrumb");
+        if (crumb) crumb.innerHTML = "";
         if (editorContainer) editorContainer.classList.add("hidden");
         if (placeholder) placeholder.classList.remove("hidden");
     }
@@ -2440,231 +2528,384 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    // --- Mind Palace block-type registry ------------------------------------
+    // The single source of truth for the block types a Page room can hold.
+    // To add a new type ONCE the backend BlockItem supports it (e.g. toggle/
+    // callout/quote/table): add an entry here + a matching .add-mp-block-btn in
+    // index.html, and (if it needs custom fields) a branch in mpRenderBlockBody /
+    // compileMpPreview. The editor header, type-change menu, and empty-state all
+    // read from this map, so a new type "drops in" without touching the loop.
+    const MP_BLOCK_TYPES = {
+        header: { label: "Header",      badge: "badge-header" },
+        text:   { label: "Text",        badge: "badge-text" },
+        kv:     { label: "KV List",     badge: "badge-kv" },
+        list:   { label: "Bullet List", badge: "badge-list" },
+        code:   { label: "Code",        badge: "badge-code" },
+    };
+    const MP_TYPE_ORDER = ["header", "text", "kv", "list", "code"];
+
+    let mpDragSrcIdx = null;
+
+    function mpBlankBlock(type) {
+        return { type: type, content: type === "kv" ? "[]" : "", level: 1, language: "text" };
+    }
+
+    function mpMoveBlock(idx, dir) {
+        const j = idx + dir;
+        if (j < 0 || j >= currentPageBlocks.length) return;
+        const tmp = currentPageBlocks[idx];
+        currentPageBlocks[idx] = currentPageBlocks[j];
+        currentPageBlocks[j] = tmp;
+        renderMpBlocks();
+        compileMpPreview();
+        mpFocusBlock(j);
+    }
+
+    function mpReorderBlock(from, to) {
+        if (from < 0 || from >= currentPageBlocks.length) return;
+        const dest = from < to ? to - 1 : to;
+        if (dest === from) { renderMpBlocks(); return; }
+        const [moved] = currentPageBlocks.splice(from, 1);
+        currentPageBlocks.splice(dest, 0, moved);
+        renderMpBlocks();
+        compileMpPreview();
+    }
+
+    function mpConvertBlockType(block, newType) {
+        if (block.type === newType) return;
+        block.type = newType;
+        if (newType === "kv") {
+            let ok = false;
+            try { ok = Array.isArray(JSON.parse(block.content)); } catch (e) {}
+            if (!ok) block.content = "[]";
+        } else if (block.type === "kv") {
+            // leaving kv: content held JSON, not prose — clear it
+            block.content = "";
+        }
+        if (newType === "header" && !block.level) block.level = 1;
+    }
+
+    function mpFocusBlock(idx) {
+        const container = document.getElementById("mp-blocks-container");
+        if (!container) return;
+        const el = container.querySelector(`.block-item[data-index="${idx}"]`);
+        if (!el) return;
+        const field = el.querySelector(".block-item-body input, .block-item-body textarea");
+        if (field) {
+            field.focus();
+            if (typeof field.setSelectionRange === "function" && field.value != null) {
+                const end = field.value.length;
+                try { field.setSelectionRange(end, end); } catch (e) {}
+            }
+        }
+    }
+
+    // Keyboard affordances shared by header/text/list/code fields.
+    function mpAttachKeys(field, block) {
+        field.addEventListener("keydown", (e) => {
+            // Cmd/Ctrl+Enter -> save the whole page
+            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                e.preventDefault();
+                const saveBtn = document.getElementById("save-mp-page-btn");
+                if (saveBtn) saveBtn.click();
+                return;
+            }
+            // Enter on a header input -> drop a text block right below and focus it
+            if (block.type === "header" && field.tagName === "INPUT" && e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                const idx = currentPageBlocks.indexOf(block);
+                const at = idx === -1 ? currentPageBlocks.length : idx + 1;
+                currentPageBlocks.splice(at, 0, mpBlankBlock("text"));
+                renderMpBlocks();
+                compileMpPreview();
+                mpFocusBlock(at);
+            }
+        });
+    }
+
+    // Render the editable fields for one block into bodyEl (per-type).
+    function mpRenderBlockBody(block, bodyEl) {
+        if (block.type === "header") {
+            const row = document.createElement("div");
+            row.className = "block-header-row";
+
+            const levelSel = document.createElement("select");
+            levelSel.className = "block-header-level";
+            for (let l = 1; l <= 6; l++) {
+                const opt = document.createElement("option");
+                opt.value = l;
+                opt.textContent = `H${l}`;
+                if ((block.level || 1) === l) opt.selected = true;
+                levelSel.appendChild(opt);
+            }
+            levelSel.addEventListener("change", (e) => {
+                block.level = parseInt(e.target.value);
+                compileMpPreview();
+            });
+
+            const input = document.createElement("input");
+            input.type = "text";
+            input.className = "block-header-input";
+            input.placeholder = "Heading text…";
+            input.value = block.content || "";
+            input.addEventListener("input", (e) => {
+                block.content = e.target.value;
+                compileMpPreview();
+            });
+            mpAttachKeys(input, block);
+
+            row.appendChild(levelSel);
+            row.appendChild(input);
+            bodyEl.appendChild(row);
+
+        } else if (block.type === "text") {
+            const ta = document.createElement("textarea");
+            ta.className = "block-textarea text-block-textarea";
+            ta.placeholder = "Write prose… (blank line = new paragraph)";
+            ta.value = block.content || "";
+            ta.addEventListener("input", (e) => {
+                block.content = e.target.value;
+                compileMpPreview();
+            });
+            mpAttachKeys(ta, block);
+            bodyEl.appendChild(ta);
+
+        } else if (block.type === "list") {
+            const ta = document.createElement("textarea");
+            ta.className = "block-textarea";
+            ta.placeholder = "One list item per line…";
+            ta.value = block.content || "";
+            ta.addEventListener("input", (e) => {
+                block.content = e.target.value;
+                compileMpPreview();
+            });
+            mpAttachKeys(ta, block);
+            bodyEl.appendChild(ta);
+
+        } else if (block.type === "code") {
+            const wrap = document.createElement("div");
+            wrap.className = "block-code-row";
+
+            const langSel = document.createElement("select");
+            langSel.className = "block-code-lang";
+            ["text", "cypher", "javascript", "python", "json", "yaml", "markdown"].forEach((l) => {
+                const opt = document.createElement("option");
+                opt.value = l;
+                opt.textContent = l.toUpperCase();
+                if ((block.language || "text") === l) opt.selected = true;
+                langSel.appendChild(opt);
+            });
+            langSel.addEventListener("change", (e) => {
+                block.language = e.target.value;
+                compileMpPreview();
+            });
+
+            const ta = document.createElement("textarea");
+            ta.className = "block-textarea code-block-textarea";
+            ta.placeholder = "Write code…";
+            ta.value = block.content || "";
+            ta.addEventListener("input", (e) => {
+                block.content = e.target.value;
+                compileMpPreview();
+            });
+            mpAttachKeys(ta, block);
+
+            wrap.appendChild(langSel);
+            wrap.appendChild(ta);
+            bodyEl.appendChild(wrap);
+
+        } else if (block.type === "kv") {
+            const kvC = document.createElement("div");
+            kvC.className = "block-kv-container";
+
+            let pairs = [];
+            try { pairs = JSON.parse(block.content); } catch (e) { pairs = []; }
+            if (!Array.isArray(pairs)) pairs = [];
+
+            function commit() {
+                block.content = JSON.stringify(pairs);
+                compileMpPreview();
+            }
+
+            function renderPairs() {
+                kvC.innerHTML = "";
+                pairs.forEach((pair, pIdx) => {
+                    const row = document.createElement("div");
+                    row.className = "block-kv-row";
+
+                    const k = document.createElement("input");
+                    k.type = "text";
+                    k.className = "block-kv-key";
+                    k.placeholder = "Key";
+                    k.value = pair.key || "";
+                    k.addEventListener("input", (e) => { pair.key = e.target.value; commit(); });
+
+                    const v = document.createElement("input");
+                    v.type = "text";
+                    v.className = "block-kv-val";
+                    v.placeholder = "Value";
+                    v.value = pair.value || "";
+                    v.addEventListener("input", (e) => { pair.value = e.target.value; commit(); });
+
+                    const rm = document.createElement("button");
+                    rm.className = "block-kv-remove";
+                    rm.innerHTML = "&times;";
+                    rm.title = "Remove pair";
+                    rm.addEventListener("click", () => { pairs.splice(pIdx, 1); renderPairs(); commit(); });
+
+                    row.appendChild(k);
+                    row.appendChild(v);
+                    row.appendChild(rm);
+                    kvC.appendChild(row);
+                });
+
+                const add = document.createElement("button");
+                add.className = "spec-btn compact block-kv-add-btn";
+                add.textContent = "+ Add Pair";
+                add.addEventListener("click", () => { pairs.push({ key: "", value: "" }); renderPairs(); commit(); });
+                kvC.appendChild(add);
+            }
+            renderPairs();
+            bodyEl.appendChild(kvC);
+
+        } else {
+            // Unknown type (e.g. a future backend type not yet wired here): show
+            // its raw content so nothing is lost, editable as plain text.
+            const ta = document.createElement("textarea");
+            ta.className = "block-textarea";
+            ta.value = block.content || "";
+            ta.addEventListener("input", (e) => { block.content = e.target.value; compileMpPreview(); });
+            bodyEl.appendChild(ta);
+        }
+    }
+
     function renderMpBlocks() {
         const container = document.getElementById("mp-blocks-container");
         if (!container) return;
         container.innerHTML = "";
-        
+
+        if (!currentPageBlocks || currentPageBlocks.length === 0) {
+            container.innerHTML = `
+                <div class="mp-empty-room">
+                    <div class="mp-empty-room-icon">\u{1F9F1}</div>
+                    <p>This room is empty.</p>
+                    <p class="mp-empty-room-hint">Add a block from the library above to furnish it.</p>
+                </div>`;
+            return;
+        }
+
         currentPageBlocks.forEach((block, idx) => {
+            const meta = MP_BLOCK_TYPES[block.type] || { label: block.type, badge: "" };
+
             const blockEl = document.createElement("div");
-            blockEl.className = "workspace-block";
+            blockEl.className = `block-item block-${block.type} mp-block`;
             blockEl.dataset.index = idx;
-            
-            let color = "#cbd5e1";
-            if (block.type === "header") color = "#60a5fa";
-            else if (block.type === "text") color = "#fbbf24";
-            else if (block.type === "kv") color = "#4ade80";
-            else if (block.type === "list") color = "#f472b6";
-            else if (block.type === "code") color = "#a78bfa";
-            blockEl.style.borderLeftColor = color;
-            
-            const header = document.createElement("div");
-            header.className = "block-header";
-            
-            const title = document.createElement("span");
-            title.className = "block-title";
-            title.textContent = block.type.toUpperCase();
-            
-            const controls = document.createElement("div");
-            controls.className = "block-controls";
-            
+
+            // header row: [drag handle + type menu]  ...  [move up/down/delete]
+            const headerEl = document.createElement("div");
+            headerEl.className = "block-item-header";
+
+            const leftGroup = document.createElement("div");
+            leftGroup.className = "mp-block-headleft";
+
+            const handle = document.createElement("span");
+            handle.className = "mp-drag-handle";
+            handle.title = "Drag to reorder";
+            handle.textContent = "⠿"; // braille dots = grip
+            handle.setAttribute("draggable", "true");
+
+            const typeSel = document.createElement("select");
+            typeSel.className = `block-type-badge ${meta.badge} mp-type-select`;
+            typeSel.title = "Change block type";
+            MP_TYPE_ORDER.forEach((t) => {
+                const opt = document.createElement("option");
+                opt.value = t;
+                opt.textContent = MP_BLOCK_TYPES[t].label;
+                if (t === block.type) opt.selected = true;
+                typeSel.appendChild(opt);
+            });
+            typeSel.addEventListener("change", (e) => {
+                mpConvertBlockType(block, e.target.value);
+                renderMpBlocks();
+                compileMpPreview();
+                mpFocusBlock(idx);
+            });
+
+            leftGroup.appendChild(handle);
+            leftGroup.appendChild(typeSel);
+
+            const actionsEl = document.createElement("div");
+            actionsEl.className = "block-actions";
+
             const upBtn = document.createElement("button");
-            upBtn.className = "block-ctrl-btn";
-            upBtn.textContent = "↑";
+            upBtn.className = "block-action-btn";
+            upBtn.innerHTML = "&#9650;";
+            upBtn.title = "Move up";
             upBtn.disabled = idx === 0;
-            upBtn.onclick = () => {
-                const temp = currentPageBlocks[idx];
-                currentPageBlocks[idx] = currentPageBlocks[idx - 1];
-                currentPageBlocks[idx - 1] = temp;
-                renderMpBlocks();
-                compileMpPreview();
-            };
-            
+            upBtn.addEventListener("click", () => mpMoveBlock(idx, -1));
+
             const downBtn = document.createElement("button");
-            downBtn.className = "block-ctrl-btn";
-            downBtn.textContent = "↓";
+            downBtn.className = "block-action-btn";
+            downBtn.innerHTML = "&#9660;";
+            downBtn.title = "Move down";
             downBtn.disabled = idx === currentPageBlocks.length - 1;
-            downBtn.onclick = () => {
-                const temp = currentPageBlocks[idx];
-                currentPageBlocks[idx] = currentPageBlocks[idx + 1];
-                currentPageBlocks[idx + 1] = temp;
-                renderMpBlocks();
-                compileMpPreview();
-            };
-            
+            downBtn.addEventListener("click", () => mpMoveBlock(idx, 1));
+
             const delBtn = document.createElement("button");
-            delBtn.className = "block-ctrl-btn del";
-            delBtn.textContent = "×";
-            delBtn.onclick = () => {
+            delBtn.className = "block-action-btn delete";
+            delBtn.innerHTML = "&times;";
+            delBtn.title = "Delete block";
+            delBtn.addEventListener("click", () => {
                 currentPageBlocks.splice(idx, 1);
                 renderMpBlocks();
                 compileMpPreview();
-            };
-            
-            controls.appendChild(upBtn);
-            controls.appendChild(downBtn);
-            controls.appendChild(delBtn);
-            header.appendChild(title);
-            header.appendChild(controls);
-            blockEl.appendChild(header);
-            
-            const fields = document.createElement("div");
-            fields.className = "block-fields";
-            
-            if (block.type === "header") {
-                const row = document.createElement("div");
-                row.className = "block-field-row";
-                
-                const select = document.createElement("select");
-                select.className = "block-select";
-                for (let h = 1; h <= 6; h++) {
-                    const opt = document.createElement("option");
-                    opt.value = h;
-                    opt.textContent = `H${h}`;
-                    select.appendChild(opt);
-                }
-                select.value = block.level || 1;
-                select.onchange = (e) => {
-                    block.level = parseInt(e.target.value);
-                    compileMpPreview();
-                };
-                
-                const input = document.createElement("input");
-                input.className = "block-input";
-                input.type = "text";
-                input.value = block.content || "";
-                input.placeholder = "Heading Text";
-                input.oninput = (e) => {
-                    block.content = e.target.value;
-                    compileMpPreview();
-                };
-                
-                row.appendChild(select);
-                row.appendChild(input);
-                fields.appendChild(row);
-            } else if (block.type === "text") {
-                const textarea = document.createElement("textarea");
-                textarea.className = "block-textarea";
-                textarea.value = block.content || "";
-                textarea.placeholder = "Enter text paragraphs...";
-                textarea.oninput = (e) => {
-                    block.content = e.target.value;
-                    compileMpPreview();
-                };
-                fields.appendChild(textarea);
-            } else if (block.type === "kv") {
-                const listContainer = document.createElement("div");
-                listContainer.className = "block-kv-list";
-                
-                let pairs = [];
-                try {
-                    pairs = JSON.parse(block.content);
-                } catch(e) {
-                    pairs = [];
-                }
-                if (!Array.isArray(pairs)) pairs = [];
-                
-                function updateKvContent() {
-                    block.content = JSON.stringify(pairs);
-                    compileMpPreview();
-                }
-                
-                function renderPairs() {
-                    listContainer.innerHTML = "";
-                    pairs.forEach((pair, pIdx) => {
-                        const pairRow = document.createElement("div");
-                        pairRow.className = "kv-pair-row";
-                        
-                        const kInput = document.createElement("input");
-                        kInput.type = "text";
-                        kInput.className = "kv-key-input";
-                        kInput.value = pair.key || "";
-                        kInput.placeholder = "Key";
-                        kInput.oninput = (e) => {
-                            pair.key = e.target.value;
-                            updateKvContent();
-                        };
-                        
-                        const vInput = document.createElement("input");
-                        vInput.type = "text";
-                        vInput.className = "kv-value-input";
-                        vInput.value = pair.value || "";
-                        vInput.placeholder = "Value";
-                        vInput.oninput = (e) => {
-                            pair.value = e.target.value;
-                            updateKvContent();
-                        };
-                        
-                        const rBtn = document.createElement("button");
-                        rBtn.className = "pair-remove-btn";
-                        rBtn.textContent = "×";
-                        rBtn.onclick = () => {
-                            pairs.splice(pIdx, 1);
-                            renderPairs();
-                            updateKvContent();
-                        };
-                        
-                        pairRow.appendChild(kInput);
-                        pairRow.appendChild(vInput);
-                        pairRow.appendChild(rBtn);
-                        listContainer.appendChild(pairRow);
-                    });
-                    
-                    const addPairBtn = document.createElement("button");
-                    addPairBtn.className = "spec-btn compact";
-                    addPairBtn.textContent = "+ Add Pair";
-                    addPairBtn.onclick = () => {
-                        pairs.push({key: "", value: ""});
-                        renderPairs();
-                        updateKvContent();
-                    };
-                    listContainer.appendChild(addPairBtn);
-                }
-                renderPairs();
-                fields.appendChild(listContainer);
-            } else if (block.type === "list") {
-                const textarea = document.createElement("textarea");
-                textarea.className = "block-textarea";
-                textarea.value = block.content || "";
-                textarea.placeholder = "Enter list items, one per line...";
-                textarea.oninput = (e) => {
-                    block.content = e.target.value;
-                    compileMpPreview();
-                };
-                fields.appendChild(textarea);
-            } else if (block.type === "code") {
-                const row = document.createElement("div");
-                row.className = "block-field-row";
-                
-                const langSelect = document.createElement("select");
-                langSelect.className = "block-select";
-                const languages = ["text", "cypher", "javascript", "python", "json", "yaml", "markdown"];
-                languages.forEach(l => {
-                    const opt = document.createElement("option");
-                    opt.value = l;
-                    opt.textContent = l.toUpperCase();
-                    langSelect.appendChild(opt);
-                });
-                langSelect.value = block.language || "text";
-                langSelect.onchange = (e) => {
-                    block.language = e.target.value;
-                    compileMpPreview();
-                };
-                row.appendChild(langSelect);
-                fields.appendChild(row);
-                
-                const textarea = document.createElement("textarea");
-                textarea.className = "block-textarea code-font";
-                textarea.value = block.content || "";
-                textarea.placeholder = "Write code here...";
-                textarea.oninput = (e) => {
-                    block.content = e.target.value;
-                    compileMpPreview();
-                };
-                fields.appendChild(textarea);
-            }
-            
-            blockEl.appendChild(fields);
+            });
+
+            actionsEl.appendChild(upBtn);
+            actionsEl.appendChild(downBtn);
+            actionsEl.appendChild(delBtn);
+
+            headerEl.appendChild(leftGroup);
+            headerEl.appendChild(actionsEl);
+            blockEl.appendChild(headerEl);
+
+            // body: per-type editable fields
+            const bodyEl = document.createElement("div");
+            bodyEl.className = "block-item-body";
+            mpRenderBlockBody(block, bodyEl);
+            blockEl.appendChild(bodyEl);
+
+            // drag & drop reorder (initiated from the grip handle only)
+            handle.addEventListener("dragstart", (e) => {
+                mpDragSrcIdx = idx;
+                blockEl.classList.add("mp-dragging");
+                e.dataTransfer.effectAllowed = "move";
+                try { e.dataTransfer.setData("text/plain", String(idx)); } catch (_) {}
+            });
+            handle.addEventListener("dragend", () => {
+                mpDragSrcIdx = null;
+                container.querySelectorAll(".mp-dragging, .mp-drop-above, .mp-drop-below")
+                    .forEach((el) => el.classList.remove("mp-dragging", "mp-drop-above", "mp-drop-below"));
+            });
+            blockEl.addEventListener("dragover", (e) => {
+                if (mpDragSrcIdx === null) return;
+                e.preventDefault();
+                const rect = blockEl.getBoundingClientRect();
+                const below = (e.clientY - rect.top) > rect.height / 2;
+                blockEl.classList.toggle("mp-drop-below", below);
+                blockEl.classList.toggle("mp-drop-above", !below);
+            });
+            blockEl.addEventListener("dragleave", () => {
+                blockEl.classList.remove("mp-drop-above", "mp-drop-below");
+            });
+            blockEl.addEventListener("drop", (e) => {
+                if (mpDragSrcIdx === null) return;
+                e.preventDefault();
+                const rect = blockEl.getBoundingClientRect();
+                const below = (e.clientY - rect.top) > rect.height / 2;
+                mpReorderBlock(mpDragSrcIdx, idx + (below ? 1 : 0));
+            });
+
             container.appendChild(blockEl);
         });
     }
@@ -2718,18 +2959,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const addMpBlockBtns = document.getElementsByClassName("add-mp-block-btn");
     Array.from(addMpBlockBtns).forEach(btn => {
         btn.addEventListener("click", (e) => {
-            const type = e.target.dataset.type;
-            let blockContent = "";
-            if (type === "kv") blockContent = "[]";
-            
-            currentPageBlocks.push({
-                type: type,
-                content: blockContent,
-                level: 1,
-                language: "text"
-            });
+            const type = e.currentTarget.dataset.type;
+            currentPageBlocks.push(mpBlankBlock(type));
             renderMpBlocks();
             compileMpPreview();
+            mpFocusBlock(currentPageBlocks.length - 1);
         });
     });
 
@@ -2745,12 +2979,21 @@ document.addEventListener("DOMContentLoaded", () => {
             
             const titleInput = document.getElementById("mp-page-title");
             const updatedTitle = titleInput ? titleInput.value.trim() : "";
-            
+
+            // Send only the fields the backend BlockItem accepts, in array order
+            // (position = index). Strips any transient client-only fields.
+            const cleanBlocks = currentPageBlocks.map((b) => ({
+                type: b.type,
+                content: b.content || "",
+                level: b.level || 1,
+                language: b.language || "text",
+            }));
+
             try {
                 const resBlocks = await fetch(`/api/mindpalace/page/${currentPageId}/blocks`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ title: updatedTitle, blocks: currentPageBlocks })
+                    body: JSON.stringify({ title: updatedTitle, blocks: cleanBlocks })
                 });
                 
                 if (resBlocks.ok) {

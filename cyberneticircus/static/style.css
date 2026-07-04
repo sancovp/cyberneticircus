@@ -1156,3 +1156,154 @@ canvas {
     color: var(--text-primary);
     transform: translateY(-1px);
 }
+
+/* ==========================================================================
+   MIND PALACE — workspace UX enhancements
+   Palace → Page(room) → Block(furniture) spatial editor. These styles layer on
+   top of the shared .block-item / .block-type-badge vocabulary reused from the
+   Spec Lab editor, adding the drag-handle, in-place type menu, breadcrumb, and
+   empty/loading/error states specific to the Mind Palace.
+   ========================================================================== */
+
+/* Breadcrumb: 🏛 Palace  ›  📄 Page — the "where am I in the palace" strip */
+.mp-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+    padding: 2px 2px 10px;
+    margin-bottom: 2px;
+}
+.mp-crumb {
+    padding: 3px 9px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.02);
+    white-space: nowrap;
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.mp-crumb-palace {
+    color: var(--neon-cyan);
+    border-color: rgba(6, 182, 212, 0.25);
+    background: rgba(6, 182, 212, 0.06);
+}
+.mp-crumb-page { color: var(--text-secondary); }
+.mp-crumb-sep { color: var(--text-muted); opacity: 0.6; }
+
+/* Block header: grip handle + type menu on the left */
+.mp-block-headleft {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.mp-drag-handle {
+    cursor: grab;
+    color: var(--text-muted);
+    font-size: 14px;
+    line-height: 1;
+    letter-spacing: -2px;
+    padding: 2px 3px;
+    border-radius: 4px;
+    user-select: none;
+    transition: color 0.15s ease, background 0.15s ease;
+}
+.mp-drag-handle:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.06);
+}
+.mp-drag-handle:active { cursor: grabbing; }
+
+/* Type-change menu styled to read like the .block-type-badge it replaces */
+.mp-type-select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    cursor: pointer;
+    outline: none;
+    padding-right: 16px;
+    background-image:
+        linear-gradient(45deg, transparent 50%, currentColor 50%),
+        linear-gradient(135deg, currentColor 50%, transparent 50%);
+    background-position:
+        calc(100% - 8px) center,
+        calc(100% - 4px) center;
+    background-size: 4px 4px, 4px 4px;
+    background-repeat: no-repeat;
+    transition: filter 0.15s ease, border-color 0.15s ease;
+}
+.mp-type-select:hover { filter: brightness(1.25); }
+.mp-type-select option {
+    background: #15151f;
+    color: var(--text-primary);
+    font-family: 'Outfit', sans-serif;
+}
+
+/* Drag state + drop indicators */
+.mp-block { transition: box-shadow 0.15s ease, opacity 0.15s ease; }
+.mp-block.mp-dragging { opacity: 0.4; }
+.mp-block.mp-drop-above { box-shadow: 0 -2px 0 0 var(--neon-cyan); }
+.mp-block.mp-drop-below { box-shadow: 0 2px 0 0 var(--neon-cyan); }
+
+/* Empty room state (no blocks yet) */
+.mp-empty-room {
+    text-align: center;
+    padding: 34px 20px;
+    color: var(--text-muted);
+    border: 1px dashed rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.01);
+}
+.mp-empty-room-icon { font-size: 26px; opacity: 0.6; margin-bottom: 8px; }
+.mp-empty-room p { font-size: 12.5px; margin: 2px 0; }
+.mp-empty-room-hint { color: var(--text-muted); opacity: 0.7; font-size: 11px; font-style: italic; }
+
+/* Sidebar list loading / empty / error states */
+.mp-list-state {
+    font-size: 11px;
+    color: var(--text-muted);
+    padding: 8px 4px;
+    font-style: italic;
+}
+.mp-list-error { color: var(--neon-pink); font-style: normal; }
+
+/* Page (room) list item: label + hover-reveal delete */
+.mp-page-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+}
+.mp-page-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+}
+.mp-page-del {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 14px;
+    line-height: 1;
+    border-radius: 4px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.mp-page-item:hover .mp-page-del { opacity: 1; }
+.mp-page-del:hover {
+    background: rgba(255, 71, 87, 0.18);
+    color: var(--neon-pink);
+}
