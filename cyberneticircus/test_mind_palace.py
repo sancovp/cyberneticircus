@@ -758,6 +758,110 @@ def test_route_backlinks_returns_inbound_and_outbound():
 
 
 # ─────────────────────────────────────────────────────────────────────────
+# LIB level — query-block (#4 / A2): STRICTLY READ-ONLY Cypher + :Wiki firewall.
+# The guard is composed from the canonical gates atoms; SECURITY is the point.
+# ─────────────────────────────────────────────────────────────────────────
+
+def test_queryblock_runs_readonly_cypher_and_returns_rows():
+    from lib.palace import queryblock as qb
+    d = FakeDriver().when("MATCH", [{"name": "Alpha"}, {"name": "Beta"}])
+    out = qb.run_query_block(d, cypher="MATCH (n:Cybernet) RETURN n.name AS name")
+    assert out == [{"name": "Alpha"}, {"name": "Beta"}]          # rows returned for inline render
+    assert d.queries[0][0] == "MATCH (n:Cybernet) RETURN n.name AS name"
+    assert d.queries[0][1] == {}                                 # no params threaded
+
+
+def test_queryblock_refuses_write_mutation():
+    # A bare DELETE has no CREATE/MERGE + no :Wiki, so validate_cypher_query ALONE would let it
+    # through — the read-only guard (is_mutation_query) is what refuses it. This is the point.
+    from lib.palace import queryblock as qb
+    d = FakeDriver()
+    try:
+        qb.run_query_block(d, cypher="MATCH (n) DETACH DELETE n")
+        assert False, "expected PermissionError (write refused)"
+    except PermissionError as e:
+        assert "READ-ONLY" in str(e)
+    assert d.queries == []                                       # never reached the database
+
+
+def test_queryblock_refuses_wiki_read():
+    # validate_cypher_query does NOT block :Wiki READS (only writes); the firewall in queryblock
+    # does. A read-only block must not leak private :Wiki content into the palace.
+    from lib.palace import queryblock as qb
+    d = FakeDriver()
+    try:
+        qb.run_query_block(d, cypher="MATCH (w:Wiki) RETURN w")
+        assert False, "expected PermissionError (:Wiki read refused)"
+    except PermissionError as e:
+        assert "Wiki" in str(e)
+    assert d.queries == []                                       # never reached the database
+
+
+def test_queryblock_refuses_wiki_write():
+    from lib.palace import queryblock as qb
+    d = FakeDriver()
+    try:
+        qb.run_query_block(d, cypher="MATCH (w:Wiki) SET w.pwned = true")
+        assert False, "expected PermissionError (:Wiki write refused)"
+    except PermissionError:
+        pass
+    assert d.queries == []
+
+
+def test_queryblock_refuses_bare_create():
+    from lib.palace import queryblock as qb
+    d = FakeDriver()
+    try:
+        qb.run_query_block(d, cypher="CREATE (n:Foo {x: 1})")
+        assert False, "expected PermissionError (create refused)"
+    except PermissionError:
+        pass
+    assert d.queries == []
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# ROUTER level — palace_queryblock (its own module + own router, auto-registered).
+# ─────────────────────────────────────────────────────────────────────────
+
+def _queryblock_router_client(run_impl):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from routers import palace_queryblock as qb_router
+
+    calls = {}
+
+    class FakeQB:
+        def run_query_block(self, driver, *, cypher):
+            calls["run_query_block"] = cypher
+            return run_impl(cypher)
+
+    qb_router.lib_queryblock = FakeQB()
+    qb_router.get_driver = lambda: object()
+
+    app = FastAPI()
+    app.include_router(qb_router.router, prefix="/api")
+    return TestClient(app), calls
+
+
+def test_route_queryblock_run_returns_rows():
+    c, calls = _queryblock_router_client(lambda cy: [{"name": "Alpha"}])
+    r = c.post("/api/mindpalace/queryblock/run",
+               json={"cypher": "MATCH (n:Cybernet) RETURN n.name AS name"})
+    assert r.status_code == 200, r.text
+    assert r.json() == {"rows": [{"name": "Alpha"}]}
+    assert calls["run_query_block"] == "MATCH (n:Cybernet) RETURN n.name AS name"
+
+
+def test_route_queryblock_refusal_is_403():
+    def _refuse(cy):
+        raise PermissionError("Security Policy Violation: Query blocks are STRICTLY READ-ONLY; ...")
+    c, calls = _queryblock_router_client(_refuse)
+    r = c.post("/api/mindpalace/queryblock/run", json={"cypher": "MATCH (n) DELETE n"})
+    assert r.status_code == 403, r.text                          # gate refusal maps to 403, not 500
+    assert "READ-ONLY" in r.json()["detail"]
+
+
+# ─────────────────────────────────────────────────────────────────────────
 # Runner (mirrors test_router_contracts.py — no pytest dependency required)
 # ─────────────────────────────────────────────────────────────────────────
 
