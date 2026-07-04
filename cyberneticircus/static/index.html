@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CybernetiCircus Visualizer</title>
-    <link rel="stylesheet" href="/static/style.css?v=11">
+    <link rel="stylesheet" href="/static/style.css?v=15">
 </head>
 <body>
     <!-- Floating Substrate HUD Controls -->
@@ -143,6 +143,14 @@
 
                     <!-- Right Editor -->
                     <div class="mindpalace-editor">
+                        <!-- Editor mode tabs: Page (compose) vs Graph (spatial palace view) -->
+                        <div class="mp-editor-tabs">
+                            <button class="mp-editor-tab active" id="mp-mode-page">📄 Page</button>
+                            <button class="mp-editor-tab" id="mp-mode-graph">🕸 Graph</button>
+                        </div>
+
+                        <!-- PAGE MODE -->
+                        <div id="mp-page-mode">
                         <div id="no-page-selected" class="editor-placeholder">
                             <p>Select or create a page from the sidebar to begin editing.</p>
                         </div>
@@ -202,6 +210,28 @@
                                 </div>
                             </div>
                         </div>
+                        </div><!-- /#mp-page-mode -->
+
+                        <!-- GRAPH MODE: spatial view of the selected palace's subgraph.
+                             Renders whatever {nodes,links} the export route returns, so
+                             cross-page LINKS_TO backlinks light up automatically once the
+                             backend fleet emits them. -->
+                        <div id="mp-graph-mode" class="hidden">
+                            <div id="mp-graph-empty" class="mp-graph-empty">
+                                <div class="mp-graph-empty-icon">🕸</div>
+                                <p>Select a palace to view its graph.</p>
+                            </div>
+                            <div id="mp-graph-stage" class="mp-graph-stage hidden">
+                                <canvas id="mp-graph-canvas"></canvas>
+                                <div class="mp-graph-legend">
+                                    <span class="mp-leg mp-leg-palace">● Palace</span>
+                                    <span class="mp-leg mp-leg-page">● Page</span>
+                                    <span class="mp-leg mp-leg-block">● Block</span>
+                                    <span class="mp-leg mp-leg-link">— link</span>
+                                </div>
+                                <div class="mp-graph-hint">Drag to arrange · scroll to zoom · click a page to open it</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -251,6 +281,6 @@
 
     <!-- D3.js library for graph visualization -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
-    <script src="/static/app.js?v=14"></script>
+    <script src="/static/app.js?v=15"></script>
 </body>
 </html>

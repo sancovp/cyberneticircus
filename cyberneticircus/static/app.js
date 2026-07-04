@@ -2349,6 +2349,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.getElementById("palace-pages-list").innerHTML = "";
                 hidePageEditor();
             }
+            if (mpEditorMode === "graph") loadPalaceGraph();
         });
     }
 
@@ -2517,6 +2518,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     await loadPalacePages(currentPalaceId);
                     loadPage(pageData.page_id);
                     await drawGraph(activeIdentity);
+                    if (mpEditorMode === "graph") loadPalaceGraph();
                     showSpecStatus("Page created!");
                 } else {
                     const err = await res.json();
@@ -3103,6 +3105,273 @@ document.addEventListener("DOMContentLoaded", () => {
             importFile.value = "";
         });
     }
+
+    // ======================================================================
+    // Mind Palace — GRAPH MODE (spatial view of the selected palace's subgraph)
+    // Reuses the d3-force library + the palace color/orbital conventions of the
+    // main visualizer, rendered to its own isolated canvas fed by the export
+    // route (POST /api/mindpalace/{id}/export -> {export_data:{nodes,links}}).
+    // It draws WHATEVER edges the export returns, so cross-page LINKS_TO
+    // backlinks light up automatically once the backend fleet emits them.
+    // ======================================================================
+    let mpEditorMode = "page";
+    let mpGraphSim = null;
+    let mpGraphRAF = null;
+    let mpGraphNodes = [];
+    let mpGraphLinks = [];
+    let mpGraphTransform = d3.zoomIdentity;
+    let mpGraphCanvas = null;
+    let mpGraphCtx = null;
+    let mpGraphInit = false;
+
+    const MP_GRAPH_STYLE = {
+        MindPalace: { r: 16, color: [6, 182, 212] },   // cyan hub
+        Page:       { r: 9,  color: [34, 211, 238] },   // teal satellite
+        Block:      { r: 5,  color: [120, 190, 205] },  // soft-teal sub-satellite
+    };
+    function mpNodeStyle(label) {
+        return MP_GRAPH_STYLE[label] || { r: 6, color: [148, 163, 184] };
+    }
+    function mpIsStructuralLink(type) {
+        return type === "HAS_PAGE" || type === "HAS_BLOCK";
+    }
+
+    function mpStopGraph() {
+        if (mpGraphRAF) { cancelAnimationFrame(mpGraphRAF); mpGraphRAF = null; }
+        if (mpGraphSim) { mpGraphSim.stop(); }
+    }
+
+    function mpSetEditorMode(mode) {
+        mpEditorMode = mode;
+        const pageBtn = document.getElementById("mp-mode-page");
+        const graphBtn = document.getElementById("mp-mode-graph");
+        const pageMode = document.getElementById("mp-page-mode");
+        const graphMode = document.getElementById("mp-graph-mode");
+        if (!pageMode || !graphMode) return;
+        if (mode === "graph") {
+            graphMode.classList.remove("hidden");
+            pageMode.classList.add("hidden");
+            if (graphBtn) graphBtn.classList.add("active");
+            if (pageBtn) pageBtn.classList.remove("active");
+            loadPalaceGraph();
+        } else {
+            pageMode.classList.remove("hidden");
+            graphMode.classList.add("hidden");
+            if (pageBtn) pageBtn.classList.add("active");
+            if (graphBtn) graphBtn.classList.remove("active");
+            mpStopGraph();
+        }
+    }
+
+    function mpGraphEmptyMsg(msg) {
+        const empty = document.getElementById("mp-graph-empty");
+        const stage = document.getElementById("mp-graph-stage");
+        if (stage) stage.classList.add("hidden");
+        if (empty) {
+            empty.classList.remove("hidden");
+            const p = empty.querySelector("p");
+            if (p) p.textContent = msg;
+        }
+        mpStopGraph();
+    }
+
+    function mpSizeGraphCanvas() {
+        if (!mpGraphCanvas || !mpGraphCtx) return;
+        const stage = document.getElementById("mp-graph-stage");
+        if (!stage) return;
+        const rect = stage.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        const w = Math.max(200, Math.floor(rect.width));
+        const h = Math.max(200, Math.floor(rect.height));
+        mpGraphCanvas.width = w * dpr;
+        mpGraphCanvas.height = h * dpr;
+        mpGraphCanvas.style.width = w + "px";
+        mpGraphCanvas.style.height = h + "px";
+        mpGraphCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        mpGraphCanvas._cssW = w;
+        mpGraphCanvas._cssH = h;
+    }
+
+    async function loadPalaceGraph() {
+        const empty = document.getElementById("mp-graph-empty");
+        const stage = document.getElementById("mp-graph-stage");
+        if (!empty || !stage) return;
+
+        if (!currentPalaceId) { mpGraphEmptyMsg("Select a palace to view its graph."); return; }
+
+        mpGraphEmptyMsg("Mapping the palace…");
+        try {
+            const res = await fetch(`/api/mindpalace/${currentPalaceId}/export`, { method: "POST" });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            const ex = (data && data.export_data) || { nodes: [], links: [] };
+            const rawNodes = ex.nodes || [];
+            const rawLinks = ex.links || [];
+
+            if (rawNodes.length === 0) { mpGraphEmptyMsg("This palace has no rooms yet — add a page."); return; }
+
+            // Fresh objects — d3 mutates node x/y and rewrites link.source/target to refs.
+            mpGraphNodes = rawNodes.map((n) => ({ id: n.id, label: n.label, name: n.name }));
+            const idset = new Set(mpGraphNodes.map((n) => n.id));
+            mpGraphLinks = rawLinks
+                .filter((l) => idset.has(l.source) && idset.has(l.target))
+                .map((l) => ({ source: l.source, target: l.target, type: l.type }));
+
+            empty.classList.add("hidden");
+            stage.classList.remove("hidden");
+
+            mpInitGraphCanvas();
+            mpSizeGraphCanvas();
+            mpStartGraphSim();
+        } catch (e) {
+            console.error("Failed to load palace graph:", e);
+            mpGraphEmptyMsg("Could not load the palace graph.");
+        }
+    }
+
+    function mpGraphPick(cssX, cssY) {
+        const p = mpGraphTransform.invert([cssX, cssY]);
+        let best = null, bestD = Infinity;
+        for (const n of mpGraphNodes) {
+            if (n.x == null) continue;
+            const dx = n.x - p[0], dy = n.y - p[1];
+            const d2 = dx * dx + dy * dy;
+            const r = mpNodeStyle(n.label).r + 5;
+            if (d2 < r * r && d2 < bestD) { bestD = d2; best = n; }
+        }
+        return best;
+    }
+
+    function mpInitGraphCanvas() {
+        if (mpGraphInit) return;
+        mpGraphCanvas = document.getElementById("mp-graph-canvas");
+        if (!mpGraphCanvas) return;
+        mpGraphCtx = mpGraphCanvas.getContext("2d");
+
+        const zoom = d3.zoom().scaleExtent([0.2, 4]).on("zoom", (ev) => { mpGraphTransform = ev.transform; });
+        d3.select(mpGraphCanvas).call(zoom);
+
+        d3.select(mpGraphCanvas).call(
+            d3.drag()
+                .subject((ev) => mpGraphPick(ev.x, ev.y))
+                .on("start", (ev) => {
+                    if (!ev.subject) return;
+                    if (!ev.active && mpGraphSim) mpGraphSim.alphaTarget(0.3).restart();
+                    const p = mpGraphTransform.invert([ev.x, ev.y]);
+                    ev.subject.fx = p[0]; ev.subject.fy = p[1];
+                })
+                .on("drag", (ev) => {
+                    if (!ev.subject) return;
+                    const p = mpGraphTransform.invert([ev.x, ev.y]);
+                    ev.subject.fx = p[0]; ev.subject.fy = p[1];
+                })
+                .on("end", (ev) => {
+                    if (!ev.subject) return;
+                    if (!ev.active && mpGraphSim) mpGraphSim.alphaTarget(0);
+                    ev.subject.fx = null; ev.subject.fy = null;
+                })
+        );
+
+        mpGraphCanvas.addEventListener("click", (e) => {
+            const rect = mpGraphCanvas.getBoundingClientRect();
+            const node = mpGraphPick(e.clientX - rect.left, e.clientY - rect.top);
+            if (node && node.label === "Page") {
+                mpSetEditorMode("page");
+                loadPage(node.id);
+            }
+        });
+
+        window.addEventListener("resize", () => { if (mpEditorMode === "graph") mpSizeGraphCanvas(); });
+        mpGraphInit = true;
+    }
+
+    function mpStartGraphSim() {
+        const w = mpGraphCanvas._cssW || 400;
+        const h = mpGraphCanvas._cssH || 400;
+        if (mpGraphSim) mpGraphSim.stop();
+        mpGraphNodes.forEach((n) => {
+            if (n.x == null) { n.x = w / 2 + (Math.random() - 0.5) * 90; n.y = h / 2 + (Math.random() - 0.5) * 90; }
+        });
+        mpGraphSim = d3.forceSimulation(mpGraphNodes)
+            .force("link", d3.forceLink(mpGraphLinks).id((d) => d.id)
+                .distance((l) => (mpIsStructuralLink(l.type) ? 55 : 75)).strength(0.6))
+            .force("charge", d3.forceManyBody().strength(-170))
+            .force("collide", d3.forceCollide().radius((d) => mpNodeStyle(d.label).r + 6))
+            .force("center", d3.forceCenter(w / 2, h / 2));
+        mpGraphSim.alpha(1).restart();
+        if (mpGraphRAF) cancelAnimationFrame(mpGraphRAF);
+        const loop = () => { mpRenderGraph(); mpGraphRAF = requestAnimationFrame(loop); };
+        mpGraphRAF = requestAnimationFrame(loop);
+    }
+
+    function mpRenderGraph() {
+        if (!mpGraphCtx || !mpGraphCanvas) return;
+        const w = mpGraphCanvas._cssW, h = mpGraphCanvas._cssH;
+        const t = mpGraphTransform;
+        mpGraphCtx.save();
+        mpGraphCtx.clearRect(0, 0, w, h);
+        mpGraphCtx.translate(t.x, t.y);
+        mpGraphCtx.scale(t.k, t.k);
+
+        // links (structural = dim solid; anything else e.g. LINKS_TO = cyan dashed)
+        mpGraphLinks.forEach((l) => {
+            const s = l.source, tg = l.target;
+            if (!s || !tg || s.x == null || tg.x == null) return;
+            mpGraphCtx.beginPath();
+            mpGraphCtx.moveTo(s.x, s.y);
+            mpGraphCtx.lineTo(tg.x, tg.y);
+            if (mpIsStructuralLink(l.type)) {
+                mpGraphCtx.strokeStyle = "rgba(120, 190, 205, 0.28)";
+                mpGraphCtx.lineWidth = 1 / t.k;
+                mpGraphCtx.setLineDash([]);
+            } else {
+                mpGraphCtx.strokeStyle = "rgba(6, 182, 212, 0.75)";
+                mpGraphCtx.lineWidth = 1.4 / t.k;
+                mpGraphCtx.setLineDash([4 / t.k, 3 / t.k]);
+            }
+            mpGraphCtx.stroke();
+        });
+        mpGraphCtx.setLineDash([]);
+
+        // nodes
+        mpGraphNodes.forEach((n) => {
+            if (n.x == null) return;
+            const st = mpNodeStyle(n.label);
+            const c = st.color;
+            if (n.label === "MindPalace") {
+                const g = mpGraphCtx.createRadialGradient(n.x, n.y, st.r * 0.5, n.x, n.y, st.r * 2.6);
+                g.addColorStop(0, `rgba(${c[0]},${c[1]},${c[2]},0.35)`);
+                g.addColorStop(1, `rgba(${c[0]},${c[1]},${c[2]},0)`);
+                mpGraphCtx.fillStyle = g;
+                mpGraphCtx.beginPath();
+                mpGraphCtx.arc(n.x, n.y, st.r * 2.6, 0, Math.PI * 2);
+                mpGraphCtx.fill();
+            }
+            mpGraphCtx.beginPath();
+            mpGraphCtx.arc(n.x, n.y, st.r, 0, Math.PI * 2);
+            mpGraphCtx.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},0.95)`;
+            mpGraphCtx.fill();
+            mpGraphCtx.lineWidth = 1.5 / t.k;
+            mpGraphCtx.strokeStyle = "rgba(255,255,255,0.25)";
+            mpGraphCtx.stroke();
+
+            if (n.label !== "Block" || t.k > 1.6) {
+                mpGraphCtx.fillStyle = "rgba(210, 230, 240, 0.85)";
+                mpGraphCtx.font = `${(n.label === "MindPalace" ? 11 : 9) / t.k}px 'Outfit', sans-serif`;
+                mpGraphCtx.textAlign = "center";
+                const nm = n.name || "";
+                const short = nm.length > 22 ? nm.substring(0, 19) + "…" : nm;
+                mpGraphCtx.fillText(short, n.x, n.y + st.r + (11 / t.k));
+            }
+        });
+
+        mpGraphCtx.restore();
+    }
+
+    const mpModePageBtn = document.getElementById("mp-mode-page");
+    const mpModeGraphBtn = document.getElementById("mp-mode-graph");
+    if (mpModePageBtn) mpModePageBtn.addEventListener("click", () => mpSetEditorMode("page"));
+    if (mpModeGraphBtn) mpModeGraphBtn.addEventListener("click", () => mpSetEditorMode("graph"));
 
     // Initial load on script execution
     loadTemplatesAndSpecs();
