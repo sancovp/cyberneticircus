@@ -13,6 +13,7 @@ in its own file so fleet features drop in without collision:
   palace/graph.py   — export_palace / import_palace
   palace/links.py   — [[wiki-links]] + backlinks             (FLEET STUB)
   palace/search.py  — full-text search across pages + blocks (FLEET STUB)
+  palace/templates.py — :PageTemplate block-sets (create/list/instantiate)
 
 Route → composition map (unchanged):
   - list_mindpalaces  →  GET  /api/mindpalaces
@@ -30,12 +31,17 @@ from __future__ import annotations
 # Re-export the whole palace public surface (functions + Cypher constants).
 from .palace import *  # noqa: F401,F403
 from .palace import (  # noqa: F401  (explicit re-exports for tooling/discoverability)
-    crud, blocks, graph, links, search,
+    crud, blocks, history, graph, links, search, templates,
     list_mindpalaces, create_mindpalace, list_pages, create_page, get_page,
-    delete_page, save_blocks, export_palace, import_palace,
+    delete_page, save_blocks, snapshot_changed_blocks, get_block_revisions,
+    export_palace, import_palace,
+    create_template, list_templates, instantiate_template,
     LIST_MINDPALACES_CYPHER, CREATE_MINDPALACE_CYPHER, LIST_PAGES_CYPHER,
-    CREATE_PAGE_CYPHER, GET_PAGE_CYPHER, DELETE_PAGE_CYPHER,
-    SET_PAGE_TITLE_CYPHER, DELETE_PAGE_BLOCKS_CYPHER, CREATE_BLOCK_CYPHER,
+    CREATE_PAGE_CYPHER, GET_PAGE_CYPHER, DELETE_PAGE_CYPHER, LINK_PAGE_TO_TEMPLATE_CYPHER,
+    SET_PAGE_TITLE_CYPHER, UPSERT_BLOCKS_CYPHER, DELETE_MISSING_BLOCKS_CYPHER,
+    SNAPSHOT_CHANGED_BLOCKS_CYPHER, GET_BLOCK_REVISIONS_CYPHER,
     EXPORT_PATHS_CYPHER,
+    LIST_TEMPLATES_CYPHER, CREATE_TEMPLATE_CYPHER,
+    CREATE_TEMPLATE_BLOCK_CYPHER, GET_TEMPLATE_CYPHER,
 )
 from .palace import __all__ as __all__  # noqa: F401

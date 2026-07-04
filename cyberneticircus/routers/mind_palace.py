@@ -4,6 +4,7 @@ Router: mind_palace — 9 endpoints for the Notion-like wiki CRUD + JSON import/
   - export / import
 """
 from __future__ import annotations
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -28,6 +29,7 @@ class PageCreate(BaseModel):
 
 
 class BlockItem(BaseModel):
+    id: Optional[str] = None  # stable block id; None on a brand-new block (P0 — save_blocks mints one)
     type: str  # 'header', 'text', 'list', 'code'
     content: str
     level: Optional[int] = 1
@@ -97,12 +99,13 @@ def get_page_endpoint(page_id: str):
 
 @router.post("/mindpalace/page/{page_id}/blocks")
 def save_blocks_endpoint(page_id: str, payload: BlocksPayload):
-    """Replace the Blocks of a Page atomically (DETACH DELETE old, CREATE new)."""
+    """Diff-and-patch the Blocks of a Page by stable id (preserve unchanged ids, delete only removed)."""
     try:
         return lib_mind_palace.save_blocks(
             get_driver(), page_id=page_id,
             title=payload.title,
             blocks=[b.model_dump() for b in payload.blocks],
+            ts=datetime.now(timezone.utc).isoformat(),
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

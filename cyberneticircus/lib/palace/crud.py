@@ -14,7 +14,7 @@ blocks); the block WRITE path lives in palace/blocks.py.
 """
 from __future__ import annotations
 import uuid
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 
 # --- Cypher-string constructors ---------------------------------------------
@@ -44,6 +44,15 @@ MATCH (mp:MindPalace) WHERE elementId(mp) = $mp_id OR id(mp) = $mp_id_int OR mp.
 CREATE (p:Page {id: $page_id, title: $title, domain: 'cyberneticity', subdomain: 'page'})
 CREATE (mp)-[:HAS_PAGE]->(p)
 RETURN elementId(p) as id, p.id as page_id, p.title as title
+"""
+
+# Provenance edge for a page born from a PageTemplate (palace/templates.py); run
+# only when create_page is given a template_id — additive, no change to the base
+# CREATE_PAGE_CYPHER shape above.
+LINK_PAGE_TO_TEMPLATE_CYPHER = """
+MATCH (p:Page) WHERE elementId(p) = $page_id OR id(p) = $page_id_int OR p.id = $page_id
+MATCH (t:PageTemplate) WHERE elementId(t) = $template_id OR id(t) = $template_id_int OR t.id = $template_id
+MERGE (p)-[:FROM_TEMPLATE]->(t)
 """
 
 GET_PAGE_CYPHER = """
@@ -92,13 +101,20 @@ def list_pages(driver, *, mp_id: str) -> List[Dict[str, Any]]:
         return [dict(r) for r in res]
 
 
-def create_page(driver, *, mp_id: str, title: str) -> Dict[str, Any]:
-    """Create a new Page under a MindPalace."""
+def create_page(driver, *, mp_id: str, title: str, template_id: Optional[str] = None) -> Dict[str, Any]:
+    """Create a new Page under a MindPalace. If `template_id` is given, also records
+    the page's origin PageTemplate (FROM_TEMPLATE) — see palace/templates.py."""
     page_id = f"page_{uuid.uuid4().hex}"
     with driver.session() as session:
         res = session.run(CREATE_PAGE_CYPHER,
                           {"mp_id": mp_id, "mp_id_int": _coerce_int(mp_id), "page_id": page_id, "title": title})
-        return dict(res.single())
+        record = dict(res.single())
+        if template_id:
+            session.run(LINK_PAGE_TO_TEMPLATE_CYPHER, {
+                "page_id": page_id, "page_id_int": _coerce_int(page_id),
+                "template_id": template_id, "template_id_int": _coerce_int(template_id),
+            })
+        return record
 
 
 def get_page(driver, *, page_id: str) -> Dict[str, Any]:

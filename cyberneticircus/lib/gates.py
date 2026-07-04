@@ -73,7 +73,7 @@ def validate_cypher_query(query: str) -> None:
             'traversal', 'traversal_state', 'simulation', 'mindpalace',
             'page', 'block', 'task_list', 'task', 'skill',
             'finding', 'place', 'ghost', 'shell', 'core', 'compiler',
-            'consolidation',
+            'consolidation', 'revision', 'template',
         }
         if subdomain not in allowed:
             raise PermissionError(

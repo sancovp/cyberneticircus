@@ -396,8 +396,9 @@ def _router_client():
             calls["get_page"] = page_id
             return {} if page_id == "missing" else {"id": page_id, "title": "T", "blocks": []}
 
-        def save_blocks(self, driver, *, page_id, title, blocks):
+        def save_blocks(self, driver, *, page_id, title, blocks, ts=None):
             calls["save_blocks"] = (page_id, title, blocks)
+            calls["save_blocks_ts"] = ts
             return {"status": "success"}
 
         def delete_page(self, driver, *, page_id):
@@ -517,6 +518,124 @@ def test_route_search_threads_mp_id_and_limit():
     r = c.get("/api/mindpalace/search", params={"q": "hello", "mp_id": "mp_1", "limit": 5})
     assert r.status_code == 200
     assert calls["search_palace"] == ("hello", "mp_1", 5)
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# LIB level — templates (PageTemplate create/list/instantiate onto a new Page)
+# ─────────────────────────────────────────────────────────────────────────
+
+def test_create_template_creates_node_and_blocks():
+    d = FakeDriver()
+    d.when("CREATE (t:PageTemplate", [{"id": "e_t1", "template_id": "template_x", "name": "Sprint"}])
+    out = mp.create_template(d, name="Sprint", blocks=[
+        {"type": "header", "content": "H"},
+        {"type": "text", "content": "body", "level": 2},
+    ])
+    assert out["name"] == "Sprint"
+    block_qs = [(q, p) for (q, p) in d.queries if q == mp.CREATE_TEMPLATE_BLOCK_CYPHER]
+    assert len(block_qs) == 2
+    assert block_qs[0][1]["position"] == 0 and block_qs[0][1]["type"] == "header"
+    assert block_qs[0][1]["level"] == 1 and block_qs[0][1]["language"] == "text"  # defaults applied
+    assert block_qs[1][1]["position"] == 1 and block_qs[1][1]["level"] == 2
+    assert block_qs[0][1]["block_id"].startswith("block_")
+
+
+def test_list_templates_returns_dicts():
+    d = FakeDriver().when("MATCH (t:PageTemplate)",
+                          [{"id": "e_t1", "template_id": "template_x", "name": "Sprint"}])
+    out = mp.list_templates(d)
+    assert out == [{"id": "e_t1", "template_id": "template_x", "name": "Sprint"}]
+    assert d.queries[0][0] == mp.LIST_TEMPLATES_CYPHER
+
+
+def test_instantiate_template_clones_blocks_onto_new_page():
+    d = FakeDriver()
+    d.when("OPTIONAL MATCH (t)-[:HAS_BLOCK]", [{
+        "id": "e_t1", "template_id": "template_x", "name": "Sprint",
+        "blocks": [{"type": "text", "content": "b1", "position": 0, "level": 1, "language": "text"},
+                   {"type": "code", "content": "x=1", "position": 1, "level": 1, "language": "python"}],
+    }])
+    d.when("CREATE (p:Page", [{"id": "e_p1", "page_id": "page_new", "title": "From Sprint"}])
+    out = mp.instantiate_template(d, template_id="template_x", palace_id="mp_1", title="From Sprint")
+    assert out == {"template_id": "template_x", "page_id": "page_new",
+                   "title": "From Sprint", "block_count": 2}
+    create_page_q = [(q, p) for (q, p) in d.queries if q == mp.CREATE_PAGE_CYPHER][0]
+    assert create_page_q[1]["mp_id"] == "mp_1" and create_page_q[1]["title"] == "From Sprint"
+    upsert_q = [(q, p) for (q, p) in d.queries if q == mp.UPSERT_BLOCKS_CYPHER][0]
+    assert [b["content"] for b in upsert_q[1]["blocks"]] == ["b1", "x=1"]
+    assert all(b["id"].startswith("block_") for b in upsert_q[1]["blocks"])  # fresh ids, not the template's
+    link_qs = [q for (q, _) in d.queries if "FROM_TEMPLATE" in q]  # provenance edge recorded
+    assert len(link_qs) == 1
+
+
+def test_instantiate_template_missing_returns_empty():
+    d = FakeDriver()  # no template record for this id
+    assert mp.instantiate_template(d, template_id="ghost", palace_id="mp_1", title="T") == {}
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# ROUTER level — palace_templates (its own module + own router, per MINDPALACE-
+# IMPROVEMENTS.md #7; mounted separately from routers/mind_palace.py)
+# ─────────────────────────────────────────────────────────────────────────
+
+def _templates_router_client():
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from routers import palace_templates as pt_router
+
+    calls = {}
+
+    class FakeTemplates:
+        def list_templates(self, driver):
+            calls["list_templates"] = True
+            return [{"id": "e_t1", "template_id": "template_x", "name": "Sprint"}]
+
+        def create_template(self, driver, *, name, blocks):
+            calls["create_template"] = (name, blocks)
+            return {"id": "e_t1", "template_id": "template_x", "name": name}
+
+        def instantiate_template(self, driver, *, template_id, palace_id, title):
+            calls["instantiate_template"] = (template_id, palace_id, title)
+            if template_id == "ghost":
+                return {}
+            return {"template_id": template_id, "page_id": "page_new",
+                    "title": title, "block_count": 2}
+
+    pt_router.lib_mind_palace = FakeTemplates()
+    pt_router.get_driver = lambda: object()
+
+    app = FastAPI()
+    app.include_router(pt_router.router, prefix="/api")
+    return TestClient(app), calls
+
+
+def test_route_list_templates():
+    c, calls = _templates_router_client()
+    r = c.get("/api/mindpalace/templates")
+    assert r.status_code == 200
+    assert r.json() == {"templates": [{"id": "e_t1", "template_id": "template_x", "name": "Sprint"}]}
+    assert calls.get("list_templates")
+
+
+def test_route_create_template_threads_payload():
+    c, calls = _templates_router_client()
+    r = c.post("/api/mindpalace/template",
+               json={"name": "Sprint", "blocks": [{"type": "header", "content": "H"}]})
+    assert r.status_code == 200, r.text
+    name, blocks = calls["create_template"]
+    assert name == "Sprint" and blocks[0]["type"] == "header" and blocks[0]["content"] == "H"
+
+
+def test_route_instantiate_template_found_and_missing():
+    c, calls = _templates_router_client()
+    r = c.post("/api/mindpalace/mp_1/page/from-template",
+               json={"template_id": "template_x", "title": "From Sprint"})
+    assert r.status_code == 200, r.text
+    assert r.json()["page_id"] == "page_new"
+    assert calls["instantiate_template"] == ("template_x", "mp_1", "From Sprint")
+    r2 = c.post("/api/mindpalace/mp_1/page/from-template",
+                json={"template_id": "ghost", "title": "T"})
+    assert r2.status_code == 404
 
 
 # ─────────────────────────────────────────────────────────────────────────
