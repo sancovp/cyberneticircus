@@ -16,6 +16,8 @@ from __future__ import annotations
 import uuid
 from typing import Any, Dict, List, Optional
 
+from . import transclude
+
 
 # --- Cypher-string constructors ---------------------------------------------
 
@@ -126,6 +128,10 @@ def get_page(driver, *, page_id: str) -> Dict[str, Any]:
         data = dict(rec)
         blocks = [b for b in data["blocks"] if b]
         blocks.sort(key=lambda x: x.get("position", 0))
+        # Resolve ((block_id)) transclusions on read: reconcile :TRANSCLUDES edges +
+        # attach each referencing block's resolved LIVE content (blocks with no ref are
+        # left untouched). Runs on the open session — the raw ((id)) stays in content.
+        transclude.resolve_page_blocks(session, blocks=blocks)
         data["blocks"] = blocks
         return data
 

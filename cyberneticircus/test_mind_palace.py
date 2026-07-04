@@ -758,6 +758,185 @@ def test_route_backlinks_returns_inbound_and_outbound():
 
 
 # ─────────────────────────────────────────────────────────────────────────
+# LIB level — transclude (((block_id)) parse + read-through resolution +
+# :TRANSCLUDES reify + cycle guard + depth limit, per MINDPALACE-IMPROVEMENTS
+# .md B1; hooked once into crud.get_page)
+# ─────────────────────────────────────────────────────────────────────────
+
+class FakeBlockSession:
+    """A param-aware fake session, keyed by block id — FakeDriver above matches by
+    QUERY SUBSTRING only, which can't tell one ((ref)) apart from another. Resolution
+    needs id-conditional answers (cycle/depth-limit tests reference several distinct
+    ids in one call), so this is a small purpose-built double: `table` is an id->block
+    dict standing in for the graph's live :Block nodes."""
+    def __init__(self, table):
+        self.table = table
+        self.queries = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def run(self, query, parameters=None, **kwargs):
+        params = dict(parameters) if parameters else {}
+        self.queries.append((query, params))
+        if query == mp.transclude.FETCH_BLOCK_CYPHER:
+            rec = self.table.get(params["block_id"])
+            return FakeResult([rec] if rec else [])
+        return FakeResult([])
+
+
+def test_parse_transclusions_extracts_strips_and_ignores_empty():
+    assert mp.transclude.parse_transclusions("see ((abc)) and (( xyz )) and (()) done") == ["abc", "xyz"]
+    assert mp.transclude.parse_transclusions("") == []
+    assert mp.transclude.parse_transclusions(None) == []
+
+
+def test_resolve_page_blocks_leaves_refless_blocks_untouched():
+    """No query, no new key — the plain-page read path is unchanged for ordinary blocks."""
+    s = FakeBlockSession({})
+    blocks = [{"id": "b1", "content": "no refs here"}]
+    mp.transclude.resolve_page_blocks(s, blocks=blocks)
+    assert "transclusions" not in blocks[0]
+    assert s.queries == []
+
+
+def test_resolve_page_blocks_resolves_live_content_and_reifies_edge():
+    s = FakeBlockSession({"target": {"id": "target", "content": "Target content", "type": "text"}})
+    blocks = [{"id": "src", "content": "see ((target))"}]
+    mp.transclude.resolve_page_blocks(s, blocks=blocks)
+    entry = blocks[0]["transclusions"][0]
+    assert entry == {"ref": "target", "content": "Target content", "type": "text",
+                     "cycle": False, "missing": False, "depth_exceeded": False}
+    assert any(q == mp.transclude.MERGE_TRANSCLUDES_CYPHER and p == {"src_id": "src", "dst_id": "target"}
+              for q, p in s.queries)
+
+
+def test_resolve_page_blocks_missing_ref_marks_missing():
+    s = FakeBlockSession({})  # "ghost" doesn't exist
+    blocks = [{"id": "src", "content": "see ((ghost))"}]
+    mp.transclude.resolve_page_blocks(s, blocks=blocks)
+    entry = blocks[0]["transclusions"][0]
+    assert entry["missing"] is True and entry["content"] is None
+
+
+def test_resolve_page_blocks_cycle_guard_self_reference():
+    """A block that transcludes ITSELF must render a cycle placeholder, never recurse."""
+    s = FakeBlockSession({"a": {"id": "a", "content": "((a))", "type": "text"}})
+    blocks = [{"id": "a", "content": "((a))"}]
+    mp.transclude.resolve_page_blocks(s, blocks=blocks)
+    entry = blocks[0]["transclusions"][0]
+    assert entry["cycle"] is True
+    # the self-edge is degenerate — never MERGEd
+    assert not any(q == mp.transclude.MERGE_TRANSCLUDES_CYPHER for q, _ in s.queries)
+
+
+def test_resolve_page_blocks_cycle_guard_indirect_loop():
+    """A -> B -> A: the loop must terminate at the SECOND encounter of "a", not spin forever."""
+    s = FakeBlockSession({
+        "a": {"id": "a", "content": "((b))", "type": "text"},
+        "b": {"id": "b", "content": "((a))", "type": "text"},
+    })
+    blocks = [{"id": "src", "content": "((a))"}]
+    mp.transclude.resolve_page_blocks(s, blocks=blocks)
+    top = blocks[0]["transclusions"][0]
+    assert top["ref"] == "a" and top["cycle"] is False
+    nested_b = top["nested"][0]
+    assert nested_b["ref"] == "b" and nested_b["cycle"] is False
+    nested_a_again = nested_b["nested"][0]
+    assert nested_a_again["ref"] == "a" and nested_a_again["cycle"] is True   # loop caught
+    assert "nested" not in nested_a_again                                    # recursion stopped here
+
+
+def test_resolve_page_blocks_depth_limit_stops_expansion():
+    """A chain 5 deep, resolved with depth_limit=2: direct ref (depth 1) and one nested
+    hop (depth 2) expand; the third hop is returned unexpanded (depth_exceeded), not
+    fetched — the bound that (with the cycle guard) keeps resolution finite."""
+    s = FakeBlockSession({
+        "a1": {"id": "a1", "content": "((a2))", "type": "text"},
+        "a2": {"id": "a2", "content": "((a3))", "type": "text"},
+        "a3": {"id": "a3", "content": "((a4))", "type": "text"},
+        "a4": {"id": "a4", "content": "((a5))", "type": "text"},
+    })
+    blocks = [{"id": "src", "content": "((a1))"}]
+    mp.transclude.resolve_page_blocks(s, blocks=blocks, depth_limit=2)
+    hop1 = blocks[0]["transclusions"][0]
+    assert hop1["ref"] == "a1" and hop1["depth_exceeded"] is False and hop1["content"] == "((a2))"
+    hop2 = hop1["nested"][0]
+    assert hop2["ref"] == "a2" and hop2["depth_exceeded"] is False
+    hop3 = hop2["nested"][0]
+    assert hop3["ref"] == "a3" and hop3["depth_exceeded"] is True and hop3["content"] is None
+    assert "nested" not in hop3                                              # never fetched a3
+    assert "a4" not in s.table or not any(p.get("block_id") == "a4" for _, p in s.queries)
+
+
+def test_get_page_resolves_transclusion_and_reflects_source_edits():
+    """Integration through the crud.get_page hook: the SAME node is read live on every
+    call — no copy — so an edit to the source shows up on the very next read."""
+    page_rec = {"id": "p1", "page_id": "page_1", "title": "T",
+               "domain": "cyberneticity", "subdomain": "page",
+               "blocks": [{"id": "src", "position": 0, "content": "embed: ((target))"}]}
+    d = FakeDriver()
+    d.when("OPTIONAL MATCH (p)-[:HAS_BLOCK]", [page_rec])
+    d.when("MATCH (b:Block {id: $block_id})",
+          [{"id": "target", "content": "V1", "type": "text"}])
+    out = mp.get_page(d, page_id="p1")
+    assert out["blocks"][0]["transclusions"][0]["content"] == "V1"
+
+    # "Edit the source": the live node's content changes; no duplicate to update.
+    d.responses = [(sub, recs) for (sub, recs) in d.responses
+                   if sub != "MATCH (b:Block {id: $block_id})"]
+    d.when("MATCH (b:Block {id: $block_id})",
+          [{"id": "target", "content": "V2-EDITED", "type": "text"}])
+    out2 = mp.get_page(d, page_id="p1")
+    assert out2["blocks"][0]["transclusions"][0]["content"] == "V2-EDITED"
+
+
+def test_get_transclusions_reverse_lookup_drops_the_reverse_edge_query():
+    d = FakeDriver().when("MATCH (src:Block)-[:TRANSCLUDES]->(b:Block {id: $block_id})", [
+        {"block_id": "src1", "content": "c1", "type": "text", "page_id": "pg1", "page_title": "Pg"},
+    ])
+    out = mp.transclude.get_transclusions(d, block_id="target")
+    assert out == [{"block_id": "src1", "content": "c1", "type": "text",
+                    "page_id": "pg1", "page_title": "Pg"}]
+    assert d.queries[0][1] == {"block_id": "target"}
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# ROUTER level — palace_transclude (the reverse-lookup endpoint; the forward
+# resolution rides inside crud.get_page, no separate route)
+# ─────────────────────────────────────────────────────────────────────────
+
+def _transclude_router_client():
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from routers import palace_transclude as pt_router
+
+    calls = {}
+
+    class FakeTransclude:
+        def get_transclusions(self, driver, *, block_id):
+            calls["get_transclusions"] = block_id
+            return [{"block_id": "src1", "content": "c1", "type": "text",
+                     "page_id": "pg1", "page_title": "Pg"}]
+
+    pt_router.lib_transclude = FakeTransclude()
+    pt_router.get_driver = lambda: object()
+
+    app = FastAPI()
+    app.include_router(pt_router.router, prefix="/api")
+    return TestClient(app), calls
+
+
+def test_route_get_transclusions_returns_dependents():
+    c, calls = _transclude_router_client()
+    r = c.get("/api/mindpalace/block/target/transclusions")
+    assert r.status_code == 200, r.text
+    assert r.json() == {"transclusions": [{"block_id": "src1", "content": "c1", "type": "text",
+                                           "page_id": "pg1", "page_title": "Pg"}]}
+    assert calls["get_transclusions"] == "target"
 # LIB level — query-block (#4 / A2): STRICTLY READ-ONLY Cypher + :Wiki firewall.
 # The guard is composed from the canonical gates atoms; SECURITY is the point.
 # ─────────────────────────────────────────────────────────────────────────
