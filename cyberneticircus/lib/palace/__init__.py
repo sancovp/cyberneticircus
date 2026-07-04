@@ -17,7 +17,7 @@ the node/edge model is identical to before; only the code was reorganized.
 """
 from __future__ import annotations
 
-from . import crud, blocks, history, graph, links, search, templates
+from . import crud, blocks, history, graph, links, search, templates, transclude
 
 from .crud import (
     list_mindpalaces,
@@ -60,10 +60,20 @@ from .templates import (
     CREATE_TEMPLATE_BLOCK_CYPHER,
     GET_TEMPLATE_CYPHER,
 )
+from .transclude import (
+    parse_transclusions,
+    resolve_page_blocks,
+    get_transclusions,
+    TRANSCLUDE_RE,
+    DEFAULT_DEPTH_LIMIT,
+    FETCH_BLOCK_CYPHER,
+    MERGE_TRANSCLUDES_CYPHER,
+    GET_TRANSCLUSIONS_CYPHER,
+)
 
 __all__ = [
     # submodules
-    "crud", "blocks", "history", "graph", "links", "search", "templates",
+    "crud", "blocks", "history", "graph", "links", "search", "templates", "transclude",
     # crud surface
     "list_mindpalaces", "create_mindpalace", "list_pages", "create_page",
     "get_page", "delete_page",
@@ -75,6 +85,9 @@ __all__ = [
     "export_palace", "import_palace",
     # templates surface
     "create_template", "list_templates", "instantiate_template",
+    # transclusion surface
+    "parse_transclusions", "resolve_page_blocks", "get_transclusions",
+    "TRANSCLUDE_RE", "DEFAULT_DEPTH_LIMIT",
     # Cypher constants (preserved public surface)
     "LIST_MINDPALACES_CYPHER", "CREATE_MINDPALACE_CYPHER", "LIST_PAGES_CYPHER",
     "CREATE_PAGE_CYPHER", "GET_PAGE_CYPHER", "DELETE_PAGE_CYPHER", "LINK_PAGE_TO_TEMPLATE_CYPHER",
@@ -83,4 +96,5 @@ __all__ = [
     "EXPORT_PATHS_CYPHER",
     "LIST_TEMPLATES_CYPHER", "CREATE_TEMPLATE_CYPHER",
     "CREATE_TEMPLATE_BLOCK_CYPHER", "GET_TEMPLATE_CYPHER",
+    "FETCH_BLOCK_CYPHER", "MERGE_TRANSCLUDES_CYPHER", "GET_TRANSCLUSIONS_CYPHER",
 ]

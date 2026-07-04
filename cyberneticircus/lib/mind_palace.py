@@ -14,6 +14,7 @@ in its own file so fleet features drop in without collision:
   palace/links.py   — [[wiki-links]] + backlinks             (FLEET STUB)
   palace/search.py  — full-text search across pages + blocks (FLEET STUB)
   palace/templates.py — :PageTemplate block-sets (create/list/instantiate)
+  palace/transclude.py — ((block_id)) refs + :TRANSCLUDES edges (FLEET STUB)
 
 Route → composition map (unchanged):
   - list_mindpalaces  →  GET  /api/mindpalaces
@@ -31,7 +32,7 @@ from __future__ import annotations
 # Re-export the whole palace public surface (functions + Cypher constants).
 from .palace import *  # noqa: F401,F403
 from .palace import (  # noqa: F401  (explicit re-exports for tooling/discoverability)
-    crud, blocks, history, graph, links, search, templates,
+    crud, blocks, history, graph, links, search, templates, transclude,
     list_mindpalaces, create_mindpalace, list_pages, create_page, get_page,
     delete_page, save_blocks, snapshot_changed_blocks, get_block_revisions,
     export_palace, import_palace,
