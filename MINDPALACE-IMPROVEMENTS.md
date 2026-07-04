@@ -20,12 +20,18 @@ Baseline to protect: `cyberneticircus/test_mind_palace.py` (19/19, no live neo4j
 `FakeDriver` records the Cypher each composition constructs). Every feature below adds
 tests in that same style and keeps the suite green.
 
+**Scope this round: CRUD + graph/editor features only** (Isaac's ruling). The write-GATE /
+Custodian feature is **DEFERRED** — not in this partition.
+
 Two cross-cutting mechanics every feature must respect (see §3):
-- **The gate allowlist** (`lib/gates.py:71-77`): `domain:'cyberneticity'` writes are limited to
-  a fixed subdomain set. **Any NEW node type (template/revision/comment/tag/…) MUST be added
-  there or the write 403s.** (Edges like `LINKS_TO`/`TRANSCLUDES` are NOT subdomain-gated.)
 - **Block identity** (P0 below): block ids are currently NOT stable across saves — the hard
   precondition for every block-addressable feature.
+- **The gate allowlist** (`lib/gates.py:71-77`): forward-compat only this round. Palace CRUD
+  writes call `driver.session().run` directly and **BYPASS `gates.py` entirely**, so with the
+  write-gate deferred a new node type does NOT 403 via the CRUD path. Still, features adding a
+  node subdomain (`template` #7, `revision` #1) SHOULD add it to the allowlist (one line) so any
+  future gated / `/api/query` mutation path works. Edges (`LINKS_TO`/`TRANSCLUDES`) are never
+  subdomain-gated; the query-block stays `subdomain:'block'`.
 
 ---
 
@@ -45,17 +51,16 @@ flowchart TB
         GR["graph.py<br/>export/import + graph-view (hop-cap → configurable)"]
         LNK["links.py<br/>[[wiki-links]] + backlinks (STUB)"]
         SRCH["search.py<br/>full-text search (STUB)"]
-        NEW["history.py · blocktypes.py · templates.py<br/>transclude.py · gate.py (NEW)"]
+        NEW["history.py · blocktypes.py · queryblock.py<br/>templates.py · transclude.py (NEW)"]
     end
-    GATE["lib/gates.py<br/>(:Wiki firewall + subdomain allowlist)"]
+    GATE["lib/gates.py<br/>(:Wiki firewall + subdomain allowlist)<br/>[palace-write gating DEFERRED]"]
     Graph[("neo4j<br/>:MindPalace/:Page/:Block")]
 
     RMP --> FAC
     RNEW --> FAC
-    RQ --> GATE
+    RQ -->|query-block reuses gate| GATE
     FAC --> CRUD & BLK & GR & LNK & SRCH & NEW
-    NEW -.->|extend allowlist per new node type| GATE
-    CRUD & BLK & GR & LNK & SRCH & NEW --> Graph
+    CRUD & BLK & GR & LNK & SRCH & NEW -->|CRUD writes bypass the gate| Graph
     GATE --> Graph
 
     classDef stub fill:#332,stroke:#fa4;
@@ -139,10 +144,13 @@ A block whose `content` is a **read-only Cypher query**, executed via the **exis
 `/api/query` route** and rendered inline. Reuses `validate_cypher_query`'s `:Wiki`/domain
 gate **for free** — no new backend route, no new node type. This is the killer wiki feature
 Notion structurally cannot have: a page that shows *live graph state*.
-**Owner:** `palace/blocktypes.py` (register the `query` type + mark it read-only) + `app.js`
-(render: POST content to `/api/query`, tabulate the result). Stored as a normal `:Block`
-(`subdomain:'block'`) → no allowlist change.
-**Collides-with:** `blocktypes.py` (shared with A/C block-types work — same owner), app.js.
+**Owner:** its OWN module `palace/queryblock.py` (the read-only-Cypher guard + the
+`/api/query` proxy helper) — kept distinct from the rich-block-types registry so the two agents
+never collide + `app.js` (render: POST content to `/api/query`, tabulate the result). Stored as
+a normal `:Block` (`subdomain:'block'`) → no allowlist change. Registers `'query'` into the
+`BlockItem.type` Literal — one line, coordinate with the block-types owner (#6).
+**Collides-with:** `BlockItem` (+1 Literal entry, coord #6), app.js. **Distinct from `links.py`
+and `transclude.py`** — the 3 graph-native features own 3 different files.
 
 #### A3 — Palace "Graph" tab (D3 Island Districts) · **MEDIUM (≈90% already built)**
 `export_palace` **already returns the exact `{nodes, links}` JSON** the D3 force-graph wants,
@@ -177,12 +185,12 @@ Only header/text/list/code/kv exist, and **`kv` is a live schema gap** — canon
 and used by `app.js`, but missing from the `BlockItem` model comment/validation. Block storage
 is type-agnostic, so the work is a **type registry + validation + frontend renderers**, not the
 write path.
-**Owner:** `palace/blocktypes.py` (type enum + per-type `content`/`meta` validation; also home of
-A2's `query` type) + `routers/mind_palace.py` (`BlockItem.type → Literal[...]`, add `meta`) +
-`app.js` (renderers). Rich types carry a `meta` JSON prop; still `subdomain:'block'` (no allowlist
-change).
-**Collides-with:** `BlockItem` model (coordinate with P0's `id` add — same struct), app.js, and the
-P0 `content`/`meta` contract.
+**Owner:** `palace/blocktypes.py` (type enum + per-type `content`/`meta` validation) +
+`routers/mind_palace.py` (`BlockItem.type → Literal[...]`, add `meta`) + `app.js` (renderers).
+A2's `query` type lives in its own `queryblock.py` and only adds a Literal entry here. Rich types
+carry a `meta` JSON prop; still `subdomain:'block'` (no allowlist change).
+**Collides-with:** `BlockItem` model — the shared struct touched by #1 (adds `id`) and #4 (adds
+`query` Literal). Sequence: #1 first, then #6, then #4. app.js.
 
 #### C2 — Page templates + slash-command block insert · **MEDIUM**
 **Owner:** new `palace/templates.py` + new `routers/palace_templates.py` + `app.js` (`/` menu).
@@ -190,22 +198,17 @@ P0 `content`/`meta` contract.
 instantiate = copy blocks onto a page. **⚠ Adds subdomain `template` → extend the gate allowlist.**
 **Collides-with:** `crud.create_page` (optional `template_id`), app.js.
 
-#### C3 — Write-GATE for palace writes (Custodian genus) · **MEDIUM**
-Palace mutations (`crud`, `blocks`, `graph.import_palace`) call `driver.session().run(...)`
-directly with hardcoded `domain:'cyberneticity'` — they **bypass** `gates.validate_cypher_query`
-(the `:Wiki` ban + subdomain whitelist) that the LLM-loop path enforces. A crafted import bundle
-can write arbitrary labels. Route palace writes through a gate helper.
-**Owner:** new `palace/gate.py` (`gated_run` wrapping `validate_cypher_query`) — one wrapped call
-in `crud`/`blocks`/`graph`. **This is also the natural owner of the allowlist edits** (add
-`template`, `revision`, `comment`, … in one pass, `gates.py:71-77`).
-**Collides-with:** crud/blocks/graph (1 line each), `gates.py`.
+> **DEFERRED (not this round)** — Write-GATE for palace writes (Custodian genus). Palace writes
+> currently bypass `gates.validate_cypher_query`; routing them through a gate helper is a future
+> hardening pass Isaac has deferred (CRUD-only this round). Recorded in §3.
 
-#### C4 — Robust id handling · **LOW (foundational)**
+#### C3 — Robust id handling · **LOW (foundational)**
 Promote the repeated `elementId(x)=$id OR id(x)=$id_int OR x.id=$id` triple-OR into a shared
 `crud.ID_MATCH_CLAUSE`; keep `_coerce_int` (already extracted) as the one coercion atom.
-**Owner:** `palace/crud.py` (export the constant). Land early; read-only for everyone else.
+**Owner:** `palace/crud.py` (export the constant). Land early; read-only for everyone else. Small
+enough to fold into any agent that touches `crud.py` (e.g. #7 templates).
 
-#### C5 — Full-text search across pages + blocks · **MEDIUM**
+#### C4 — Full-text search across pages + blocks · **MEDIUM**
 Fully isolated (own module + own router); high wiki value. Seam stubbed (`palace/search.py`).
 **Owner:** `palace/search.py` + new `routers/palace_search.py` + `app.js` (search box).
 **Graph shape:** `CREATE FULLTEXT INDEX palace_fts ... FOR (n:Page|Block) ON EACH [n.title, n.content]`
@@ -223,35 +226,38 @@ the `BlockItem` model, owned by the block-types agent). **`static/app.js` is the
 shared file** → stage all frontend wiring as a second pass; backends are fully testable headless
 against the `FakeDriver` baseline.
 
-| # | Agent (feature) | Owns (primary file) | Also touches | Depends on / collides |
-|---|---|---|---|---|
-| 1 | **Block identity (P0) + revisions** (P0, B2) | `palace/blocks.py` + `palace/history.py` | `routers/mind_palace.py` (`BlockItem.id`), `gates.py` (`revision`) | **LANDS FIRST**; coord `BlockItem` with #4 |
-| 2 | **Backlinks / wiki-links** (A1) | `palace/links.py` | `routers/palace_links.py`, `web_server.py` (+1), `app.js` panel | page-level = no P0 dep; 1-line save hook into #1 |
-| 3 | **Graph-query block + rich block types + kv** (A2, C1) | `palace/blocktypes.py` | `routers/mind_palace.py` (`BlockItem`), `app.js`, `/api/query` (reuse) | coord `BlockItem` with #1; app.js |
-| 4 | **Palace Graph tab + hop-cap** (A3) | `palace/graph.py` | `app.js` (tab), `lib/visualizer.py` | graph.py shared w/ export/import + C4; app.js |
-| 5 | **Transclusion** (B1) | `palace/transclude.py` | `crud.get_page` hook, `app.js` | ⛓️**P0** (#1); crud 1 hook |
-| 6 | **Templates + slash-insert** (C2) | `palace/templates.py` | `routers/palace_templates.py`, `web_server.py` (+1), `crud.create_page`, `gates.py` (`template`), `app.js` | crud 1 param; app.js |
-| 7 | **Write-gate + id-clause + allowlist** (C3, C4) | `palace/gate.py` + `crud.py` (`ID_MATCH_CLAUSE`) | 1 wrapped call in crud/blocks/graph, `gates.py:71-77` | foundational; land C4 early |
-| 8 | **Full-text search** (C5) | `palace/search.py` | `routers/palace_search.py`, `web_server.py` (+1), `app.js` box | **none backend**; app.js |
+| # | Agent (feature) | Owns (primary file) | Also touches | Depends on | Collides-with |
+|---|---|---|---|---|---|
+| 1 | **Block identity (P0) + revisions** (P0, B2) | `palace/blocks.py` + `palace/history.py` | `routers/mind_palace.py` (`BlockItem.id`), `gates.py` (`revision`, opt) | — | **LANDS FIRST**; owns `BlockItem` (coord #4, #6) |
+| 2 | **Backlinks / wiki-links** (A1) | `palace/links.py` | `routers/palace_links.py`, `web_server.py` (+1), `app.js` panel | — (page-level) | 1-line save hook into #1; app.js |
+| 3 | **Transclusion** (B1) | `palace/transclude.py` | `crud.get_page` hook, `app.js` | ⛓️**#1 (P0)** | crud 1 hook; app.js |
+| 4 | **Graph-query block** (A2) | `palace/queryblock.py` | `routers/mind_palace.py` (+1 `BlockItem` Literal), `app.js`, `/api/query` (reuse) | — | coord `BlockItem` w/ #1, #6; app.js |
+| 5 | **Palace Graph tab + hop-cap** (A3) | `palace/graph.py` | `app.js` (tab), `lib/visualizer.py` | — | graph.py export/import; app.js |
+| 6 | **Rich block types + kv fix** (C1) | `palace/blocktypes.py` + `routers/mind_palace.py` (`BlockItem`) | `app.js` (renderers) | — | `BlockItem` (coord #1, #4); app.js |
+| 7 | **Templates + slash-insert** (C2, +C3 id-clause) | `palace/templates.py` | `routers/palace_templates.py`, `web_server.py` (+1), `crud.create_page`/`ID_MATCH_CLAUSE`, `gates.py` (`template`, opt), `app.js` | — | crud 1 param; app.js |
+| 8 | **Full-text search** (C4) | `palace/search.py` | `routers/palace_search.py`, `web_server.py` (+1), `app.js` box | — | **none backend**; app.js |
 
 **Contention hot-spots + mitigation:**
-- **`palace/blocks.py` + `BlockItem`** — agent 1 (P0) owns both; agent 3 also edits `BlockItem`
-  (adds types). **Coordinate: agent 1 lands the `id` field + diff-patch FIRST**, agent 3 rebases
-  the `type` widening on top. This is the single most important sequencing constraint.
-- **`static/app.js`** — touched by 2,3,4,5,6,8. Stage frontend AFTER backends; distinct labeled
-  function regions, or a dedicated frontend integrator does the final wiring pass.
-- **`lib/gates.py:71-77` allowlist** — agents 1 (`revision`), 6 (`template`), and any comment/tag
-  feature add a subdomain. **Agent 7 owns the allowlist and adds them all in one pass** (others
-  request their subdomain from agent 7) → single-writer, zero conflict.
-- **`web_server.py`** — agents 2,6,8 each append ONE `include_router` line → append-only, ~zero.
-- **`palace/crud.py`** — agents 5 (get_page hook), 6 (create_page param), 7 (id clause) touch
-  different functions → low; agent 7's C4 lands first so 5/6 build on `ID_MATCH_CLAUSE`.
+- **`routers/mind_palace.py` `BlockItem`** — the one struct 3 agents touch: #1 adds `id`, #6
+  widens `type`, #4 adds the `query` Literal. **Sequence #1 → #6 → #4** (rebase each on the prior).
+  This is the single most important sequencing constraint.
+- **`palace/blocks.py`** — agent 1 (P0) owns it outright; agent 2 adds ONE `links.sync_page_links`
+  call inside the new `save_blocks` (one merge point — coordinate with #1).
+- **`static/app.js`** — touched by 2,3,4,5,6,7,8. Stage frontend AFTER backends; distinct labeled
+  function regions, or a dedicated frontend integrator does the final wiring pass. Every backend
+  ships + tests headless against the `FakeDriver` baseline with zero app.js edits.
+- **`web_server.py`** — agents 2,7,8 each append ONE `include_router` line → append-only, ~zero.
+- **`palace/crud.py`** — agents 3 (get_page hook), 7 (create_page param + `ID_MATCH_CLAUSE`) touch
+  different functions → low; #7 lands the id clause early so #3 builds on it.
+- **`lib/gates.py:71-77` allowlist** — forward-compat only (palace CRUD writes bypass the gate).
+  If added: `revision` (#1) + `template` (#7) — one shared pass; not a blocker this round.
 
 **Sequencing (critical path):**
-1. **Agent 1 P0** (block identity) + **Agent 7 C4** (id clause) + **Agent 8 C5** (isolated) — start now.
-2. Agent 3 (block-types, rebases `BlockItem` on P0), Agent 2 (A1 page-level), Agent 4 (A3 tab).
-3. ⛓️P0-gated: Agent 5 (transclusion), Agent 1's B2 revisions — after P0 lands.
-4. Agent 7 C3 gate + allowlist pass (folds in every new subdomain), Agent 6 templates.
+1. **#1 P0** (block identity + `BlockItem.id`) + **#7 id-clause** + **#8 search** (isolated) — start now.
+2. **#6** (rich types, rebases `BlockItem` on #1) → **#4** (query-block, adds Literal on top);
+   **#2** (backlinks page-level), **#5** (graph tab) in parallel.
+3. ⛓️P0-gated: **#3** (transclusion), **#1's** revision trail — after P0 lands.
+4. **#7** templates.
 5. Frontend integration pass (all app.js) last.
 
 ---
@@ -264,12 +270,13 @@ against the `FakeDriver` baseline.
 - **P0 (see above)** — block ids are not stable across saves: `save_blocks` DETACH-DELETEs +
   re-mints `block_{uuid4}`, AND `BlockItem` drops the client-supplied `id` at the pydantic
   boundary. Precondition for all block-addressable features.
-- **GATE COUPLING** — new node subdomains (`template`, `revision`, `comment`, `tag`, …) must be
-  added to `lib/gates.py:71-77` or writes 403 as PermissionError. Owned by agent 7.
-- **PALACE WRITES BYPASS THE GATE** — `crud`/`blocks`/`graph` write directly, skipping
-  `validate_cypher_query` (the `:Wiki`/domain firewall). Closed by C3 (agent 7).
+- **PALACE WRITES BYPASS THE GATE** — `crud`/`blocks`/`graph` write directly via
+  `driver.session().run`, skipping `validate_cypher_query` (the `:Wiki`/domain firewall). This
+  means new node subdomains (`template` #7, `revision` #1) do NOT 403 this round (the write-gate
+  feature that would enforce them is **DEFERRED** — Isaac, CRUD-only). Adding them to
+  `lib/gates.py:71-77` is a one-line forward-compat courtesy, not a blocker.
 - **EXPORT HOP-CAP** — `export_palace`'s fixed `[*1..3]` must become configurable + rel-filtered
-  before A1's cross-page `LINKS_TO` edges exist (else the walk balloons). Owned by agent 4 (A3).
+  before A1's cross-page `LINKS_TO` edges exist (else the walk balloons). Owned by agent 5 (A3).
 - **OPEN (out of scope)** — `lib/dispatcher.py` calls a `*_cypher()` tuple API
   (`mind_palace.list_mindpalaces_cypher()` etc.) that never existed in `mind_palace` (the module
   exposes `*_CYPHER` string constants + `list_mindpalaces(driver)` functions) → `AttributeError`
