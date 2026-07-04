@@ -58,7 +58,7 @@ def list_mind_palaces_endpoint():
 def create_mind_palace_endpoint(payload: MindPalaceCreate):
     """MERGE a new MindPalace (idempotent on name)."""
     try:
-        return lib_mind_palace.create_mind_palace(get_driver(), name=payload.name, description=payload.description or "")
+        return lib_mind_palace.create_mindpalace(get_driver(), name=payload.name, description=payload.description or "")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
