@@ -5,31 +5,66 @@ Compositions:
   - export_palace  →  POST /api/mindpalace/{mp_id}/export
   - import_palace  →  POST /api/mindpalace/import
 
-Export walks the palace subgraph (3 hops) into a {nodes, links} bundle; import
-idempotently MERGEs it back (on id, else name). This is also the natural home for
-the D3 "Island District" graph-view projection (:MindPalace hub + :Page/:Block
-satellites) — a fleet feature; see MINDPALACE-IMPROVEMENTS.md.
+Export walks the palace subgraph (configurable hop-cap, default 3) into a
+{nodes, links} bundle; import idempotently MERGEs it back (on id, else name).
+The hop cap is unrestricted by relationship type, so cross-page `LINKS_TO` /
+`TRANSCLUDES` edges (A1/B1) are already picked up by the same walk — a deeper
+`depth` just lets that neighborhood reach further before the walk stops. This
+is also the natural home for the D3 "Island District" graph-view projection
+(:MindPalace hub + :Page/:Block satellites) — a fleet feature; see
+MINDPALACE-IMPROVEMENTS.md.
 """
 from __future__ import annotations
 from typing import Any, Dict
 
 from .crud import _coerce_int
 
+# Hard ceiling on the export hop-cap — cross-page edges (LINKS_TO/TRANSCLUDES)
+# make the subgraph reachable well beyond one palace, so an unbounded depth
+# risks a fan-out blowup. Callers may request any depth; it's clamped into
+# [MIN_EXPORT_DEPTH, MAX_EXPORT_DEPTH].
+DEFAULT_EXPORT_DEPTH = 3
+MIN_EXPORT_DEPTH = 1
+MAX_EXPORT_DEPTH = 6
 
-# --- Cypher-string constructors ---------------------------------------------
 
-EXPORT_PATHS_CYPHER = """
+def _clamp_depth(depth: int) -> int:
+    """Coerce + bound a requested hop-cap into [MIN_EXPORT_DEPTH, MAX_EXPORT_DEPTH]."""
+    try:
+        depth = int(depth)
+    except (TypeError, ValueError):
+        depth = DEFAULT_EXPORT_DEPTH
+    return max(MIN_EXPORT_DEPTH, min(MAX_EXPORT_DEPTH, depth))
+
+
+def export_paths_cypher(depth: int = DEFAULT_EXPORT_DEPTH) -> str:
+    """Build the export traversal Cypher for a given (clamped) hop-cap.
+
+    Neo4j's variable-length-path bound isn't parameterizable, so the clamped
+    int (never raw user input) is interpolated directly into the pattern.
+    """
+    depth = _clamp_depth(depth)
+    return f"""
 MATCH (mp:MindPalace) WHERE elementId(mp) = $mp_id OR id(mp) = $mp_id_int OR mp.id = $mp_id
-OPTIONAL MATCH path = (mp)-[*1..3]->(m)
+OPTIONAL MATCH path = (mp)-[*1..{depth}]->(m)
 WITH mp, collect(path) as paths
 RETURN mp, paths
 """
 
 
+# Back-compat constant: the default-depth Cypher string, as before.
+EXPORT_PATHS_CYPHER = export_paths_cypher(DEFAULT_EXPORT_DEPTH)
+
+
 # --- Compositions -----------------------------------------------------------
 
-def export_palace(driver, *, mp_id: str) -> Dict[str, Any]:
-    """Export a MindPalace subgraph (3 hops) as a JSON-serializable dict."""
+def export_palace(driver, *, mp_id: str, depth: int = DEFAULT_EXPORT_DEPTH) -> Dict[str, Any]:
+    """Export a MindPalace subgraph as a JSON-serializable dict.
+
+    `depth` is the traversal hop-cap (default 3, clamped to
+    [MIN_EXPORT_DEPTH, MAX_EXPORT_DEPTH]) — deeper walks surface cross-page
+    LINKS_TO/TRANSCLUDES neighborhoods once those edges exist.
+    """
     nodes = []
     links = []
     node_ids = set()
@@ -47,7 +82,7 @@ def export_palace(driver, *, mp_id: str) -> Dict[str, Any]:
         return nid
 
     with driver.session() as session:
-        record = session.run(EXPORT_PATHS_CYPHER, {"mp_id": mp_id, "mp_id_int": _coerce_int(mp_id)}).single()
+        record = session.run(export_paths_cypher(depth), {"mp_id": mp_id, "mp_id_int": _coerce_int(mp_id)}).single()
         if not record:
             return {"mindpalace_id": mp_id, "export_data": {"nodes": [], "links": []}}
         mp_node = record["mp"]

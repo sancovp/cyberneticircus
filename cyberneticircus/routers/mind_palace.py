@@ -118,10 +118,10 @@ def delete_page_endpoint(page_id: str):
 
 
 @router.post("/mindpalace/{mp_id}/export")
-def export_endpoint(mp_id: str):
-    """Export a MindPalace subgraph (3 hops) as a JSON-serializable dict."""
+def export_endpoint(mp_id: str, depth: Optional[int] = 3):
+    """Export a MindPalace subgraph (default 3 hops, `?depth=` overrides) as a JSON-serializable dict."""
     try:
-        return lib_mind_palace.export_palace(get_driver(), mp_id=mp_id)
+        return lib_mind_palace.export_palace(get_driver(), mp_id=mp_id, depth=depth if depth is not None else 3)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

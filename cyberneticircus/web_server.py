@@ -17,7 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 
 from db_logic import get_driver, populate_default_graphs
-from routers import query, commands, cybernet, traversal, graph, logs, mind_palace, specs, system, bounty, palace_search, palace_history, palace_templates
+from routers import query, commands, cybernet, traversal, graph, logs, mind_palace, specs, system, bounty
 
 
 logging.basicConfig(
@@ -48,9 +48,17 @@ app.include_router(mind_palace.router, prefix="/api",          tags=["mind_palac
 app.include_router(specs.router,      prefix="/api",           tags=["specs"])
 app.include_router(system.router,     prefix="/api",           tags=["system"])
 app.include_router(bounty.router,     prefix="/api",           tags=["bounty"])
-app.include_router(palace_search.router, prefix="/api",         tags=["palace_search"])
-app.include_router(palace_history.router, prefix="/api",        tags=["palace_history"])
-app.include_router(palace_templates.router, prefix="/api",      tags=["palace_templates"])
+# Palace feature routers (fleet-added) auto-register by name — tolerates modules not yet
+# committed, so NO fleet agent needs to edit this file. Drop a routers/palace_<feature>.py
+# and it is picked up automatically on next import.
+import importlib as _importlib
+for _pr in ("palace_search", "palace_history", "palace_templates", "palace_links",
+            "palace_transclude", "palace_queryblock", "palace_blocktypes"):
+    try:
+        _m = _importlib.import_module(f"routers.{_pr}")
+        app.include_router(_m.router, prefix="/api", tags=[_pr])
+    except ModuleNotFoundError:
+        pass
 
 
 @app.get("/", response_class=HTMLResponse)
