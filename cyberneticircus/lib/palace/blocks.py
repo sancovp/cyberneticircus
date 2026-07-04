@@ -24,7 +24,7 @@ import uuid
 from typing import Any, Dict, List, Optional
 
 from .crud import _coerce_int
-from . import history
+from . import history, links
 
 
 # --- Cypher-string constructors ---------------------------------------------
@@ -86,6 +86,8 @@ def save_blocks(driver, *, page_id: str, title: Optional[str],
                     {"page_id": page_id, "page_id_int": page_id_int, "blocks": prepared})
         session.run(DELETE_MISSING_BLOCKS_CYPHER,
                     {"page_id": page_id, "page_id_int": page_id_int, "keep": keep})
+    # Sync page-level [[wiki-link]] edges from the just-saved content (own session).
+    links.sync_page_links(driver, page_id=page_id, blocks=blocks)
     return {
         "status": "success",
         "message": "Blocks saved successfully.",

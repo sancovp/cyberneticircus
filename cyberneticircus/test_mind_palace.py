@@ -639,6 +639,125 @@ def test_route_instantiate_template_found_and_missing():
 
 
 # ─────────────────────────────────────────────────────────────────────────
+# LIB level — links ([[wiki-links]] parse + page-level LINKS_TO sync + backlinks)
+# ─────────────────────────────────────────────────────────────────────────
+
+def test_parse_wiki_links_extracts_strips_and_ignores_empty():
+    assert mp.links.parse_wiki_links("a [[Foo]] b [[ Bar Baz ]] c [[]] d") == ["Foo", "Bar Baz"]
+    assert mp.links.parse_wiki_links("") == []
+    assert mp.links.parse_wiki_links(None) == []
+
+
+def test_page_link_titles_dedups_and_sorts_across_blocks():
+    blocks = [{"type": "text", "content": "see [[Beta]] and [[Alpha]]"},
+              {"type": "text", "content": "[[Alpha]] again + [[Gamma]]"}]
+    assert mp.links.page_link_titles(blocks) == ["Alpha", "Beta", "Gamma"]
+    assert mp.links.page_link_titles([]) == []
+
+
+def test_sync_page_links_ensures_index_deletes_stale_then_merges_by_title():
+    d = FakeDriver()
+    blocks = [{"type": "text", "content": "see [[Alpha]] and [[Beta]]"},
+              {"type": "text", "content": "also [[Alpha]] again"}]
+    out = mp.links.sync_page_links(d, page_id="p1", blocks=blocks)
+    assert out == {"status": "success", "page_id": "p1", "links": ["Alpha", "Beta"]}
+    qs = [q for (q, _) in d.queries]
+    # order: ensure title index -> delete stale outgoing -> merge new edges by title
+    assert "CREATE INDEX" in qs[0] and "(p:Page)" in qs[0]
+    assert "[r:LINKS_TO]" in qs[1] and "DELETE r" in qs[1]
+    assert qs[2] == mp.links.SYNC_OUTGOING_LINKS_CYPHER
+    merge_params = d.queries[2][1]
+    assert merge_params["titles"] == ["Alpha", "Beta"]          # deduped + sorted
+    assert merge_params["page_id"] == "p1" and merge_params["page_id_int"] == -1
+
+
+def test_sync_page_links_reflects_removed_links_on_resave():
+    d = FakeDriver()
+    mp.links.sync_page_links(d, page_id="p1",
+                             blocks=[{"type": "text", "content": "[[Alpha]] [[Beta]]"}])
+    d.queries.clear()
+    # Beta dropped from the content on re-save: delete-stale runs, only Alpha re-merged.
+    mp.links.sync_page_links(d, page_id="p1",
+                             blocks=[{"type": "text", "content": "just [[Alpha]] now"}])
+    assert any("DELETE r" in q for (q, _) in d.queries)
+    merge = [(q, p) for (q, p) in d.queries if q == mp.links.SYNC_OUTGOING_LINKS_CYPHER][0]
+    assert merge[1]["titles"] == ["Alpha"]                       # Beta's edge is gone
+
+
+def test_sync_page_links_with_no_links_still_clears_edges():
+    d = FakeDriver()
+    mp.links.sync_page_links(d, page_id="p1",
+                             blocks=[{"type": "text", "content": "no links here"}])
+    assert any("DELETE r" in q for (q, _) in d.queries)          # stale edges cleared
+    merge = [(q, p) for (q, p) in d.queries if q == mp.links.SYNC_OUTGOING_LINKS_CYPHER][0]
+    assert merge[1]["titles"] == []                              # UNWIND [] -> no MERGE
+
+
+def test_get_backlinks_maps_inbound_and_outbound_and_drops_nulls():
+    d = FakeDriver().when("(src:Page)-[:LINKS_TO]->(p)", [{
+        "backlinks": [{"page_id": "src1", "title": "Src One"},
+                      {"page_id": None, "title": None}],       # empty-collect artifact
+        "outgoing": [{"page_id": "dst1", "title": "Dst One"}],
+    }])
+    out = mp.links.get_backlinks(d, page_id="p1")
+    assert out == {"backlinks": [{"page_id": "src1", "title": "Src One"}],
+                   "outgoing": [{"page_id": "dst1", "title": "Dst One"}]}
+    assert d.queries[0][1] == {"page_id": "p1", "page_id_int": -1}
+
+
+def test_get_backlinks_none_record_returns_empty_lists():
+    d = FakeDriver()  # no record
+    assert mp.links.get_backlinks(d, page_id="ghost") == {"backlinks": [], "outgoing": []}
+
+
+def test_save_blocks_syncs_backlinks_after_write():
+    """The hook: save_blocks re-syncs LINKS_TO from the just-saved content."""
+    d = FakeDriver()
+    mp.save_blocks(d, page_id="p1", title=None, ts="T0",
+                   blocks=[{"type": "text", "content": "link to [[Target]]"}])
+    qs = [q for (q, _) in d.queries]
+    assert any(q == mp.UPSERT_BLOCKS_CYPHER for q in qs)          # the write ran
+    assert any("[r:LINKS_TO]" in q and "DELETE r" in q for q in qs)  # then the sync ran
+    merge = [(q, p) for (q, p) in d.queries if q == mp.links.SYNC_OUTGOING_LINKS_CYPHER][0]
+    assert merge[1]["titles"] == ["Target"]
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# ROUTER level — palace_links (its own module + own router, per MINDPALACE-
+# IMPROVEMENTS.md #2; mounted separately from routers/mind_palace.py)
+# ─────────────────────────────────────────────────────────────────────────
+
+def _links_router_client():
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from routers import palace_links as pl_router
+
+    calls = {}
+
+    class FakeLinks:
+        def get_backlinks(self, driver, *, page_id):
+            calls["get_backlinks"] = page_id
+            return {"backlinks": [{"page_id": "src1", "title": "Src"}],
+                    "outgoing": [{"page_id": "dst1", "title": "Dst"}]}
+
+    pl_router.lib_links = FakeLinks()
+    pl_router.get_driver = lambda: object()
+
+    app = FastAPI()
+    app.include_router(pl_router.router, prefix="/api")
+    return TestClient(app), calls
+
+
+def test_route_backlinks_returns_inbound_and_outbound():
+    c, calls = _links_router_client()
+    r = c.get("/api/mindpalace/page/p1/backlinks")
+    assert r.status_code == 200, r.text
+    assert r.json() == {"backlinks": [{"page_id": "src1", "title": "Src"}],
+                        "outgoing": [{"page_id": "dst1", "title": "Dst"}]}
+    assert calls["get_backlinks"] == "p1"
+
+
+# ─────────────────────────────────────────────────────────────────────────
 # Runner (mirrors test_router_contracts.py — no pytest dependency required)
 # ─────────────────────────────────────────────────────────────────────────
 
