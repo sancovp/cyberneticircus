@@ -413,6 +413,7 @@ canvas {
 
 .button-row {
     display: flex;
+    flex-wrap: wrap;
     gap: 12px;
     margin-bottom: 12px;
 }
@@ -1413,4 +1414,193 @@ canvas {
     padding: 3px 8px;
     border-radius: 6px;
     pointer-events: none;
+}
+
+/* ==========================================================================
+   MIND PALACE — feature surfacing: search, [[wiki-link]] autocomplete,
+   transclusion, query-block, templates, backlinks. Layers on the same
+   .mp-list-state / .panel-section / .spec-btn vocabulary as the rest of
+   the workspace.
+   ========================================================================== */
+
+.badge-query {
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+}
+
+/* Search (⌘K) */
+.mp-kbd-hint {
+    float: right;
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+    opacity: 0.7;
+    font-weight: normal;
+}
+.mp-search-results {
+    margin-top: 6px;
+    max-height: 320px;
+    overflow-y: auto;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.015);
+}
+.mp-search-group + .mp-search-group {
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+.mp-search-page-title {
+    padding: 6px 8px 3px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--neon-cyan);
+    cursor: pointer;
+}
+.mp-search-page-title:hover { text-decoration: underline; }
+.mp-search-hit {
+    padding: 3px 8px 3px 18px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+.mp-search-hit:hover { background: rgba(255, 255, 255, 0.04); }
+.mp-search-hit-title {
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+.mp-search-hit-snippet {
+    font-size: 10.5px;
+    color: var(--text-muted);
+    font-style: italic;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* [[wiki-link]] autocomplete popup — body-level, positioned by JS */
+.mp-wikilink-popup {
+    position: absolute;
+    z-index: 500;
+    max-height: 200px;
+    overflow-y: auto;
+    background: #15151f;
+    border: 1px solid rgba(6, 182, 212, 0.3);
+    border-radius: 6px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+.mp-wikilink-option {
+    padding: 6px 10px;
+    font-size: 12px;
+    color: var(--text-primary);
+    cursor: pointer;
+    white-space: nowrap;
+}
+.mp-wikilink-option:hover {
+    background: rgba(6, 182, 212, 0.12);
+    color: var(--neon-cyan);
+}
+
+/* Transclusion — the resolved ((block_id)) content, inline + as furniture */
+.mp-transclude-inline {
+    background: rgba(56, 189, 248, 0.1);
+    border-radius: 3px;
+    padding: 0 3px;
+}
+.mp-transclude-inline.mp-transclude-cycle,
+.mp-transclude-inline.mp-transclude-missing,
+.mp-transclude-inline.mp-transclude-depth {
+    background: rgba(255, 71, 87, 0.1);
+    color: var(--neon-pink);
+}
+.mp-transclude-wrap { margin-top: 6px; }
+.mp-transclude {
+    margin-top: 4px;
+    padding: 6px 8px;
+    border-left: 2px solid rgba(56, 189, 248, 0.4);
+    background: rgba(56, 189, 248, 0.05);
+    border-radius: 0 4px 4px 0;
+    font-size: 11.5px;
+    color: var(--text-secondary);
+}
+.mp-transclude-badge {
+    display: inline-block;
+    margin-right: 6px;
+    font-size: 9.5px;
+    font-family: 'JetBrains Mono', monospace;
+    color: #38bdf8;
+    opacity: 0.85;
+}
+.mp-transclude-cycle,
+.mp-transclude-missing,
+.mp-transclude-depth {
+    border-left-color: var(--neon-pink);
+    background: rgba(255, 71, 87, 0.05);
+    color: var(--neon-pink);
+    font-style: italic;
+}
+
+/* Query-block: Cypher textarea + Run + results table */
+.block-query-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.block-query-textarea {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    min-height: 60px;
+}
+.block-query-run-row { display: flex; }
+.mp-query-results { font-size: 11.5px; }
+.mp-query-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+}
+.mp-query-table th,
+.mp-query-table td {
+    padding: 4px 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    text-align: left;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.mp-query-table th {
+    color: var(--neon-cyan);
+    font-weight: 600;
+}
+.mp-query-preview-note {
+    padding: 6px 8px;
+    font-size: 11.5px;
+    font-style: italic;
+    color: var(--text-muted);
+    border: 1px dashed rgba(56, 189, 248, 0.25);
+    border-radius: 4px;
+    margin: 6px 0;
+}
+
+/* Backlinks ("Linked Mentions") panel */
+.mp-backlinks-list { display: flex; flex-direction: column; gap: 8px; }
+.mp-backlink-group { display: flex; flex-direction: column; gap: 2px; }
+.mp-backlink-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+}
+.mp-backlink-item {
+    padding: 4px 6px;
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    border-radius: 4px;
+    cursor: pointer;
+}
+.mp-backlink-item:hover {
+    background: rgba(6, 182, 212, 0.08);
+    color: var(--neon-cyan);
 }
