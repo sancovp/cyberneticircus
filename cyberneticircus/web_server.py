@@ -17,7 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 
 from db_logic import get_driver, populate_default_graphs
-from routers import query, commands, cybernet, traversal, graph, logs, mind_palace, specs, system, bounty
+from routers import query, commands, cybernet, traversal, graph, logs, mind_palace, specs, system, bounty, palace_search, palace_history, palace_templates
 
 
 logging.basicConfig(
@@ -48,6 +48,9 @@ app.include_router(mind_palace.router, prefix="/api",          tags=["mind_palac
 app.include_router(specs.router,      prefix="/api",           tags=["specs"])
 app.include_router(system.router,     prefix="/api",           tags=["system"])
 app.include_router(bounty.router,     prefix="/api",           tags=["bounty"])
+app.include_router(palace_search.router, prefix="/api",         tags=["palace_search"])
+app.include_router(palace_history.router, prefix="/api",        tags=["palace_history"])
+app.include_router(palace_templates.router, prefix="/api",      tags=["palace_templates"])
 
 
 @app.get("/", response_class=HTMLResponse)

@@ -167,33 +167,89 @@ def test_get_page_not_found_returns_empty():
 
 
 # ─────────────────────────────────────────────────────────────────────────
-# LIB level — blocks (the DETACH-DELETE + recreate write path)
+# LIB level — blocks (the diff-and-patch-by-stable-id write path, P0)
 # ─────────────────────────────────────────────────────────────────────────
 
-def test_save_blocks_full_replace_sequence_with_title():
+def test_save_blocks_diff_patch_sequence_with_title():
     d = FakeDriver()
     blocks = [{"type": "header", "content": "H"},
               {"type": "code", "content": "x=1", "level": 2, "language": "python"}]
-    out = mp.save_blocks(d, page_id="p1", title="New Title", blocks=blocks)
+    out = mp.save_blocks(d, page_id="p1", title="New Title", blocks=blocks, ts="T0")
     assert out["status"] == "success"
     qs = [q for (q, _) in d.queries]
-    # order: SET p.title  ->  DETACH DELETE old blocks  ->  CREATE each block
+    # order: SET p.title  ->  snapshot changed blocks  ->  UPSERT (merge-by-id)  ->  delete-missing
     assert "SET p.title = $title" in qs[0]
-    assert "DETACH DELETE b" in qs[1]
-    assert qs[2] == mp.CREATE_BLOCK_CYPHER and qs[3] == mp.CREATE_BLOCK_CYPHER
-    p2, p3 = d.queries[2][1], d.queries[3][1]
-    assert p2["position"] == 0 and p2["type"] == "header"
-    assert p2["level"] == 1 and p2["language"] == "text"          # defaults applied
-    assert p3["position"] == 1 and p3["level"] == 2 and p3["language"] == "python"
-    assert p2["block_id"].startswith("block_")
+    assert "HAS_REVISION" in qs[1]                              # revision snapshot before overwrite
+    assert qs[2] == mp.UPSERT_BLOCKS_CYPHER                     # one UNWIND upsert (no per-block CREATE)
+    assert "WHERE NOT old.id IN $keep" in qs[3]                 # delete only removed blocks
+    upsert = d.queries[2][1]["blocks"]
+    assert upsert[0]["position"] == 0 and upsert[0]["type"] == "header"
+    assert upsert[0]["level"] == 1 and upsert[0]["language"] == "text"     # defaults applied
+    assert upsert[1]["position"] == 1 and upsert[1]["level"] == 2 and upsert[1]["language"] == "python"
+    assert upsert[0]["id"].startswith("block_")                 # minted for a new (id-less) block
 
 
 def test_save_blocks_without_title_skips_title_update():
     d = FakeDriver()
-    mp.save_blocks(d, page_id="p1", title=None, blocks=[{"type": "text", "content": "t"}])
+    mp.save_blocks(d, page_id="p1", title=None, blocks=[{"type": "text", "content": "t"}], ts="T0")
     qs = [q for (q, _) in d.queries]
     assert not any("SET p.title" in q for q in qs)
-    assert "DETACH DELETE b" in qs[0]
+    # no DETACH-DELETE-all; the write is a merge-by-id upsert + a scoped delete-missing
+    assert any(q == mp.UPSERT_BLOCKS_CYPHER for q in qs)
+    assert any("WHERE NOT old.id IN $keep" in q for q in qs)
+
+
+def test_block_ids_are_stable_across_saves():
+    """THE P0 point: a block that round-trips its id keeps that SAME id across saves;
+    only genuinely-new blocks get a fresh id, and only removed blocks leave the keep set."""
+    d = FakeDriver()
+    # First save: blocks arrive WITHOUT ids (fresh page) → save_blocks mints + returns them.
+    first = mp.save_blocks(d, page_id="p1", title=None, ts="T1", blocks=[
+        {"type": "text", "content": "alpha"},
+        {"type": "text", "content": "beta"},
+        {"type": "text", "content": "gamma"},
+    ])
+    ids = [b["id"] for b in first["blocks"]]
+    assert all(i.startswith("block_") for i in ids) and len(set(ids)) == 3
+    id_alpha, id_beta, id_gamma = ids
+    # The frontend adopts those ids and saves again: gamma REMOVED, beta EDITED (same id),
+    # a brand-new delta ADDED (no id) — alpha untouched.
+    d.queries.clear()
+    second = mp.save_blocks(d, page_id="p1", title=None, ts="T2", blocks=[
+        {"id": id_alpha, "type": "text", "content": "alpha"},       # UNCHANGED
+        {"id": id_beta,  "type": "text", "content": "beta-EDITED"},  # edited, same id
+        {"type": "text", "content": "delta"},                       # added (no id)
+    ])
+    new_ids = [b["id"] for b in second["blocks"]]
+    assert new_ids[0] == id_alpha                               # unchanged block: SAME id
+    assert new_ids[1] == id_beta                                # edited block: SAME id (not re-minted)
+    assert new_ids[2].startswith("block_")                     # added block: fresh id
+    assert new_ids[2] not in (id_alpha, id_beta, id_gamma)
+    # delete-missing keeps exactly the incoming ids → the removed prior block is dropped
+    keep = [p for (q, p) in d.queries if "WHERE NOT old.id IN $keep" in q][0]["keep"]
+    assert keep == new_ids
+    assert id_alpha in keep and id_beta in keep and id_gamma not in keep
+
+
+def test_save_blocks_snapshots_prior_content_as_revision():
+    d = FakeDriver()
+    mp.save_blocks(d, page_id="p1", title=None, ts="T7",
+                   blocks=[{"id": "block_x", "type": "text", "content": "v2"}])
+    snaps = [(q, p) for (q, p) in d.queries if "HAS_REVISION" in q]
+    assert len(snaps) == 1
+    q, p = snaps[0]
+    assert p["ts"] == "T7"                                      # deterministic ts threaded through
+    assert p["blocks"][0]["id"] == "block_x" and p["blocks"][0]["content"] == "v2"
+    assert "blk.content <> b.content" in q                      # only snapshots on actual change
+
+
+def test_get_block_revisions_reads_trail_ordered():
+    d = FakeDriver().when("HAS_REVISION]->(rev:Revision)",
+                          [{"ts": "T1", "content": "v1"}, {"ts": "T2", "content": "v2"}])
+    out = mp.get_block_revisions(d, block_id="block_x")
+    assert out == [{"ts": "T1", "content": "v1"}, {"ts": "T2", "content": "v2"}]
+    assert d.queries[0][1] == {"block_id": "block_x"}
+    assert "ORDER BY rev.ts" in d.queries[0][0]
 
 
 def test_delete_page_runs_detach_delete():
@@ -230,6 +286,24 @@ def test_export_palace_missing_returns_empty_bundle():
     assert out == {"mindpalace_id": "ghost", "export_data": {"nodes": [], "links": []}}
 
 
+def test_export_palace_default_depth_is_three():
+    d = FakeDriver().when("OPTIONAL MATCH path = (mp)", [])
+    mp.export_palace(d, mp_id="mp_1")
+    assert "[*1..3]" in d.queries[0][0]
+
+
+def test_export_palace_depth_is_configurable_and_clamped():
+    d = FakeDriver().when("OPTIONAL MATCH path = (mp)", [])
+    mp.export_palace(d, mp_id="mp_1", depth=5)
+    assert "[*1..5]" in d.queries[0][0]
+    d2 = FakeDriver().when("OPTIONAL MATCH path = (mp)", [])
+    mp.export_palace(d2, mp_id="mp_1", depth=99)  # clamped to MAX_EXPORT_DEPTH
+    assert "[*1..6]" in d2.queries[0][0]
+    d3 = FakeDriver().when("OPTIONAL MATCH path = (mp)", [])
+    mp.export_palace(d3, mp_id="mp_1", depth=0)  # clamped to MIN_EXPORT_DEPTH
+    assert "[*1..1]" in d3.queries[0][0]
+
+
 def test_import_palace_merges_nodes_and_links():
     d = FakeDriver().when("RETURN elementId(n) as new_id", [{"new_id": "NEW"}])
     bundle = {
@@ -247,6 +321,47 @@ def test_import_palace_merges_nodes_and_links():
     # link creation MATCHes both merged ids
     link_qs = [q for (q, _) in d.queries if "MERGE (a)-[r:HAS_PAGE]->(b)" in q]
     assert len(link_qs) == 1
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# LIB level — search (full-text index-ensure + queryNodes mapping)
+# ─────────────────────────────────────────────────────────────────────────
+
+def test_search_palace_ensures_index_then_queries_and_maps_rows():
+    d = FakeDriver()
+    d.when("CREATE FULLTEXT INDEX", [])
+    d.when("db.index.fulltext.queryNodes", [
+        {"id": "n_pg", "labels": ["Page"], "title": "Hello", "content": None,
+         "score": 1.5, "page_id": "n_pg"},
+        {"id": "n_bl", "labels": ["Block"], "title": None, "content": "hello world",
+         "score": 0.9, "page_id": "n_pg"},
+    ])
+    out = mp.search.search_palace(d, query="hello", limit=25)
+    assert [r["id"] for r in out] == ["n_pg", "n_bl"]
+    assert out[0] == {"id": "n_pg", "label": "Page", "title": "Hello", "content": None,
+                       "score": 1.5, "page_id": "n_pg"}
+    qs = [q for (q, _) in d.queries]
+    assert any("CREATE FULLTEXT INDEX" in q for q in qs)  # index-ensure was called
+    assert any("db.index.fulltext.queryNodes" in q for q in qs)
+
+
+def test_search_palace_scopes_to_mp_id_via_list_pages():
+    d = FakeDriver()
+    d.when("CREATE FULLTEXT INDEX", [])
+    d.when("HAS_PAGE", [{"id": "page_in_scope", "page_id": "page_1", "title": "T"}])
+    d.when("db.index.fulltext.queryNodes", [
+        {"id": "in", "labels": ["Page"], "title": "T", "content": None,
+         "score": 1.0, "page_id": "page_in_scope"},
+        {"id": "out", "labels": ["Page"], "title": "Other", "content": None,
+         "score": 0.5, "page_id": "page_out_of_scope"},
+    ])
+    out = mp.search.search_palace(d, query="t", mp_id="mp_1")
+    assert [r["id"] for r in out] == ["in"]  # out-of-scope hit filtered
+
+
+def test_search_palace_defaults_when_query_returns_nothing():
+    d = FakeDriver()  # no responses configured -> both calls return []
+    assert mp.search.search_palace(d, query="nada") == []
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -289,8 +404,8 @@ def _router_client():
             calls["delete_page"] = page_id
             return {"status": "success"}
 
-        def export_palace(self, driver, *, mp_id):
-            calls["export_palace"] = mp_id
+        def export_palace(self, driver, *, mp_id, depth=3):
+            calls["export_palace"] = (mp_id, depth)
             return {"mindpalace_id": mp_id, "export_data": {"nodes": [], "links": []}}
 
         def import_palace(self, driver, *, export_data):
@@ -351,9 +466,57 @@ def test_route_delete_export_import():
     assert c.delete("/api/mindpalace/page/p1").status_code == 200
     assert calls["delete_page"] == "p1"
     assert c.post("/api/mindpalace/mp_1/export").status_code == 200
-    assert calls["export_palace"] == "mp_1"
+    assert calls["export_palace"] == ("mp_1", 3)  # depth defaults to 3, unchanged
     r = c.post("/api/mindpalace/import", json={"export_data": {"nodes": [], "links": []}})
     assert r.status_code == 200 and calls["import_palace"] == {"nodes": [], "links": []}
+
+
+def test_route_export_threads_depth_query_param():
+    c, calls = _router_client()
+    assert c.post("/api/mindpalace/mp_1/export", params={"depth": 5}).status_code == 200
+    assert calls["export_palace"] == ("mp_1", 5)
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# ROUTER level — palace_search (its own module + own router, per MINDPALACE-
+# IMPROVEMENTS.md #8; mounted separately from routers/mind_palace.py)
+# ─────────────────────────────────────────────────────────────────────────
+
+def _search_router_client():
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from routers import palace_search as ps_router
+
+    calls = {}
+
+    class FakeSearch:
+        def search_palace(self, driver, *, query, mp_id, limit):
+            calls["search_palace"] = (query, mp_id, limit)
+            return [{"id": "n1", "label": "Page", "title": "T", "content": None,
+                      "score": 1.0, "page_id": "n1"}]
+
+    ps_router.lib_search = FakeSearch()
+    ps_router.get_driver = lambda: object()
+
+    app = FastAPI()
+    app.include_router(ps_router.router, prefix="/api")
+    return TestClient(app), calls
+
+
+def test_route_search_threads_query_and_defaults():
+    c, calls = _search_router_client()
+    r = c.get("/api/mindpalace/search", params={"q": "hello"})
+    assert r.status_code == 200, r.text
+    assert r.json() == {"results": [{"id": "n1", "label": "Page", "title": "T",
+                                      "content": None, "score": 1.0, "page_id": "n1"}]}
+    assert calls["search_palace"] == ("hello", None, 25)  # mp_id/limit defaults
+
+
+def test_route_search_threads_mp_id_and_limit():
+    c, calls = _search_router_client()
+    r = c.get("/api/mindpalace/search", params={"q": "hello", "mp_id": "mp_1", "limit": 5})
+    assert r.status_code == 200
+    assert calls["search_palace"] == ("hello", "mp_1", 5)
 
 
 # ─────────────────────────────────────────────────────────────────────────
