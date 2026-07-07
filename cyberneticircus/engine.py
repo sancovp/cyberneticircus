@@ -178,7 +178,8 @@ class CybernetiCircusCompiler:
             if child_sm_id:
                 entry_id = lib_lifecycle.enter_child_state_machine(
                     session, name=name, child_sm_id=child_sm_id,
-                    parent_sm_id=sm_id, parent_step_id=step_id)
+                    parent_sm_id=sm_id, parent_step_id=step_id,
+                    call_stack=call_stack)
                 if not entry_id:
                     raise ValueError(f"StateMachine '{child_sm_id}' has no valid entry step.")
                 output["action_taken"] = f"Compiler call to sub-state machine '{child_sm_id}'."
@@ -189,7 +190,7 @@ class CybernetiCircusCompiler:
 
             # 1. Step-driven side effects (calibration, fitness, domain expansion)
             output["event_message"] = lib_lifecycle.run_step_side_effects(
-                session, name=name, step_id=step_id)
+                session, name=name, step_id=step_id, sm_id=sm_id)
 
             # 2. Per-cybernet ExecutionState lock (gate)
             from db_logic import is_traversal_locked, query_database

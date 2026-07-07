@@ -101,10 +101,12 @@ LAYER_STEP_EFFECTS = {
 # Step-side-effect application
 # ---------------------------------------------------------------------------
 
-def run_step_side_effects(session, *, name: str, step_id: str) -> str:
+def run_step_side_effects(session, *, name: str, step_id: str, sm_id: str) -> str:
     """Apply step-specific side effects (e.g. sh8_night_calibrate -> create
     SimulationRun, layerN_* -> append to completed_layers). Returns an
-    event-message fragment describing what happened (or '')."""
+    event-message fragment describing what happened (or ''). `sm_id` is the
+    Cybernet's equipped SM id — needed to match the ExecutionState for the
+    layer-tracking writes."""
     if step_id == "sh8_night_calibrate":
         accuracy = round(random.uniform(0.5, 1.0), 2)
         run_id = str(uuid.uuid4())
@@ -117,12 +119,12 @@ def run_step_side_effects(session, *, name: str, step_id: str) -> str:
     if step_id == "sh8_night_evolve":
         rec = session.run(RECALC_FITNESS_CYPHER, {"name": name}).single()
         avg_fit = rec["avg_fitness"] if rec and rec["avg_fitness"] is not None else 1.0
-        session.run(SET_FITNESS_CYPHER, {"name": name, "avg_fit": avg_fit})
+        session.run(SET_FITNESS_CYPHER, {"name": name, "avg_fitness": avg_fit})
         return ""  # fitness update is silent; evolution happens at lifetime end
 
     if step_id in LAYER_STEP_EFFECTS:
         cypher, layer = LAYER_STEP_EFFECTS[step_id]
-        session.run(cypher, {"name": name, "sm_id_param": name, "layer": layer})
+        session.run(cypher, {"name": name, "sm_id": sm_id, "layer": layer})
         return f"Domain expansion: {layer} recorded."
 
     return ""
@@ -292,16 +294,26 @@ def find_calls_sm(session, *, step_id: str) -> Optional[str]:
 
 
 def enter_child_state_machine(session, *, name: str, child_sm_id: str,
-                              parent_sm_id: str, parent_step_id: str) -> Optional[str]:
-    """Push parent frame onto call_stack + repoint ExecutionState to child's
-    entry step. Returns the child entry step id, or None on failure."""
+                              parent_sm_id: str, parent_step_id: str,
+                              call_stack: Optional[List[Dict[str, str]]] = None) -> Optional[str]:
+    """Push the parent frame onto the EXISTING call_stack + repoint
+    ExecutionState to child's entry step. Returns the child entry step id,
+    or None on failure.
+
+    `call_stack` is the caller's current stack (the deepest-last LIFO list of
+    {sm_id, step_id} frames it read off the ExecutionState). The parent frame is
+    APPENDED — not replaced — so SMs nest to arbitrary depth: a child that itself
+    CALLS_SM a grandchild keeps the grandparent's frame so completion unwinds the
+    whole chain. Passing None/[] starts a fresh stack (the depth-1 entry case)."""
     entry_id = find_entry_step_id(session, child_sm_id)
     if not entry_id:
         return None
-    call_stack = json.dumps([{"sm_id": parent_sm_id, "step_id": parent_step_id}])
+    frames = list(call_stack or [])
+    frames.append({"sm_id": parent_sm_id, "step_id": parent_step_id})
     session.run(
         PUSH_CALL_FRAME_CYPHER,
-        {"name": name, "child_sm_id": child_sm_id, "entry_id": entry_id, "call_stack": call_stack},
+        {"name": name, "child_sm_id": child_sm_id, "entry_id": entry_id,
+         "call_stack": json.dumps(frames)},
     )
     return entry_id
 
