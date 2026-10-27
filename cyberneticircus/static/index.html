@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CybernetiCircus Visualizer</title>
-    <link rel="stylesheet" href="/static/style.css?v=15">
+    <link rel="stylesheet" href="/static/style.css?v=16">
 </head>
 <body>
     <!-- Floating Substrate HUD Controls -->
@@ -106,6 +106,14 @@
                     <!-- Left Sidebar -->
                     <div class="mindpalace-sidebar">
                         <div class="panel-section">
+                            <h3>Search <span class="mp-kbd-hint">&#8984;K</span></h3>
+                            <div class="selection-row">
+                                <input type="text" id="mp-search-input" placeholder="Search pages &amp; blocks…" autocomplete="off" />
+                            </div>
+                            <div id="mp-search-results" class="mp-search-results hidden"></div>
+                        </div>
+
+                        <div class="panel-section">
                             <h3>Mind Palaces</h3>
                             <div class="selection-row">
                                 <select id="palace-select">
@@ -126,6 +134,15 @@
                             <div class="input-row mt-1">
                                 <input type="text" id="new-page-title" placeholder="New Page Title" />
                                 <button id="create-page-btn" class="spec-btn compact">Add Page</button>
+                            </div>
+                            <div class="selection-row mt-1">
+                                <select id="mp-template-select">
+                                    <option value="">-- New from template --</option>
+                                </select>
+                            </div>
+                            <div class="input-row mt-1">
+                                <input type="text" id="mp-template-page-title" placeholder="Title" />
+                                <button id="use-template-btn" class="spec-btn compact">Use</button>
                             </div>
                         </div>
 
@@ -176,6 +193,7 @@
                                         <button class="add-mp-block-btn" data-type="kv" style="border-color: #4ade80;">📋 KV List</button>
                                         <button class="add-mp-block-btn" data-type="list" style="border-color: #f472b6;">• Bullet List</button>
                                         <button class="add-mp-block-btn" data-type="code" style="border-color: #a78bfa;">``` Code</button>
+                                        <button class="add-mp-block-btn" data-type="query" style="border-color: #38bdf8;">&#9656; Query</button>
                                     </div>
                                 </div>
 
@@ -203,9 +221,17 @@
                                 </div>
                             </div>
 
+                            <!-- Linked mentions: [[wiki-link]] backlinks + outgoing, always visible
+                                 under whichever sub-tab is active (Roam/Tana convention). -->
+                            <div class="panel-section" id="mp-backlinks-section">
+                                <h3>Linked Mentions</h3>
+                                <div id="mp-backlinks-list" class="mp-backlinks-list"></div>
+                            </div>
+
                             <div class="panel-section footer-section no-border">
                                 <div class="button-row">
                                     <button id="save-mp-page-btn" class="spec-btn primary">Save Page to Graph</button>
+                                    <button id="save-as-template-btn" class="spec-btn secondary">Save as Template</button>
                                     <button id="delete-mp-page-btn" class="spec-btn danger">Delete Page</button>
                                 </div>
                             </div>
@@ -235,6 +261,11 @@
                     </div>
                 </div>
             </div>
+
+            <!-- [[wiki-link]] autocomplete popup — positioned by JS next to whatever
+                 field is being typed into; body-level so it isn't clipped by a scroll
+                 container. -->
+            <div id="mp-wikilink-popup" class="mp-wikilink-popup hidden"></div>
 
             <!-- RAW & PREVIEW VIEW (FOR SPEC LAB) -->
             <div id="preview-view" class="spec-tab-view hidden">
@@ -281,6 +312,6 @@
 
     <!-- D3.js library for graph visualization -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
-    <script src="/static/app.js?v=15"></script>
+    <script src="/static/app.js?v=16"></script>
 </body>
 </html>

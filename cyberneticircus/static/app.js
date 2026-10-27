@@ -2176,6 +2176,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 markdown += '\n';
             } else if (block.type === 'code') {
                 markdown += `\`\`\`${block.language || 'text'}\n${block.content || ""}\n\`\`\`\n\n`;
+            } else if (block.type === 'query') {
+                // Round-tripped through the shared code-fence parser under a sentinel
+                // language tag (cypher-query) so raw-editor toggling doesn't drop it.
+                markdown += `\`\`\`cypher-query\n${block.content || ""}\n\`\`\`\n\n`;
             }
         }
         return markdown;
@@ -2190,6 +2194,14 @@ document.addEventListener("DOMContentLoaded", () => {
                     id: block.id,
                     type: 'kv',
                     content: JSON.stringify(pairs),
+                    level: 1,
+                    language: 'text'
+                };
+            } else if (block.type === 'code' && block.lang === 'cypher-query') {
+                return {
+                    id: block.id,
+                    type: 'query',
+                    content: block.content,
                     level: 1,
                     language: 'text'
                 };
@@ -2251,6 +2263,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             } else if (block.type === "code") {
                 html += `<pre style="background:rgba(0,0,0,0.35); padding:8px; border-radius:4px; font-family:monospace; margin:8px 0; overflow-x:auto;"><code>${block.content || ""}</code></pre>`;
+            } else if (block.type === "query") {
+                html += `<div class="mp-query-preview-note">&#9656; Cypher query block — open Composer to run it.</div>`;
             }
         });
         return html || "<p style='color:var(--text-muted); font-style:italic;'>No page blocks declared yet.</p>";
@@ -2270,6 +2284,7 @@ document.addEventListener("DOMContentLoaded", () => {
             mindpalaceWorkspace.classList.remove("hidden");
             speclabWorkspace.classList.add("hidden");
             loadMindPalaces();
+            loadMpTemplates();
         });
     }
 
@@ -2450,6 +2465,7 @@ document.addEventListener("DOMContentLoaded", () => {
             
             renderMpBlocks();
             compileMpPreview();
+            mpLoadBacklinks(pageId);
         } catch (e) {
             console.error("Failed to load page:", e);
             if (container) container.innerHTML = '<div class="mp-list-state mp-list-error">Could not open this page.</div>';
@@ -2463,9 +2479,53 @@ document.addEventListener("DOMContentLoaded", () => {
         const editorContainer = document.getElementById("page-editor-container");
         const placeholder = document.getElementById("no-page-selected");
         const crumb = document.getElementById("mp-breadcrumb");
+        const backlinks = document.getElementById("mp-backlinks-list");
         if (crumb) crumb.innerHTML = "";
+        if (backlinks) backlinks.innerHTML = "";
         if (editorContainer) editorContainer.classList.add("hidden");
         if (placeholder) placeholder.classList.remove("hidden");
+    }
+
+    // --- Backlinks panel ("Linked Mentions") --------------------------------
+    async function mpLoadBacklinks(pageId) {
+        const list = document.getElementById("mp-backlinks-list");
+        if (!list) return;
+        list.innerHTML = '<div class="mp-list-state">Loading linked mentions…</div>';
+        try {
+            const res = await fetch(`/api/mindpalace/page/${pageId}/backlinks`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            mpRenderBacklinks(data.backlinks || [], data.outgoing || []);
+        } catch (e) {
+            console.error("Failed to load backlinks:", e);
+            list.innerHTML = '<div class="mp-list-state mp-list-error">Could not load linked mentions.</div>';
+        }
+    }
+
+    function mpRenderBacklinkGroup(label, entries) {
+        if (!entries.length) return "";
+        const items = entries.map((e) =>
+            `<div class="mp-backlink-item" data-page-id="${escapeMpHtml(e.page_id)}">&#128196; ${escapeMpHtml(e.title || "Untitled")}</div>`
+        ).join("");
+        return `<div class="mp-backlink-group"><div class="mp-backlink-label">${label}</div>${items}</div>`;
+    }
+
+    function mpRenderBacklinks(backlinks, outgoing) {
+        const list = document.getElementById("mp-backlinks-list");
+        if (!list) return;
+        if (!backlinks.length && !outgoing.length) {
+            list.innerHTML = '<div class="mp-list-state">No linked mentions yet — reference this page with [[Page Title]] elsewhere, or add a [[link]] here.</div>';
+            return;
+        }
+        list.innerHTML =
+            mpRenderBacklinkGroup("Linked from", backlinks) +
+            mpRenderBacklinkGroup("Links to", outgoing);
+        list.querySelectorAll(".mp-backlink-item").forEach((el) => {
+            el.addEventListener("click", () => {
+                const pid = el.dataset.pageId;
+                if (pid) loadPage(pid);
+            });
+        });
     }
 
     const createPalaceBtn = document.getElementById("create-palace-btn");
@@ -2543,8 +2603,9 @@ document.addEventListener("DOMContentLoaded", () => {
         kv:     { label: "KV List",     badge: "badge-kv" },
         list:   { label: "Bullet List", badge: "badge-list" },
         code:   { label: "Code",        badge: "badge-code" },
+        query:  { label: "Query",       badge: "badge-query" },
     };
-    const MP_TYPE_ORDER = ["header", "text", "kv", "list", "code"];
+    const MP_TYPE_ORDER = ["header", "text", "kv", "list", "code", "query"];
 
     let mpDragSrcIdx = null;
 
@@ -2625,6 +2686,105 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    // --- [[wiki-link]] autocomplete -----------------------------------------
+    // Watches a header/text/list/code field for an unterminated `[[query` right
+    // before the caret and offers currentPages titles as completions. Insertion
+    // writes the literal `[[Title]]` token — the LINKS_TO edge itself is synced
+    // server-side on save (lib/palace/links.py), not here.
+    function mpWikilinkQuery(field) {
+        const pos = field.selectionStart;
+        const uptoCursor = field.value.slice(0, pos);
+        const m = uptoCursor.match(/\[\[([^\[\]]*)$/);
+        return m ? m[1] : null;
+    }
+
+    function mpHideWikilinkPopup() {
+        const popup = document.getElementById("mp-wikilink-popup");
+        if (popup) popup.classList.add("hidden");
+    }
+
+    function mpInsertWikilink(field, block, title) {
+        const pos = field.selectionStart;
+        const uptoCursor = field.value.slice(0, pos);
+        const m = uptoCursor.match(/\[\[([^\[\]]*)$/);
+        if (!m) return;
+        const start = m.index;
+        const before = field.value.slice(0, start);
+        const after = field.value.slice(pos);
+        const inserted = `[[${title}]]`;
+        field.value = before + inserted + after;
+        block.content = field.value;
+        const newPos = (before + inserted).length;
+        field.focus();
+        try { field.setSelectionRange(newPos, newPos); } catch (_) {}
+        compileMpPreview();
+        mpHideWikilinkPopup();
+    }
+
+    function mpShowWikilinkPopup(field, block, query) {
+        const popup = document.getElementById("mp-wikilink-popup");
+        if (!popup) return;
+        const q = query.toLowerCase();
+        const matches = currentPages.filter((p) => (p.title || "").toLowerCase().includes(q)).slice(0, 8);
+        if (matches.length === 0) { mpHideWikilinkPopup(); return; }
+
+        popup.innerHTML = matches.map((p) =>
+            `<div class="mp-wikilink-option" data-title="${escapeMpHtml(p.title)}">${escapeMpHtml(p.title)}</div>`
+        ).join("");
+        const rect = field.getBoundingClientRect();
+        popup.style.left = rect.left + "px";
+        popup.style.top = (rect.bottom + window.scrollY + 2) + "px";
+        popup.style.minWidth = Math.min(rect.width, 260) + "px";
+        popup.classList.remove("hidden");
+        popup.querySelectorAll(".mp-wikilink-option").forEach((opt) => {
+            // mousedown (not click) fires before the field's blur, so the caret
+            // position captured above is still valid at insertion time.
+            opt.addEventListener("mousedown", (e) => {
+                e.preventDefault();
+                mpInsertWikilink(field, block, opt.dataset.title);
+            });
+        });
+    }
+
+    function mpAttachWikilinkAutocomplete(field, block) {
+        field.addEventListener("input", () => {
+            const q = mpWikilinkQuery(field);
+            if (q === null) { mpHideWikilinkPopup(); return; }
+            mpShowWikilinkPopup(field, block, q);
+        });
+        field.addEventListener("blur", () => {
+            // Deferred so an option's mousedown lands before the popup disappears.
+            setTimeout(mpHideWikilinkPopup, 150);
+        });
+    }
+
+    // --- Block transclusion rendering ---------------------------------------
+    // A block's `transclusions` array (attached by crud.get_page on read, in
+    // parse-order of its ((refs))) resolves inline in the preview (see
+    // mpExpandTransclusionsInline in compileMpPreview) and, additionally, as a
+    // small "furniture" panel under the raw editor so the composer view shows
+    // what's embedded even before switching to Preview.
+    function mpRenderTransclusionEntry(entry) {
+        if (entry.cycle) {
+            return `<div class="mp-transclude mp-transclude-cycle">&#9888; cycle detected in ((${escapeMpHtml(entry.ref)}))</div>`;
+        }
+        if (entry.missing) {
+            return `<div class="mp-transclude mp-transclude-missing">&#10692; ((${escapeMpHtml(entry.ref)})) — block not found</div>`;
+        }
+        if (entry.depth_exceeded) {
+            return `<div class="mp-transclude mp-transclude-depth">&#10692; ((${escapeMpHtml(entry.ref)})) — nested too deep, not expanded</div>`;
+        }
+        return `<div class="mp-transclude"><span class="mp-transclude-badge">&#10692; transcluded</span>${escapeMpHtml(entry.content || "")}</div>`;
+    }
+
+    function mpRenderTransclusions(block, bodyEl) {
+        if (!block.transclusions || !block.transclusions.length) return;
+        const wrap = document.createElement("div");
+        wrap.className = "mp-transclude-wrap";
+        wrap.innerHTML = block.transclusions.map(mpRenderTransclusionEntry).join("");
+        bodyEl.appendChild(wrap);
+    }
+
     // Render the editable fields for one block into bodyEl (per-type).
     function mpRenderBlockBody(block, bodyEl) {
         if (block.type === "header") {
@@ -2655,6 +2815,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 compileMpPreview();
             });
             mpAttachKeys(input, block);
+            mpAttachWikilinkAutocomplete(input, block);
 
             row.appendChild(levelSel);
             row.appendChild(input);
@@ -2670,6 +2831,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 compileMpPreview();
             });
             mpAttachKeys(ta, block);
+            mpAttachWikilinkAutocomplete(ta, block);
             bodyEl.appendChild(ta);
 
         } else if (block.type === "list") {
@@ -2682,6 +2844,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 compileMpPreview();
             });
             mpAttachKeys(ta, block);
+            mpAttachWikilinkAutocomplete(ta, block);
             bodyEl.appendChild(ta);
 
         } else if (block.type === "code") {
@@ -2770,6 +2933,61 @@ document.addEventListener("DOMContentLoaded", () => {
             renderPairs();
             bodyEl.appendChild(kvC);
 
+        } else if (block.type === "query") {
+            // A query-block's content IS the Cypher — strictly read-only (guard lives
+            // server-side in lib/palace/queryblock.py; a 403 here means the gate refused).
+            const wrap = document.createElement("div");
+            wrap.className = "block-query-row";
+
+            const ta = document.createElement("textarea");
+            ta.className = "block-textarea block-query-textarea";
+            ta.placeholder = "MATCH (n) RETURN n LIMIT 10   — read-only Cypher, rendered live";
+            ta.value = block.content || "";
+            ta.addEventListener("input", (e) => {
+                block.content = e.target.value;
+                compileMpPreview();
+            });
+            mpAttachKeys(ta, block);
+
+            const runRow = document.createElement("div");
+            runRow.className = "block-query-run-row";
+            const runBtn = document.createElement("button");
+            runBtn.className = "spec-btn compact block-query-run-btn";
+            runBtn.textContent = "▸ Run";
+
+            const resultsEl = document.createElement("div");
+            resultsEl.className = "mp-query-results";
+
+            runBtn.addEventListener("click", async () => {
+                resultsEl.innerHTML = '<div class="mp-list-state">Running…</div>';
+                try {
+                    const res = await fetch("/api/mindpalace/queryblock/run", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ cypher: block.content || "" }),
+                    });
+                    if (res.status === 403) {
+                        resultsEl.innerHTML = '<div class="mp-list-state mp-list-error">Read-only queries only.</div>';
+                        return;
+                    }
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => ({}));
+                        resultsEl.innerHTML = `<div class="mp-list-state mp-list-error">${escapeMpHtml(err.detail || ("HTTP " + res.status))}</div>`;
+                        return;
+                    }
+                    const data = await res.json();
+                    mpRenderQueryRows(resultsEl, data.rows || []);
+                } catch (e) {
+                    resultsEl.innerHTML = '<div class="mp-list-state mp-list-error">Network error running query.</div>';
+                }
+            });
+
+            runRow.appendChild(runBtn);
+            wrap.appendChild(ta);
+            wrap.appendChild(runRow);
+            wrap.appendChild(resultsEl);
+            bodyEl.appendChild(wrap);
+
         } else {
             // Unknown type (e.g. a future backend type not yet wired here): show
             // its raw content so nothing is lost, editable as plain text.
@@ -2779,6 +2997,24 @@ document.addEventListener("DOMContentLoaded", () => {
             ta.addEventListener("input", (e) => { block.content = e.target.value; compileMpPreview(); });
             bodyEl.appendChild(ta);
         }
+    }
+
+    // Render a query-block's returned rows as a small table (columns from the first
+    // row's keys — the rows are already JSON-safe via gates.serialize_value).
+    function mpRenderQueryRows(el, rows) {
+        if (!rows.length) { el.innerHTML = '<div class="mp-list-state">No rows returned.</div>'; return; }
+        const cols = Object.keys(rows[0]);
+        let html = '<table class="mp-query-table"><thead><tr>' +
+            cols.map((c) => `<th>${escapeMpHtml(c)}</th>`).join("") + '</tr></thead><tbody>';
+        rows.forEach((row) => {
+            html += "<tr>" + cols.map((c) => {
+                const v = row[c];
+                const s = (v === null || v === undefined) ? "" : (typeof v === "object" ? JSON.stringify(v) : String(v));
+                return `<td>${escapeMpHtml(s)}</td>`;
+            }).join("") + "</tr>";
+        });
+        html += "</tbody></table>";
+        el.innerHTML = html;
     }
 
     function renderMpBlocks() {
@@ -2875,6 +3111,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const bodyEl = document.createElement("div");
             bodyEl.className = "block-item-body";
             mpRenderBlockBody(block, bodyEl);
+            mpRenderTransclusions(block, bodyEl);
             blockEl.appendChild(bodyEl);
 
             // drag & drop reorder (initiated from the grip handle only)
@@ -2912,17 +3149,33 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    // Expand ((block_id)) refs inline using the `transclusions` array crud.get_page
+    // attaches to a referencing block (resolved order matches the ((refs)) found in
+    // content). Blocks with no refs (no `transclusions`) pass through untouched.
+    function mpExpandTransclusionsInline(content, transclusions) {
+        if (!transclusions || !transclusions.length) return content || "";
+        let i = 0;
+        return (content || "").replace(/\(\(([^()]+)\)\)/g, () => {
+            const t = transclusions[i++];
+            if (!t) return "";
+            if (t.cycle) return `<span class="mp-transclude-inline mp-transclude-cycle" title="cycle detected">&#9888; cycle</span>`;
+            if (t.missing) return `<span class="mp-transclude-inline mp-transclude-missing" title="block not found">&#10692; missing</span>`;
+            if (t.depth_exceeded) return `<span class="mp-transclude-inline mp-transclude-depth" title="nested too deep">&#10692; too deep</span>`;
+            return `<span class="mp-transclude-inline" title="transcluded">&#10692; ${t.content || ""}</span>`;
+        });
+    }
+
     function compileMpPreview() {
         const preview = document.getElementById("mp-wiki-preview");
         if (!preview) return;
-        
+
         let html = "";
         currentPageBlocks.forEach(block => {
             if (block.type === "header") {
                 const lvl = block.level || 1;
-                html += `<h${lvl}>${block.content || ""}</h${lvl}>`;
+                html += `<h${lvl}>${mpExpandTransclusionsInline(block.content, block.transclusions)}</h${lvl}>`;
             } else if (block.type === "text") {
-                const text = block.content || "";
+                const text = mpExpandTransclusionsInline(block.content, block.transclusions);
                 const paras = text.split("\n\n").map(p => `<p>${p.replace(/\n/g, "<br/>")}</p>`).join("");
                 html += paras;
             } else if (block.type === "kv") {
@@ -2941,7 +3194,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     html += `</table>`;
                 }
             } else if (block.type === "list") {
-                const text = block.content || "";
+                const text = mpExpandTransclusionsInline(block.content, block.transclusions);
                 const items = text.split("\n").filter(line => line.trim().length > 0);
                 if (items.length > 0) {
                     html += `<ul style="padding-left: 20px; margin: 8px 0;">`;
@@ -2951,10 +3204,12 @@ document.addEventListener("DOMContentLoaded", () => {
                     html += `</ul>`;
                 }
             } else if (block.type === "code") {
-                html += `<pre style="background:rgba(0,0,0,0.35); padding:8px; border-radius:4px; font-family:monospace; margin:8px 0; overflow-x:auto;"><code>${block.content || ""}</code></pre>`;
+                html += `<pre style="background:rgba(0,0,0,0.35); padding:8px; border-radius:4px; font-family:monospace; margin:8px 0; overflow-x:auto;"><code>${mpExpandTransclusionsInline(block.content, block.transclusions)}</code></pre>`;
+            } else if (block.type === "query") {
+                html += `<div class="mp-query-preview-note">&#9656; Cypher query block — open Composer to run it.</div>`;
             }
         });
-        
+
         preview.innerHTML = html || "<p style='color:var(--text-muted); font-style:italic;'>No page blocks declared yet.</p>";
     }
 
@@ -3103,6 +3358,192 @@ document.addEventListener("DOMContentLoaded", () => {
             };
             reader.readAsText(file);
             importFile.value = "";
+        });
+    }
+
+    // --- Search (⌘K or the sidebar box) -------------------------------------
+    let mpSearchDebounce = null;
+    const mpSearchInput = document.getElementById("mp-search-input");
+
+    if (mpSearchInput) {
+        mpSearchInput.addEventListener("input", () => {
+            clearTimeout(mpSearchDebounce);
+            const q = mpSearchInput.value.trim();
+            if (!q) { mpClearSearchResults(); return; }
+            mpSearchDebounce = setTimeout(() => mpRunSearch(q), 250);
+        });
+    }
+
+    document.addEventListener("keydown", (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k" &&
+            mindpalaceWorkspace && !mindpalaceWorkspace.classList.contains("hidden") && mpSearchInput) {
+            e.preventDefault();
+            mpSearchInput.focus();
+            mpSearchInput.select();
+        }
+    });
+
+    function mpClearSearchResults() {
+        const box = document.getElementById("mp-search-results");
+        if (box) { box.classList.add("hidden"); box.innerHTML = ""; }
+    }
+
+    async function mpRunSearch(q) {
+        const box = document.getElementById("mp-search-results");
+        if (!box) return;
+        box.classList.remove("hidden");
+        box.innerHTML = '<div class="mp-list-state">Searching…</div>';
+        try {
+            const params = new URLSearchParams({ q, limit: "25" });
+            if (currentPalaceId) params.set("mp_id", currentPalaceId);
+            const res = await fetch(`/api/mindpalace/search?${params.toString()}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            mpRenderSearchResults(data.results || []);
+        } catch (e) {
+            console.error("Search failed:", e);
+            box.innerHTML = '<div class="mp-list-state mp-list-error">Search failed (graph unreachable).</div>';
+        }
+    }
+
+    function mpRenderSearchResults(results) {
+        const box = document.getElementById("mp-search-results");
+        if (!box) return;
+        if (!results.length) {
+            box.innerHTML = '<div class="mp-list-state">No matches.</div>';
+            return;
+        }
+        // Group by owning page (a Page hit is its own group's header; a Block hit
+        // rides under the page that HAS_BLOCK it — see routers/palace_search.py).
+        const groups = new Map();
+        results.forEach((r) => {
+            const key = r.page_id || r.id;
+            if (!groups.has(key)) groups.set(key, { pageTitle: null, pageId: r.page_id || r.id, hits: [] });
+            const g = groups.get(key);
+            if (r.label === "Page") g.pageTitle = r.title;
+            else g.hits.push(r);
+        });
+
+        let html = "";
+        groups.forEach((g) => {
+            const cached = currentPages.find((p) => p.page_id === g.pageId || p.id === g.pageId);
+            const title = g.pageTitle || (cached && cached.title) || "Untitled page";
+            html += `<div class="mp-search-group">
+                <div class="mp-search-page-title" data-page-id="${escapeMpHtml(g.pageId)}">&#128196; ${escapeMpHtml(title)}</div>`;
+            g.hits.forEach((h) => {
+                const snippet = (h.content || "").slice(0, 90);
+                html += `<div class="mp-search-hit" data-page-id="${escapeMpHtml(g.pageId)}">
+                    <span class="mp-search-hit-title">${escapeMpHtml(h.title || h.label)}</span>
+                    <span class="mp-search-hit-snippet">${escapeMpHtml(snippet)}</span>
+                </div>`;
+            });
+            html += `</div>`;
+        });
+        box.innerHTML = html;
+        box.querySelectorAll(".mp-search-page-title, .mp-search-hit").forEach((el) => {
+            el.addEventListener("click", () => {
+                const pid = el.dataset.pageId;
+                if (!pid) return;
+                mpClearSearchResults();
+                mpSearchInput.value = "";
+                loadPage(pid);
+            });
+        });
+    }
+
+    // --- Templates: list + one-click instantiate ----------------------------
+    async function loadMpTemplates() {
+        const sel = document.getElementById("mp-template-select");
+        if (!sel) return;
+        try {
+            const res = await fetch("/api/mindpalace/templates");
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            const templates = data.templates || [];
+            const prevVal = sel.value;
+            sel.innerHTML = '<option value="">-- New from template --</option>';
+            templates.forEach((t) => {
+                const opt = document.createElement("option");
+                opt.value = t.template_id || t.id;
+                opt.textContent = t.name;
+                sel.appendChild(opt);
+            });
+            if (prevVal && templates.some((t) => (t.template_id || t.id) === prevVal)) sel.value = prevVal;
+        } catch (e) {
+            console.error("Failed to load templates:", e);
+        }
+    }
+
+    const useTemplateBtn = document.getElementById("use-template-btn");
+    if (useTemplateBtn) {
+        useTemplateBtn.addEventListener("click", async () => {
+            const sel = document.getElementById("mp-template-select");
+            const titleInput = document.getElementById("mp-template-page-title");
+            const templateId = sel ? sel.value : "";
+            const title = titleInput ? titleInput.value.trim() : "";
+            if (!currentPalaceId) { showSpecStatus("Please select a Palace first.", true); return; }
+            if (!templateId) { showSpecStatus("Choose a template first.", true); return; }
+            if (!title) { showSpecStatus("Give the new page a title.", true); return; }
+
+            try {
+                const res = await fetch(`/api/mindpalace/${currentPalaceId}/page/from-template`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ template_id: templateId, title: title }),
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (titleInput) titleInput.value = "";
+                    await loadPalacePages(currentPalaceId);
+                    if (data.page_id) loadPage(data.page_id);
+                    await drawGraph(activeIdentity);
+                    showSpecStatus("Page created from template!");
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    showSpecStatus("Error: " + (err.detail || res.status), true);
+                }
+            } catch (e) {
+                showSpecStatus("Network error", true);
+            }
+        });
+    }
+
+    // Not one of the 6 surfaced routes but the loop needs it: with no way to
+    // create a PageTemplate, "New from template" would forever list nothing.
+    // Reuses the existing POST /api/mindpalace/template (palace_templates.py)
+    // to snapshot the current page's blocks as a reusable template.
+    const saveAsTemplateBtn = document.getElementById("save-as-template-btn");
+    if (saveAsTemplateBtn) {
+        saveAsTemplateBtn.addEventListener("click", async () => {
+            if (!currentPageId) return;
+            const titleInput = document.getElementById("mp-page-title");
+            const defaultName = (titleInput && titleInput.value.trim()) || "Untitled Template";
+            const name = prompt("Template name:", defaultName);
+            if (!name) return;
+
+            const cleanBlocks = currentPageBlocks.map((b) => ({
+                type: b.type,
+                content: b.content || "",
+                level: b.level || 1,
+                language: b.language || "text",
+            }));
+
+            try {
+                const res = await fetch("/api/mindpalace/template", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name: name, blocks: cleanBlocks }),
+                });
+                if (res.ok) {
+                    showSpecStatus("Template saved!");
+                    await loadMpTemplates();
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    showSpecStatus("Error: " + (err.detail || res.status), true);
+                }
+            } catch (e) {
+                showSpecStatus("Network error", true);
+            }
         });
     }
 
