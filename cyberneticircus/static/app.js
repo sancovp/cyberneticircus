@@ -2305,9 +2305,12 @@ document.addEventListener("DOMContentLoaded", () => {
             `<span class="mp-crumb mp-crumb-page">\u{1F4C4} ${escapeMpHtml(page)}</span>`;
     }
 
+    // Escapes for text AND for a quoted attribute value: titles are user-controlled and land in data-* attributes
+    // (the [[ autocomplete popup, backlinks, search hits), so a quote must never close the attribute.
     function escapeMpHtml(s) {
         return String(s == null ? "" : s)
-            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
     }
 
     async function loadMindPalaces() {
